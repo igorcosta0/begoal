@@ -40,7 +40,6 @@ export default function LoginPage() {
         email: data.user.email!,
       })
 
-      // Buscar perfil e empresas do usuário
       const { data: profile } = await supabase
         .rpc('who_am_i')
 
@@ -48,7 +47,6 @@ export default function LoginPage() {
         setRole(profile.role)
       }
 
-      // Buscar empresas vinculadas
       const { data: empresas } = await supabase
         .from('user_company_roles')
         .select('clients(*)')
@@ -74,7 +72,6 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-md space-y-8 px-8">
 
-        {/* Logo / Título */}
         <div className="text-center">
           <h1 className="text-3xl font-bold text-foreground">Begoal</h1>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -82,7 +79,6 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Formulário */}
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
             <label
@@ -133,11 +129,10 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Link recuperar senha */}
         <p className="text-center text-sm text-muted-foreground">
           Esqueceu a senha?{' '}
-          
-            href="/reset-senha"
+          <a
+              href="/reset-senha"
             className="text-primary hover:underline font-medium"
           >
             Recuperar acesso
