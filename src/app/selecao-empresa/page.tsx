@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 
@@ -12,7 +11,6 @@ interface Empresa {
 }
 
 export default function SelecaoEmpresaPage() {
-  const router = useRouter()
   const { setEmpresa } = useEmpresaStore()
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [loading, setLoading] = useState(true)
@@ -22,7 +20,7 @@ export default function SelecaoEmpresaPage() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        router.push('/login')
+        window.location.href = '/login'
         return
       }
       const { data } = await supabase
@@ -36,11 +34,11 @@ export default function SelecaoEmpresaPage() {
       setLoading(false)
     }
     fetchEmpresas()
-  }, [router])
+  }, [])
 
   function handleSelect(empresa: Empresa) {
     setEmpresa(empresa)
-    router.push('/okr')
+    window.location.href = '/okr'
   }
 
   if (loading) {
