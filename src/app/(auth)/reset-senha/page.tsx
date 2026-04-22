@@ -46,6 +46,7 @@ export default function ResetSenhaPage() {
             redefinir sua senha.
           </p>
           
+          <a
             href="/login"
             className="inline-block text-sm text-primary hover:underline"
           >
