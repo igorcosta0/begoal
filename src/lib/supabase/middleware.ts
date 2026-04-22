@@ -31,18 +31,23 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  const pathname = request.nextUrl.pathname
+
+  // Rotas que não precisam de autenticação
   const publicRoutes = ['/login', '/reset-senha', '/selecao-empresa']
   const isPublicRoute = publicRoutes.some((route) =>
-    request.nextUrl.pathname.startsWith(route)
+    pathname.startsWith(route)
   )
 
+  // Se não tem usuário e não é rota pública, redireciona para login
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  if (user && isPublicRoute) {
+  // Se tem usuário e está na raiz, redireciona para okr
+  if (user && pathname === '/') {
     const url = request.nextUrl.clone()
     url.pathname = '/okr'
     return NextResponse.redirect(url)
