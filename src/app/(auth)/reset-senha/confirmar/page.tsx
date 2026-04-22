@@ -1,59 +1,45 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-export default function ResetSenhaPage() {
-  const [email, setEmail] = useState('')
+export default function ConfirmarSenhaPage() {
+  const router = useRouter()
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
-  const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function handleReset(e: React.FormEvent) {
+  async function handleConfirm(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
     setError(null)
+
+    if (password !== confirm) {
+      setError('As senhas não coincidem.')
+      return
+    }
+
+    if (password.length < 6) {
+      setError('A senha deve ter pelo menos 6 caracteres.')
+      return
+    }
+
+    setLoading(true)
 
     const supabase = createClient()
 
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-      email,
-      {
-        redirectTo: `${window.location.origin}/reset-senha/confirmar`,
-      }
-    )
+    const { error: updateError } = await supabase.auth.updateUser({
+      password,
+    })
 
-    if (resetError) {
-      setError('Erro ao enviar e-mail. Verifique o endereço e tente novamente.')
+    if (updateError) {
+      setError('Erro ao atualizar senha. Tente novamente.')
       setLoading(false)
       return
     }
 
-    setSent(true)
-    setLoading(false)
-  }
-
-  if (sent) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-full max-w-md space-y-4 px-8 text-center">
-          <div className="text-4xl">📬</div>
-          <h2 className="text-xl font-semibold text-foreground">
-            E-mail enviado!
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Verifique sua caixa de entrada e siga as instruções para
-            redefinir sua senha.
-          </p>
-          
-            href="/login"
-            className="inline-block text-sm text-primary hover:underline"
-          >
-            Voltar para o login
-          </a>
-        </div>
-      </div>
-    )
+    router.push('/login')
   }
 
   return (
@@ -62,28 +48,46 @@ export default function ResetSenhaPage() {
 
         <div className="text-center">
           <h1 className="text-2xl font-bold text-foreground">
-            Recuperar senha
+            Nova senha
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Informe seu e-mail e enviaremos um link para redefinir sua senha.
+            Digite sua nova senha abaixo.
           </p>
         </div>
 
-        <form onSubmit={handleReset} className="space-y-4">
+        <form onSubmit={handleConfirm} className="space-y-4">
           <div className="space-y-2">
             <label
-              htmlFor="email"
+              htmlFor="password"
               className="text-sm font-medium text-foreground"
             >
-              E-mail
+              Nova senha
             </label>
             <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
-              placeholder="seu@email.com"
+              placeholder="••••••••"
+              className="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label
+              htmlFor="confirm"
+              className="text-sm font-medium text-foreground"
+            >
+              Confirmar nova senha
+            </label>
+            <input
+              id="confirm"
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              required
+              placeholder="••••••••"
               className="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
             />
           </div>
@@ -97,12 +101,11 @@ export default function ResetSenhaPage() {
             disabled={loading}
             className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Enviando...' : 'Enviar link de recuperação'}
+            {loading ? 'Salvando...' : 'Salvar nova senha'}
           </button>
         </form>
 
         <p className="text-center text-sm text-muted-foreground">
-          Lembrou a senha?{' '}
           <a href="/login" className="text-primary hover:underline font-medium">
             Voltar para o login
           </a>
