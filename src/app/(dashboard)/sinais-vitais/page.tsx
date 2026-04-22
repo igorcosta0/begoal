@@ -1,0 +1,34 @@
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+
+export default async function SinaisVitaisPage() {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) redirect('/login')
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Sinais Vitais</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            KPIs contínuos e indicadores de saúde da empresa
+          </p>
+        </div>
+        <button className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity">
+          + Novo Sinal Vital
+        </button>
+      </div>
+
+      <div className="rounded-lg border border-border bg-card p-8 text-center">
+        <p className="text-muted-foreground text-sm">
+          Os sinais vitais aparecerão aqui. Módulo em desenvolvimento.
+        </p>
+      </div>
+    </div>
+  )
+}
