@@ -69,7 +69,7 @@ export async function createKr(payload: {
   titulo: string
   objetivo_id: string
   responsavel_id: string
-  setor_id: string
+  setor_id?: string
   client_id: string
   valor_inicial?: number
   valor_meta?: number

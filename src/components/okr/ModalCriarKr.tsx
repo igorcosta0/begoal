@@ -114,7 +114,6 @@ export default function ModalCriarKr({
               <select
                 value={form.setor_id}
                 onChange={(e) => setForm({ ...form, setor_id: e.target.value })}
-                required
                 className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">Selecione</option>
