@@ -1,35 +1,249 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+'use client'
 
-export default async function OkrPage() {
-  const supabase = await createClient()
+import { useEffect, useState, useCallback } from 'react'
+import { useEmpresaStore } from '@/store/useEmpresaStore'
+import { useOkrStore } from '@/store/useOkrStore'
+import { getObjetivosAgrupados, deleteKr, deleteObjetivo, getSetoresByEmpresa, getFuncionariosByEmpresa } from '@/lib/queries/okr'
+import ObjetivoCard from '@/components/okr/ObjetivoCard'
+import ModalCriarKr from '@/components/okr/ModalCriarKr'
+import ModalEditarKr from '@/components/okr/ModalEditarKr'
+import ModalLancarKr from '@/components/okr/ModalLancarKr'
+import ModalFinalizarKr from '@/components/okr/ModalFinalizarKr'
+import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
+import ModalDetalhesKr from '@/components/okr/ModalDetalhesKr'
+import ModalCriarObjetivo from '@/components/okr/ModalCriarObjetivo'
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+export default function OkrPage() {
+  const { empresa } = useEmpresaStore()
+  const { filters, setFiltroObjetivo, setFiltroResponsavel, setFiltroSetor, clearFilters } = useOkrStore()
 
-  if (!user) redirect('/login')
+  const [objetivos, setObjetivos] = useState<any[]>([])
+  const [setores, setSetores] = useState<any[]>([])
+  const [funcionarios, setFuncionarios] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Modais
+  const [modalCriarObjetivo, setModalCriarObjetivo] = useState(false)
+  const [modalCriarKr, setModalCriarKr] = useState<{ open: boolean; objetivo: any | null }>({ open: false, objetivo: null })
+  const [modalEditarKr, setModalEditarKr] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
+  const [modalLancarKr, setModalLancarKr] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
+  const [modalFinalizarKr, setModalFinalizarKr] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
+  const [modalDetalhesKr, setModalDetalhesKr] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
+  const [modalExcluirKr, setModalExcluirKr] = useState<{ open: boolean; kr: any | null; loading: boolean }>({ open: false, kr: null, loading: false })
+  const [modalExcluirObjetivo, setModalExcluirObjetivo] = useState<{ open: boolean; objetivo: any | null; loading: boolean }>({ open: false, objetivo: null, loading: false })
+
+  const fetchData = useCallback(async () => {
+    if (!empresa) return
+    setLoading(true)
+    const { data } = await getObjetivosAgrupados(empresa.id)
+    setObjetivos(data ?? [])
+    setLoading(false)
+  }, [empresa])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  useEffect(() => {
+    if (!empresa) return
+    getSetoresByEmpresa(empresa.id).then(({ data }) => setSetores(data ?? []))
+    getFuncionariosByEmpresa(empresa.id).then(({ data }) => setFuncionarios(data ?? []))
+  }, [empresa])
+
+  // Filtros aplicados
+  const objetivosFiltrados = objetivos
+    .filter((obj) => !filters.objetivoId || obj.id === filters.objetivoId)
+    .map((obj) => ({
+      ...obj,
+      krs: (obj.krs ?? []).filter((kr: any) => {
+        if (filters.responsavelId && kr.responsavel_id !== filters.responsavelId) return false
+        if (filters.setorId && kr.setor_id !== filters.setorId) return false
+        return true
+      }),
+    }))
+
+  async function handleExcluirKr() {
+    if (!modalExcluirKr.kr) return
+    setModalExcluirKr((prev) => ({ ...prev, loading: true }))
+    await deleteKr(modalExcluirKr.kr.id)
+    setModalExcluirKr({ open: false, kr: null, loading: false })
+    fetchData()
+  }
+
+  async function handleExcluirObjetivo() {
+    if (!modalExcluirObjetivo.objetivo) return
+    setModalExcluirObjetivo((prev) => ({ ...prev, loading: true }))
+    await deleteObjetivo(modalExcluirObjetivo.objetivo.id)
+    setModalExcluirObjetivo({ open: false, objetivo: null, loading: false })
+    fetchData()
+  }
+
+  const temFiltros = filters.objetivoId || filters.responsavelId || filters.setorId
 
   return (
     <div className="space-y-6">
+
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">OKRs</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Gerencie seus Key Results e acompanhe o progresso
+            {empresa?.company_name} — Gerencie seus objetivos e Key Results
           </p>
         </div>
-        <button className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity">
-          + Novo KR
+        <button
+          onClick={() => setModalCriarObjetivo(true)}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+        >
+          + Novo Objetivo
         </button>
       </div>
 
-      {/* Placeholder — será substituído pelos componentes de KR */}
-      <div className="rounded-lg border border-border bg-card p-8 text-center">
-        <p className="text-muted-foreground text-sm">
-          Os KRs aparecerão aqui. Módulo em desenvolvimento.
-        </p>
+      {/* Filtros */}
+      <div className="flex flex-wrap gap-3 items-center">
+        <select
+          value={filters.objetivoId ?? ''}
+          onChange={(e) => setFiltroObjetivo(e.target.value || null)}
+          className="px-3 py-1.5 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="">Todos os objetivos</option>
+          {objetivos.map((obj) => (
+            <option key={obj.id} value={obj.id}>{obj.titulo}</option>
+          ))}
+        </select>
+
+        <select
+          value={filters.responsavelId ?? ''}
+          onChange={(e) => setFiltroResponsavel(e.target.value || null)}
+          className="px-3 py-1.5 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="">Todos os responsáveis</option>
+          {funcionarios.map((f) => (
+            <option key={f.id} value={f.id}>{f.full_name}</option>
+          ))}
+        </select>
+
+        <select
+          value={filters.setorId ?? ''}
+          onChange={(e) => setFiltroSetor(e.target.value || null)}
+          className="px-3 py-1.5 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="">Todos os setores</option>
+          {setores.map((s) => (
+            <option key={s.id} value={s.id}>{s.nome}</option>
+          ))}
+        </select>
+
+        {temFiltros && (
+          <button
+            onClick={clearFilters}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors underline"
+          >
+            Limpar filtros
+          </button>
+        )}
       </div>
+
+      {/* Conteúdo */}
+      {loading ? (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-32 rounded-lg bg-secondary animate-pulse" />
+          ))}
+        </div>
+      ) : objetivosFiltrados.length === 0 ? (
+        <div className="rounded-lg border border-border bg-card p-12 text-center">
+          <p className="text-muted-foreground text-sm mb-3">
+            {temFiltros ? 'Nenhum resultado para os filtros aplicados.' : 'Nenhum objetivo cadastrado ainda.'}
+          </p>
+          {!temFiltros && (
+            <button
+              onClick={() => setModalCriarObjetivo(true)}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              + Criar primeiro objetivo
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {objetivosFiltrados.map((objetivo) => (
+            <ObjetivoCard
+              key={objetivo.id}
+              objetivo={objetivo}
+              onCriarKr={(obj) => setModalCriarKr({ open: true, objetivo: obj })}
+              onEditarObjetivo={(obj) => setModalCriarObjetivo(true)}
+              onExcluirObjetivo={(obj) => setModalExcluirObjetivo({ open: true, objetivo: obj, loading: false })}
+              onLancarKr={(kr) => setModalLancarKr({ open: true, kr })}
+              onEditarKr={(kr) => setModalEditarKr({ open: true, kr })}
+              onFinalizarKr={(kr) => setModalFinalizarKr({ open: true, kr })}
+              onExcluirKr={(kr) => setModalExcluirKr({ open: true, kr, loading: false })}
+              onVerGraficoKr={(kr) => setModalDetalhesKr({ open: true, kr })}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Modais */}
+      <ModalCriarObjetivo
+        open={modalCriarObjetivo}
+        onClose={() => setModalCriarObjetivo(false)}
+        onSuccess={fetchData}
+      />
+
+      <ModalCriarKr
+        open={modalCriarKr.open}
+        objetivoId={modalCriarKr.objetivo?.id ?? ''}
+        objetivoTitulo={modalCriarKr.objetivo?.titulo}
+        onClose={() => setModalCriarKr({ open: false, objetivo: null })}
+        onSuccess={fetchData}
+      />
+
+      <ModalEditarKr
+        open={modalEditarKr.open}
+        kr={modalEditarKr.kr}
+        onClose={() => setModalEditarKr({ open: false, kr: null })}
+        onSuccess={fetchData}
+      />
+
+      <ModalLancarKr
+        open={modalLancarKr.open}
+        kr={modalLancarKr.kr}
+        onClose={() => setModalLancarKr({ open: false, kr: null })}
+        onSuccess={fetchData}
+      />
+
+      <ModalFinalizarKr
+        open={modalFinalizarKr.open}
+        kr={modalFinalizarKr.kr}
+        onClose={() => setModalFinalizarKr({ open: false, kr: null })}
+        onSuccess={fetchData}
+      />
+
+      <ModalDetalhesKr
+        open={modalDetalhesKr.open}
+        kr={modalDetalhesKr.kr}
+        onClose={() => setModalDetalhesKr({ open: false, kr: null })}
+        onLancar={(kr) => setModalLancarKr({ open: true, kr })}
+      />
+
+      <ModalConfirmarExclusao
+        open={modalExcluirKr.open}
+        titulo="Excluir Key Result"
+        descricao="Todos os lançamentos deste KR também serão excluídos."
+        loading={modalExcluirKr.loading}
+        onConfirmar={handleExcluirKr}
+        onClose={() => setModalExcluirKr({ open: false, kr: null, loading: false })}
+      />
+
+      <ModalConfirmarExclusao
+        open={modalExcluirObjetivo.open}
+        titulo="Excluir Objetivo"
+        descricao="Todos os KRs e táticas vinculados também serão excluídos."
+        loading={modalExcluirObjetivo.loading}
+        onConfirmar={handleExcluirObjetivo}
+        onClose={() => setModalExcluirObjetivo({ open: false, objetivo: null, loading: false })}
+      />
     </div>
   )
 }
