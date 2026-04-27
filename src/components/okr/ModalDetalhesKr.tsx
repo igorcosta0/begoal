@@ -34,15 +34,14 @@ export default function ModalDetalhesKr({
   if (!open || !kr) return null
 
   const progresso = kr.progresso ?? 0
-  const status = kr.finalizado ? 'Finalizado' : getProgressStatus(progresso)
-  const barColor = kr.finalizado ? 'bg-gray-400' : getProgressColor(progresso)
+  const status = kr.concluido ? 'Finalizado' : getProgressStatus(progresso)
+  const barColor = kr.concluido ? 'bg-gray-400' : getProgressColor(progresso)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative bg-card border border-border rounded-lg shadow-lg w-full max-w-lg mx-4 p-6">
 
-        {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex-1 min-w-0">
             <h2 className="text-base font-semibold text-foreground leading-snug">
@@ -63,12 +62,11 @@ export default function ModalDetalhesKr({
           </button>
         </div>
 
-        {/* Status e progresso */}
         <div className="space-y-2 mb-4">
           <div className="flex items-center justify-between text-sm">
             <span className={cn(
               'text-xs px-2 py-0.5 rounded-full font-medium',
-              kr.finalizado
+              kr.concluido
                 ? 'bg-gray-100 text-gray-600'
                 : progresso >= 70
                 ? 'bg-green-100 text-green-700'
@@ -89,12 +87,11 @@ export default function ModalDetalhesKr({
             />
           </div>
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Atual: <span className="font-medium text-foreground">{kr.valor_atual ?? kr.valor_inicial ?? 0} {kr.unidade}</span></span>
-            <span>Meta: <span className="font-medium text-foreground">{kr.valor_meta ?? 0} {kr.unidade}</span></span>
+            <span>Atual: <span className="font-medium text-foreground">{kr.valor_atual ?? kr.valor_inicial ?? 0} {kr.tipo_valor}</span></span>
+            <span>Meta: <span className="font-medium text-foreground">{kr.meta ?? 0} {kr.tipo_valor}</span></span>
           </div>
         </div>
 
-        {/* Responsável e Setor */}
         <div className="flex items-center gap-4 text-xs text-muted-foreground mb-4">
           {kr.responsavel && (
             <span className="flex items-center gap-1">
@@ -110,7 +107,6 @@ export default function ModalDetalhesKr({
           )}
         </div>
 
-        {/* Gráfico */}
         <div className="border border-border rounded-md p-3 mb-4">
           <p className="text-xs font-medium text-foreground mb-2">
             Evolução histórica
@@ -122,14 +118,13 @@ export default function ModalDetalhesKr({
           ) : (
             <KrChart
               data={chartData}
-              valorMeta={kr.valor_meta}
-              unidade={kr.unidade}
+              valorMeta={kr.meta}
+              unidade={kr.tipo_valor}
             />
           )}
         </div>
 
-        {/* Ação */}
-        {!kr.finalizado && (
+        {!kr.concluido && (
           <button
             onClick={() => { onLancar(kr); onClose() }}
             className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"

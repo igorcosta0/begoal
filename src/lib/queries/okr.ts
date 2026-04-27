@@ -72,8 +72,8 @@ export async function createKr(payload: {
   setor_id?: string
   client_id: string
   valor_inicial?: number
-  valor_meta?: number
-  unidade?: string
+  meta?: number
+  tipo_valor?: string
 }) {
   const supabase = createClient()
   return supabase.from('krs').insert(payload).select().single()
@@ -86,8 +86,8 @@ export async function updateKr(
     responsavel_id?: string
     setor_id?: string
     valor_inicial?: number
-    valor_meta?: number
-    unidade?: string
+    meta?: number
+    tipo_valor?: string
   }
 ) {
   const supabase = createClient()

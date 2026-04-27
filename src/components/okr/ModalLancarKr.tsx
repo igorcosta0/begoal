@@ -9,8 +9,8 @@ interface ModalLancarKrProps {
     id: string
     titulo: string
     valor_atual?: number
-    valor_meta?: number
-    unidade?: string
+    meta?: number
+    tipo_valor?: string
   } | null
   onClose: () => void
   onSuccess: () => void
@@ -68,14 +68,22 @@ export default function ModalLancarKr({
         </p>
 
         <div className="flex items-center justify-between text-xs text-muted-foreground mb-4 bg-secondary rounded-md px-3 py-2">
-          <span>Valor atual: <span className="font-medium text-foreground">{kr.valor_atual ?? 0} {kr.unidade}</span></span>
-          <span>Meta: <span className="font-medium text-foreground">{kr.valor_meta ?? 0} {kr.unidade}</span></span>
+          <span>
+            Valor atual: <span className="font-medium text-foreground">
+              {kr.valor_atual ?? 0} {kr.tipo_valor}
+            </span>
+          </span>
+          <span>
+            Meta: <span className="font-medium text-foreground">
+              {kr.meta ?? 0} {kr.tipo_valor}
+            </span>
+          </span>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="text-xs font-medium text-foreground">
-              Novo valor {kr.unidade ? `(${kr.unidade})` : ''}
+              Novo valor {kr.tipo_valor ? `(${kr.tipo_valor})` : ''}
             </label>
             <input
               type="number"

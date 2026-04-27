@@ -8,8 +8,8 @@ interface ModalFinalizarKrProps {
   kr: {
     id: string
     titulo: string
-    valor_meta?: number
-    unidade?: string
+    meta?: number
+    tipo_valor?: string
   } | null
   onClose: () => void
   onSuccess: () => void
@@ -65,13 +65,15 @@ export default function ModalFinalizarKr({
         </div>
 
         <div className="bg-secondary rounded-md px-3 py-2 text-xs text-muted-foreground mb-4 text-center">
-          Meta: <span className="font-medium text-foreground">{kr.valor_meta ?? 0} {kr.unidade}</span>
+          Meta: <span className="font-medium text-foreground">
+            {kr.meta ?? 0} {kr.tipo_valor}
+          </span>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="text-xs font-medium text-foreground">
-              Resultado final {kr.unidade ? `(${kr.unidade})` : ''}
+              Resultado final {kr.tipo_valor ? `(${kr.tipo_valor})` : ''}
             </label>
             <input
               type="number"

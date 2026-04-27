@@ -30,8 +30,8 @@ export default function ModalCriarKr({
     responsavel_id: '',
     setor_id: '',
     valor_inicial: '0',
-    valor_meta: '',
-    unidade: '',
+    meta: '',
+    tipo_valor: '',
   })
 
   useEffect(() => {
@@ -50,11 +50,11 @@ export default function ModalCriarKr({
       titulo: form.titulo,
       objetivo_id: objetivoId,
       responsavel_id: form.responsavel_id,
-      setor_id: form.setor_id,
+      setor_id: form.setor_id || undefined,
       client_id: empresa.id,
       valor_inicial: parseFloat(form.valor_inicial) || 0,
-      valor_meta: parseFloat(form.valor_meta) || 0,
-      unidade: form.unidade,
+      meta: parseFloat(form.meta) || 0,
+      tipo_valor: form.tipo_valor || undefined,
     })
 
     if (error) {
@@ -63,7 +63,7 @@ export default function ModalCriarKr({
       return
     }
 
-    setForm({ titulo: '', responsavel_id: '', setor_id: '', valor_inicial: '0', valor_meta: '', unidade: '' })
+    setForm({ titulo: '', responsavel_id: '', setor_id: '', valor_inicial: '0', meta: '', tipo_valor: '' })
     onSuccess()
     onClose()
     setLoading(false)
@@ -116,7 +116,7 @@ export default function ModalCriarKr({
                 onChange={(e) => setForm({ ...form, setor_id: e.target.value })}
                 className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="">Selecione</option>
+                <option value="">Nenhum</option>
                 {setores.map((s) => (
                   <option key={s.id} value={s.id}>{s.nome}</option>
                 ))}
@@ -138,18 +138,18 @@ export default function ModalCriarKr({
               <label className="text-xs font-medium text-foreground">Meta</label>
               <input
                 type="number"
-                value={form.valor_meta}
-                onChange={(e) => setForm({ ...form, valor_meta: e.target.value })}
+                value={form.meta}
+                onChange={(e) => setForm({ ...form, meta: e.target.value })}
                 required
                 className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-foreground">Unidade</label>
+              <label className="text-xs font-medium text-foreground">Tipo/Unidade</label>
               <input
                 type="text"
-                value={form.unidade}
-                onChange={(e) => setForm({ ...form, unidade: e.target.value })}
+                value={form.tipo_valor}
+                onChange={(e) => setForm({ ...form, tipo_valor: e.target.value })}
                 placeholder="%, pts..."
                 className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />

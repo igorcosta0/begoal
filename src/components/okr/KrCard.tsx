@@ -2,21 +2,21 @@
 
 import { useState } from 'react'
 import { cn, formatPercent, getProgressColor, getProgressStatus } from '@/lib/utils'
-import { MoreHorizontal, TrendingUp, User, Building2, ChevronDown, ChevronUp } from 'lucide-react'
+import { MoreHorizontal, TrendingUp, User, Building2 } from 'lucide-react'
 
 interface KrCardProps {
   kr: {
     id: string
     titulo: string
     valor_atual?: number
-    valor_meta?: number
+    meta?: number
     valor_inicial?: number
     progresso?: number
-    unidade?: string
+    tipo_valor?: string
     responsavel?: { full_name: string }
     setor?: { nome: string }
     objetivo?: { titulo: string }
-    finalizado?: boolean
+    concluido?: boolean
   }
   onLancar?: (kr: any) => void
   onEditar?: (kr: any) => void
@@ -36,8 +36,8 @@ export default function KrCard({
   const [menuOpen, setMenuOpen] = useState(false)
 
   const progresso = kr.progresso ?? 0
-  const status = kr.finalizado ? 'Finalizado' : getProgressStatus(progresso)
-  const barColor = kr.finalizado ? 'bg-gray-400' : getProgressColor(progresso)
+  const status = kr.concluido ? 'Finalizado' : getProgressStatus(progresso)
+  const barColor = kr.concluido ? 'bg-gray-400' : getProgressColor(progresso)
 
   return (
     <div className="relative bg-card border border-border rounded-lg p-4 hover:shadow-sm transition-shadow">
@@ -55,10 +55,9 @@ export default function KrCard({
           )}
         </div>
 
-        {/* Badge status */}
         <span className={cn(
           'text-xs px-2 py-0.5 rounded-full font-medium shrink-0',
-          kr.finalizado
+          kr.concluido
             ? 'bg-gray-100 text-gray-600'
             : progresso >= 70
             ? 'bg-green-100 text-green-700'
@@ -87,12 +86,12 @@ export default function KrCard({
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
             Atual: <span className="font-medium text-foreground">
-              {kr.valor_atual ?? kr.valor_inicial ?? 0} {kr.unidade}
+              {kr.valor_atual ?? kr.valor_inicial ?? 0} {kr.tipo_valor}
             </span>
           </span>
           <span>
             Meta: <span className="font-medium text-foreground">
-              {kr.valor_meta ?? 0} {kr.unidade}
+              {kr.meta ?? 0} {kr.tipo_valor}
             </span>
           </span>
         </div>
@@ -115,7 +114,7 @@ export default function KrCard({
       </div>
 
       {/* Ações */}
-      {!kr.finalizado && (
+      {!kr.concluido && (
         <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
           <button
             onClick={() => onLancar?.(kr)}
