@@ -73,7 +73,17 @@ export default function OkrPage() {
           if (filters.setorId && kr.setor_id !== filters.setorId) return false
           return true
         })
-.map((kr) => ({
+        .map((kr) => ({
+          ...kr,
+          responsavel: kr.funcionarios,
+          setor: kr.setores ? { nome: kr.setores.name } : null,
+          objetivo: kr.objetivos,
+          end_date: kr.end_date,
+          progresso: kr.meta > 0
+            ? Math.max(0, ((kr.valor_atual - kr.valor_inicial) / (kr.meta - kr.valor_inicial)) * 100)
+            : 0,
+        })),
+    }))
           ...kr,
           responsavel: kr.funcionarios,
           setor: kr.setores ? { nome: kr.setores.name } : null,
