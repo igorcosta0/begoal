@@ -73,14 +73,15 @@ export default function OkrPage() {
           return true
         })
         .map((kr) => ({
-          ...kr,
-          responsavel: kr.funcionarios,
-          setor: kr.setores ? { nome: kr.setores.name } : null,
-          objetivo: kr.objetivos,
-          progresso: kr.meta > 0
-            ? Math.max(0, ((kr.valor_atual - kr.valor_inicial) / (kr.meta - kr.valor_inicial)) * 100)
-            : 0,
-        })),
+  ...kr,
+  responsavel: kr.funcionarios,
+  setor: kr.setores ? { nome: kr.setores.name } : null,
+  objetivo: kr.objetivos,
+  end_date: obj.end_date,
+  progresso: kr.meta > 0
+    ? Math.max(0, ((kr.valor_atual - kr.valor_inicial) / (kr.meta - kr.valor_inicial)) * 100)
+    : 0,
+})),
     }))
 
   const objetivosFinais = objetivosComKrs.map((obj) => ({
