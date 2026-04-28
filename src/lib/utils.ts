@@ -21,6 +21,13 @@ export function formatPercent(value: number) {
   }).format(value / 100)
 }
 
+export function formatNumber(value: number) {
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value)
+}
+
 export function getProgressColor(progress: number) {
   if (progress >= 70) return 'bg-green-500'
   if (progress >= 40) return 'bg-yellow-500'

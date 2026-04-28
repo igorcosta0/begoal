@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { cn, formatPercent } from '@/lib/utils'
+import { cn, formatPercent, formatNumber } from '@/lib/utils'
 import { MoreHorizontal, TrendingUp, User, Building2, Calendar } from 'lucide-react'
 
 interface KrCardProps {
@@ -117,19 +117,19 @@ export default function KrCard({
         <div className="bg-secondary/60 rounded-lg px-3 py-2 text-center">
           <p className="text-xs text-muted-foreground mb-0.5">Valor Inicial</p>
           <p className="text-sm font-semibold text-foreground">
-            {kr.valor_inicial ?? 0}
+            {formatNumber(kr.valor_inicial ?? 0)}
           </p>
         </div>
         <div className="bg-secondary/60 rounded-lg px-3 py-2 text-center">
           <p className="text-xs text-muted-foreground mb-0.5">Conquistado</p>
           <p className="text-sm font-semibold text-foreground">
-            {kr.valor_atual ?? kr.valor_inicial ?? 0}
+            {formatNumber(kr.valor_atual ?? kr.valor_inicial ?? 0)}
           </p>
         </div>
         <div className="bg-secondary/60 rounded-lg px-3 py-2 text-center">
           <p className="text-xs text-muted-foreground mb-0.5">Meta</p>
           <p className="text-sm font-semibold text-foreground">
-            {kr.meta ?? 0}
+            {formatNumber(kr.meta ?? 0)}
           </p>
         </div>
       </div>
