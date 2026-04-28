@@ -2,9 +2,13 @@ import { createClient } from '@/lib/supabase/client'
 
 // ==================== OBJETIVOS ====================
 
-export async function getObjetivosAgrupados(clientId: string) {
+export async function getObjetivos(clientId: string) {
   const supabase = createClient()
-  return supabase.rpc('get_objetivos_agrupados', { p_client_id: clientId })
+  return supabase
+    .from('objetivos')
+    .select('id, titulo, historia, start_date, end_date')
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false })
 }
 
 export async function createObjetivo(payload: {
@@ -51,18 +55,29 @@ export async function deleteObjetivo(id: string) {
   return supabase.rpc('delete_objective_cascade', { p_objetivo_id: id })
 }
 
-export async function getObjetivoChartData(objetivoId: string) {
-  const supabase = createClient()
-  return supabase.rpc('get_objetivo_history_chart', {
-    p_objetivo_id: objetivoId,
-  })
-}
-
 // ==================== KRs ====================
+
+export async function getKrsByEmpresa(clientId: string) {
+  const supabase = createClient()
+  return supabase
+    .from('krs')
+    .select(`
+      id, titulo, valor_inicial, valor_atual, meta, tipo_valor,
+      concluido, objetivo_id, responsavel_id, setor_id, client_id,
+      funcionarios!responsavel_id(full_name),
+      setores!setor_id(nome),
+      objetivos!objetivo_id(titulo)
+    `)
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false })
+}
 
 export async function getKrsComCalculo(clientId: string) {
   const supabase = createClient()
-  return supabase.rpc('get_krs_com_calculo', { p_client_id: clientId })
+  const { data, error } = await supabase.rpc('get_krs_com_calculo', {
+    p_client_id: clientId,
+  })
+  return { data, error }
 }
 
 export async function createKr(payload: {

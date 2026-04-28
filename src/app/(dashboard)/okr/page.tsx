@@ -3,7 +3,14 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { useOkrStore } from '@/store/useOkrStore'
-import { getObjetivosAgrupados, deleteKr, deleteObjetivo, getSetoresByEmpresa, getFuncionariosByEmpresa } from '@/lib/queries/okr'
+import {
+  getObjetivos,
+  getKrsByEmpresa,
+  deleteKr,
+  deleteObjetivo,
+  getSetoresByEmpresa,
+  getFuncionariosByEmpresa,
+} from '@/lib/queries/okr'
 import ObjetivoCard from '@/components/okr/ObjetivoCard'
 import ModalCriarKr from '@/components/okr/ModalCriarKr'
 import ModalEditarKr from '@/components/okr/ModalEditarKr'
@@ -18,11 +25,11 @@ export default function OkrPage() {
   const { filters, setFiltroObjetivo, setFiltroResponsavel, setFiltroSetor, clearFilters } = useOkrStore()
 
   const [objetivos, setObjetivos] = useState<any[]>([])
+  const [krs, setKrs] = useState<any[]>([])
   const [setores, setSetores] = useState<any[]>([])
   const [funcionarios, setFuncionarios] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Modais
   const [modalCriarObjetivo, setModalCriarObjetivo] = useState(false)
   const [modalCriarKr, setModalCriarKr] = useState<{ open: boolean; objetivo: any | null }>({ open: false, objetivo: null })
   const [modalEditarKr, setModalEditarKr] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
@@ -35,8 +42,12 @@ export default function OkrPage() {
   const fetchData = useCallback(async () => {
     if (!empresa) return
     setLoading(true)
-    const { data } = await getObjetivosAgrupados(empresa.id)
-    setObjetivos(data ?? [])
+    const [{ data: objs }, { data: krsData }] = await Promise.all([
+      getObjetivos(empresa.id),
+      getKrsByEmpresa(empresa.id),
+    ])
+    setObjetivos(objs ?? [])
+    setKrs(krsData ?? [])
     setLoading(false)
   }, [empresa])
 
@@ -50,17 +61,36 @@ export default function OkrPage() {
     getFuncionariosByEmpresa(empresa.id).then(({ data }) => setFuncionarios(data ?? []))
   }, [empresa])
 
-  // Filtros aplicados
-  const objetivosFiltrados = objetivos
+  // Agrupar KRs por objetivo e aplicar filtros
+  const objetivosComKrs = objetivos
     .filter((obj) => !filters.objetivoId || obj.id === filters.objetivoId)
     .map((obj) => ({
       ...obj,
-      krs: (obj.krs ?? []).filter((kr: any) => {
-        if (filters.responsavelId && kr.responsavel_id !== filters.responsavelId) return false
-        if (filters.setorId && kr.setor_id !== filters.setorId) return false
-        return true
-      }),
+      krs: krs
+        .filter((kr) => {
+          if (kr.objetivo_id !== obj.id) return false
+          if (filters.responsavelId && kr.responsavel_id !== filters.responsavelId) return false
+          if (filters.setorId && kr.setor_id !== filters.setorId) return false
+          return true
+        })
+        .map((kr) => ({
+          ...kr,
+          responsavel: kr.funcionarios,
+          setor: kr.setores,
+          objetivo: kr.objetivos,
+          progresso: kr.meta > 0
+            ? Math.max(0, ((kr.valor_atual - kr.valor_inicial) / (kr.meta - kr.valor_inicial)) * 100)
+            : 0,
+        })),
     }))
+
+  // Calcular progresso do objetivo como média dos KRs
+  const objetivosFinais = objetivosComKrs.map((obj) => ({
+    ...obj,
+    progresso: obj.krs.length > 0
+      ? obj.krs.reduce((acc: number, kr: any) => acc + (kr.progresso ?? 0), 0) / obj.krs.length
+      : 0,
+  }))
 
   async function handleExcluirKr() {
     if (!modalExcluirKr.kr) return
@@ -82,8 +112,6 @@ export default function OkrPage() {
 
   return (
     <div className="space-y-6">
-
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">OKRs</h1>
@@ -151,7 +179,7 @@ export default function OkrPage() {
             <div key={i} className="h-32 rounded-lg bg-secondary animate-pulse" />
           ))}
         </div>
-      ) : objetivosFiltrados.length === 0 ? (
+      ) : objetivosFinais.length === 0 ? (
         <div className="rounded-lg border border-border bg-card p-12 text-center">
           <p className="text-muted-foreground text-sm mb-3">
             {temFiltros ? 'Nenhum resultado para os filtros aplicados.' : 'Nenhum objetivo cadastrado ainda.'}
@@ -167,7 +195,7 @@ export default function OkrPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {objetivosFiltrados.map((objetivo) => (
+          {objetivosFinais.map((objetivo) => (
             <ObjetivoCard
               key={objetivo.id}
               objetivo={objetivo}
@@ -190,7 +218,6 @@ export default function OkrPage() {
         onClose={() => setModalCriarObjetivo(false)}
         onSuccess={fetchData}
       />
-
       <ModalCriarKr
         open={modalCriarKr.open}
         objetivoId={modalCriarKr.objetivo?.id ?? ''}
@@ -198,35 +225,30 @@ export default function OkrPage() {
         onClose={() => setModalCriarKr({ open: false, objetivo: null })}
         onSuccess={fetchData}
       />
-
       <ModalEditarKr
         open={modalEditarKr.open}
         kr={modalEditarKr.kr}
         onClose={() => setModalEditarKr({ open: false, kr: null })}
         onSuccess={fetchData}
       />
-
       <ModalLancarKr
         open={modalLancarKr.open}
         kr={modalLancarKr.kr}
         onClose={() => setModalLancarKr({ open: false, kr: null })}
         onSuccess={fetchData}
       />
-
       <ModalFinalizarKr
         open={modalFinalizarKr.open}
         kr={modalFinalizarKr.kr}
         onClose={() => setModalFinalizarKr({ open: false, kr: null })}
         onSuccess={fetchData}
       />
-
       <ModalDetalhesKr
         open={modalDetalhesKr.open}
         kr={modalDetalhesKr.kr}
         onClose={() => setModalDetalhesKr({ open: false, kr: null })}
         onLancar={(kr) => setModalLancarKr({ open: true, kr })}
       />
-
       <ModalConfirmarExclusao
         open={modalExcluirKr.open}
         titulo="Excluir Key Result"
@@ -235,7 +257,6 @@ export default function OkrPage() {
         onConfirmar={handleExcluirKr}
         onClose={() => setModalExcluirKr({ open: false, kr: null, loading: false })}
       />
-
       <ModalConfirmarExclusao
         open={modalExcluirObjetivo.open}
         titulo="Excluir Objetivo"
