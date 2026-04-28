@@ -63,7 +63,7 @@ export async function getKrsByEmpresa(clientId: string) {
     .from('krs')
     .select(`
       id, titulo, valor_inicial, valor_atual, meta, tipo_valor,
-      concluido, objetivo_id, responsavel_id, setor_id, client_id, end_date,
+      concluido, objetivo_id, responsavel_id, setor_id, client_id,
       funcionarios!responsavel_id(full_name),
       setores!setor_id(name),
       objetivos!objetivo_id(titulo)

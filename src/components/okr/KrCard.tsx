@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { cn, formatPercent, getProgressColor, getProgressStatus } from '@/lib/utils'
-import { MoreHorizontal, TrendingUp, User, Building2, Calendar } from 'lucide-react'
+import { MoreHorizontal, TrendingUp, User, Building2 } from 'lucide-react'
 
 interface KrCardProps {
   kr: {
@@ -13,7 +13,6 @@ interface KrCardProps {
     valor_inicial?: number
     progresso?: number
     tipo_valor?: string
-    end_date?: string
     responsavel?: { full_name: string }
     setor?: { nome?: string; name?: string }
     objetivo?: { titulo: string }
@@ -40,9 +39,6 @@ export default function KrCard({
   const status = kr.concluido ? 'Finalizado' : getProgressStatus(progresso)
   const barColor = kr.concluido ? 'bg-gray-400' : getProgressColor(progresso)
   const setorNome = kr.setor?.nome ?? kr.setor?.name
-  const endDate = kr.end_date
-    ? new Date(kr.end_date).toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' })
-    : null
 
   return (
     <div className="relative bg-card border border-border rounded-xl p-4 hover:shadow-md transition-shadow flex flex-col gap-3">
@@ -152,7 +148,7 @@ export default function KrCard({
         </div>
       </div>
 
-      {/* Responsável, Setor, Data */}
+      {/* Responsável e Setor */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
         {kr.responsavel && (
           <span className="flex items-center gap-1">
@@ -164,12 +160,6 @@ export default function KrCard({
           <span className="flex items-center gap-1">
             <Building2 className="w-3 h-3 shrink-0" />
             {setorNome}
-          </span>
-        )}
-        {endDate && (
-          <span className="flex items-center gap-1">
-            <Calendar className="w-3 h-3 shrink-0" />
-            Referente à {endDate}
           </span>
         )}
       </div>
