@@ -61,7 +61,6 @@ export default function OkrPage() {
     getFuncionariosByEmpresa(empresa.id).then(({ data }) => setFuncionarios(data ?? []))
   }, [empresa])
 
-  // Agrupar KRs por objetivo e aplicar filtros
   const objetivosComKrs = objetivos
     .filter((obj) => !filters.objetivoId || obj.id === filters.objetivoId)
     .map((obj) => ({
@@ -84,17 +83,7 @@ export default function OkrPage() {
             : 0,
         })),
     }))
-          ...kr,
-          responsavel: kr.funcionarios,
-          setor: kr.setores ? { nome: kr.setores.name } : null,
-          objetivo: kr.objetivos,
-          end_date: kr.end_date,
-          progresso: kr.meta > 0
-            ? Math.max(0, ((kr.valor_atual - kr.valor_inicial) / (kr.meta - kr.valor_inicial)) * 100)
-            : 0,
-        })),
 
-  // Calcular progresso do objetivo como média dos KRs
   const objetivosFinais = objetivosComKrs.map((obj) => ({
     ...obj,
     progresso: obj.krs.length > 0
@@ -137,7 +126,6 @@ export default function OkrPage() {
         </button>
       </div>
 
-      {/* Filtros */}
       <div className="flex flex-wrap gap-3 items-center">
         <select
           value={filters.objetivoId ?? ''}
@@ -182,7 +170,6 @@ export default function OkrPage() {
         )}
       </div>
 
-      {/* Conteúdo */}
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
@@ -210,7 +197,7 @@ export default function OkrPage() {
               key={objetivo.id}
               objetivo={objetivo}
               onCriarKr={(obj) => setModalCriarKr({ open: true, objetivo: obj })}
-              onEditarObjetivo={(obj) => setModalCriarObjetivo(true)}
+              onEditarObjetivo={() => setModalCriarObjetivo(true)}
               onExcluirObjetivo={(obj) => setModalExcluirObjetivo({ open: true, objetivo: obj, loading: false })}
               onLancarKr={(kr) => setModalLancarKr({ open: true, kr })}
               onEditarKr={(kr) => setModalEditarKr({ open: true, kr })}
@@ -222,7 +209,6 @@ export default function OkrPage() {
         </div>
       )}
 
-      {/* Modais */}
       <ModalCriarObjetivo
         open={modalCriarObjetivo}
         onClose={() => setModalCriarObjetivo(false)}
