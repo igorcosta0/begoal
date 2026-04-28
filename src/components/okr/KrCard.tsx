@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { cn, formatPercent, getProgressColor, getProgressStatus } from '@/lib/utils'
+import { cn, formatPercent } from '@/lib/utils'
 import { MoreHorizontal, TrendingUp, User, Building2, Calendar } from 'lucide-react'
 
 interface KrCardProps {
