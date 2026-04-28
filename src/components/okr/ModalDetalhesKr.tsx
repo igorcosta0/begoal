@@ -102,7 +102,7 @@ export default function ModalDetalhesKr({
           {kr.setor && (
             <span className="flex items-center gap-1">
               <Building2 className="w-3 h-3" />
-              {kr.setor.name}
+              {kr.setor.nome ?? kr.setor.name}
             </span>
           )}
         </div>

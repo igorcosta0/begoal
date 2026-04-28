@@ -14,7 +14,7 @@ interface KrCardProps {
     progresso?: number
     tipo_valor?: string
     responsavel?: { full_name: string }
-    setor?: { nome: string }
+    setor?: { nome?: string; name?: string }
     objetivo?: { titulo: string }
     concluido?: boolean
   }
@@ -108,7 +108,7 @@ export default function KrCard({
         {kr.setor && (
           <span className="flex items-center gap-1">
             <Building2 className="w-3 h-3" />
-            {kr.setor.name}
+            {kr.setor.nome ?? kr.setor.name}
           </span>
         )}
       </div>
