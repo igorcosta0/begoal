@@ -8,15 +8,21 @@ import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
 import { formatDate } from '@/lib/utils'
 import { User, Building2, Calendar, CheckCircle2, Circle } from 'lucide-react'
 
+const STATUS_OPTIONS = ['Não Iniciado', 'Em Andamento', 'Concluído']
+
 export default function TaticasPage() {
   const { empresa } = useEmpresaStore()
 
   const [taticas, setTaticas] = useState<any[]>([])
   const [objetivos, setObjetivos] = useState<any[]>([])
+  const [krs, setKrs] = useState<any[]>([])
   const [setores, setSetores] = useState<any[]>([])
   const [funcionarios, setFuncionarios] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [filtroObjetivo, setFiltroObjetivo] = useState('')
+  const [filtroKr, setFiltroKr] = useState('')
+  const [filtroResponsavel, setFiltroResponsavel] = useState('')
+  const [filtroSetor, setFiltroSetor] = useState('')
   const [filtroStatus, setFiltroStatus] = useState('')
 
   const [modalCriar, setModalCriar] = useState(false)
@@ -29,6 +35,7 @@ export default function TaticasPage() {
     objetivo_id: '',
     kr_id: '',
     prazo: '',
+    Status: 'Não Iniciado',
   })
 
   const fetchData = useCallback(async () => {
@@ -42,7 +49,8 @@ export default function TaticasPage() {
         objetivo_id, kr_id, responsavel_id, setor_id,
         funcionarios!responsavel_id(full_name),
         setores!setor_id(name),
-        objetivos!objetivo_id(titulo)
+        objetivos!objetivo_id(titulo),
+        krs!kr_id(titulo)
       `)
       .eq('Client_Id', empresa.id)
       .order('created_at', { ascending: false })
@@ -56,26 +64,33 @@ export default function TaticasPage() {
 
   useEffect(() => {
     if (!empresa) return
+    const supabase = createClient()
     getObjetivos(empresa.id).then(({ data }) => setObjetivos(data ?? []))
     getSetoresByEmpresa(empresa.id).then(({ data }) => setSetores(data ?? []))
     getFuncionariosByEmpresa(empresa.id).then(({ data }) => setFuncionarios(data ?? []))
+    supabase
+      .from('krs')
+      .select('id, titulo, objetivo_id')
+      .eq('client_id', empresa.id)
+      .then(({ data }) => setKrs(data ?? []))
   }, [empresa])
 
   async function handleCriar(e: React.FormEvent) {
     e.preventDefault()
-    if (!empresa) return
+    if (!empresa || !form.kr_id) return
     const supabase = createClient()
     await supabase.from('taticas').insert({
       descricao: form.descricao,
       responsavel_id: form.responsavel_id || undefined,
       setor_id: form.setor_id || undefined,
       objetivo_id: form.objetivo_id || undefined,
-      kr_id: form.kr_id || undefined,
+      kr_id: form.kr_id,
       prazo: form.prazo || undefined,
       Client_Id: empresa.id,
       concluida: false,
+      Status: form.Status,
     })
-    setForm({ descricao: '', responsavel_id: '', setor_id: '', objetivo_id: '', kr_id: '', prazo: '' })
+    setForm({ descricao: '', responsavel_id: '', setor_id: '', objetivo_id: '', kr_id: '', prazo: '', Status: 'Não Iniciado' })
     setModalCriar(false)
     fetchData()
   }
@@ -100,12 +115,21 @@ export default function TaticasPage() {
 
   const taticasFiltradas = taticas
     .filter((t) => !filtroObjetivo || t.objetivo_id === filtroObjetivo)
+    .filter((t) => !filtroKr || t.kr_id === filtroKr)
+    .filter((t) => !filtroResponsavel || t.responsavel_id === filtroResponsavel)
+    .filter((t) => !filtroSetor || t.setor_id === filtroSetor)
     .filter((t) => {
       if (!filtroStatus) return true
       if (filtroStatus === 'concluida') return t.concluida
       if (filtroStatus === 'pendente') return !t.concluida
       return true
     })
+
+  const statusColor = (status: string) => {
+    if (status === 'Concluído') return 'bg-green-100 text-green-700'
+    if (status === 'Em Andamento') return 'bg-blue-100 text-blue-700'
+    return 'bg-gray-100 text-gray-600'
+  }
 
   return (
     <div className="space-y-6">
@@ -130,12 +154,47 @@ export default function TaticasPage() {
       <div className="flex flex-wrap gap-3">
         <select
           value={filtroObjetivo}
-          onChange={(e) => setFiltroObjetivo(e.target.value)}
+          onChange={(e) => { setFiltroObjetivo(e.target.value); setFiltroKr('') }}
           className="px-3 py-1.5 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <option value="">Todos os objetivos</option>
           {objetivos.map((o) => (
             <option key={o.id} value={o.id}>{o.titulo}</option>
+          ))}
+        </select>
+
+        <select
+          value={filtroKr}
+          onChange={(e) => setFiltroKr(e.target.value)}
+          className="px-3 py-1.5 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="">Todos os KRs</option>
+          {krs
+            .filter((k) => !filtroObjetivo || k.objetivo_id === filtroObjetivo)
+            .map((k) => (
+              <option key={k.id} value={k.id}>{k.titulo}</option>
+            ))}
+        </select>
+
+        <select
+          value={filtroResponsavel}
+          onChange={(e) => setFiltroResponsavel(e.target.value)}
+          className="px-3 py-1.5 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="">Todos os responsáveis</option>
+          {funcionarios.map((f) => (
+            <option key={f.id} value={f.id}>{f.full_name}</option>
+          ))}
+        </select>
+
+        <select
+          value={filtroSetor}
+          onChange={(e) => setFiltroSetor(e.target.value)}
+          className="px-3 py-1.5 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="">Todos os setores</option>
+          {setores.map((s) => (
+            <option key={s.id} value={s.id}>{s.name ?? s.nome}</option>
           ))}
         </select>
 
@@ -160,7 +219,7 @@ export default function TaticasPage() {
       ) : taticasFiltradas.length === 0 ? (
         <div className="rounded-lg border border-border bg-card p-12 text-center">
           <p className="text-muted-foreground text-sm mb-3">
-            Nenhuma tática cadastrada ainda.
+            Nenhuma tática encontrada.
           </p>
           <button
             onClick={() => setModalCriar(true)}
@@ -187,15 +246,25 @@ export default function TaticasPage() {
               </button>
 
               <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium text-foreground ${tatica.concluida ? 'line-through' : ''}`}>
-                  {tatica.descricao}
-                </p>
-
-                {tatica.objetivos && (
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {tatica.objetivos.titulo}
+                <div className="flex items-start justify-between gap-2">
+                  <p className={`text-sm font-medium text-foreground ${tatica.concluida ? 'line-through' : ''}`}>
+                    {tatica.descricao}
                   </p>
-                )}
+                  {tatica.Status && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${statusColor(tatica.Status)}`}>
+                      {tatica.Status}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {tatica.objetivos && (
+                    <span className="text-xs text-muted-foreground">{tatica.objetivos.titulo}</span>
+                  )}
+                  {tatica.krs && (
+                    <span className="text-xs text-muted-foreground">· {tatica.krs.titulo}</span>
+                  )}
+                </div>
 
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground">
                   {tatica.funcionarios && (
@@ -234,7 +303,7 @@ export default function TaticasPage() {
       {modalCriar && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50" onClick={() => setModalCriar(false)} />
-          <div className="relative bg-card border border-border rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+          <div className="relative bg-card border border-border rounded-lg shadow-lg w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-base font-semibold text-foreground mb-4">Nova Tática</h2>
 
             <form onSubmit={handleCriar} className="space-y-3">
@@ -248,6 +317,37 @@ export default function TaticasPage() {
                   placeholder="Descreva a tática..."
                   className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                 />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-foreground">Objetivo</label>
+                <select
+                  value={form.objetivo_id}
+                  onChange={(e) => { setForm({ ...form, objetivo_id: e.target.value, kr_id: '' }) }}
+                  className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">Selecione um objetivo</option>
+                  {objetivos.map((o) => (
+                    <option key={o.id} value={o.id}>{o.titulo}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-foreground">KR vinculado *</label>
+                <select
+                  value={form.kr_id}
+                  onChange={(e) => setForm({ ...form, kr_id: e.target.value })}
+                  required
+                  className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">Selecione um KR</option>
+                  {krs
+                    .filter((k) => !form.objetivo_id || k.objetivo_id === form.objetivo_id)
+                    .map((k) => (
+                      <option key={k.id} value={k.id}>{k.titulo}</option>
+                    ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -279,28 +379,28 @@ export default function TaticasPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-medium text-foreground">Objetivo vinculado</label>
-                <select
-                  value={form.objetivo_id}
-                  onChange={(e) => setForm({ ...form, objetivo_id: e.target.value })}
-                  className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">Nenhum</option>
-                  {objetivos.map((o) => (
-                    <option key={o.id} value={o.id}>{o.titulo}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-foreground">Prazo</label>
-                <input
-                  type="date"
-                  value={form.prazo}
-                  onChange={(e) => setForm({ ...form, prazo: e.target.value })}
-                  className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-foreground">Prazo</label>
+                  <input
+                    type="date"
+                    value={form.prazo}
+                    onChange={(e) => setForm({ ...form, prazo: e.target.value })}
+                    className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-foreground">Status</label>
+                  <select
+                    value={form.Status}
+                    onChange={(e) => setForm({ ...form, Status: e.target.value })}
+                    className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    {STATUS_OPTIONS.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="flex gap-2 pt-2">
