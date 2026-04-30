@@ -17,133 +17,41 @@ const PROFILE_OPTIONS = [
   'Comunicador/Planejador/Analista/Executor',
 ]
 
-export default function FuncionariosPage() {
-  const { empresa } = useEmpresaStore()
+interface FormFuncionario {
+  full_name: string
+  email: string
+  cargo: string
+  setor_id: string
+  gestor_id: string
+  status: string
+  profile: string
+  data_admissao: string
+}
 
-  const [funcionarios, setFuncionarios] = useState<any[]>([])
-  const [setores, setSetores] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [filtroStatus, setFiltroStatus] = useState('')
-  const [filtroSetor, setFiltroSetor] = useState('')
-  const [busca, setBusca] = useState('')
-  const [menuOpen, setMenuOpen] = useState<string | null>(null)
+interface ModalFuncionarioProps {
+  open: boolean
+  titulo: string
+  form: FormFuncionario
+  setForm: (form: FormFuncionario) => void
+  setores: any[]
+  funcionarios: any[]
+  onSubmit: (e: React.FormEvent) => void
+  onCancel: () => void
+}
 
-  const [modalCriar, setModalCriar] = useState(false)
-  const [modalEditar, setModalEditar] = useState<{ open: boolean; funcionario: any | null }>({ open: false, funcionario: null })
-  const [modalExcluir, setModalExcluir] = useState<{ open: boolean; funcionario: any | null; loading: boolean }>({ open: false, funcionario: null, loading: false })
+function ModalFuncionario({
+  open,
+  titulo,
+  form,
+  setForm,
+  setores,
+  funcionarios,
+  onSubmit,
+  onCancel,
+}: ModalFuncionarioProps) {
+  if (!open) return null
 
-  const [form, setForm] = useState({
-    full_name: '',
-    email: '',
-    cargo: '',
-    setor_id: '',
-    gestor_id: '',
-    status: 'Ativo',
-    profile: 'N/A',
-    data_admissao: '',
-  })
-
-  const fetchData = useCallback(async () => {
-    if (!empresa) return
-    setLoading(true)
-    const supabase = createClient()
-    const { data } = await supabase
-      .from('funcionarios')
-      .select(`
-        id, full_name, email, cargo, status, profile,
-        data_admissao, setor_id, gestor_id, user_id, is_current,
-        setores!setor_id(name)
-      `)
-      .eq('client_id', empresa.id)
-      .order('full_name')
-    setFuncionarios(data ?? [])
-    setLoading(false)
-  }, [empresa])
-
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
-
-  useEffect(() => {
-    if (!empresa) return
-    getSetoresByEmpresa(empresa.id).then(({ data }) => setSetores(data ?? []))
-  }, [empresa])
-
-  useEffect(() => {
-    if (!modalEditar.funcionario) return
-    setForm({
-      full_name: modalEditar.funcionario.full_name ?? '',
-      email: modalEditar.funcionario.email ?? '',
-      cargo: modalEditar.funcionario.cargo ?? '',
-      setor_id: modalEditar.funcionario.setor_id ?? '',
-      gestor_id: modalEditar.funcionario.gestor_id ?? '',
-      status: modalEditar.funcionario.status ?? 'Ativo',
-      profile: modalEditar.funcionario.profile ?? 'N/A',
-      data_admissao: modalEditar.funcionario.data_admissao ?? '',
-    })
-  }, [modalEditar.funcionario])
-
-  async function handleCriar(e: React.FormEvent) {
-    e.preventDefault()
-    if (!empresa) return
-    const supabase = createClient()
-    await supabase.from('funcionarios').insert({
-      full_name: form.full_name,
-      email: form.email || undefined,
-      cargo: form.cargo || undefined,
-      setor_id: form.setor_id || undefined,
-      gestor_id: form.gestor_id || undefined,
-      status: form.status,
-      profile: form.profile,
-      data_admissao: form.data_admissao || undefined,
-      client_id: empresa.id,
-      is_current: true,
-    })
-    setForm({ full_name: '', email: '', cargo: '', setor_id: '', gestor_id: '', status: 'Ativo', profile: 'N/A', data_admissao: '' })
-    setModalCriar(false)
-    fetchData()
-  }
-
-  async function handleEditar(e: React.FormEvent) {
-    e.preventDefault()
-    if (!modalEditar.funcionario) return
-    const supabase = createClient()
-    await supabase.from('funcionarios').update({
-      full_name: form.full_name,
-      email: form.email || undefined,
-      cargo: form.cargo || undefined,
-      setor_id: form.setor_id || undefined,
-      gestor_id: form.gestor_id || undefined,
-      status: form.status,
-      profile: form.profile,
-      data_admissao: form.data_admissao || undefined,
-    }).eq('id', modalEditar.funcionario.id)
-    setModalEditar({ open: false, funcionario: null })
-    fetchData()
-  }
-
-  async function handleExcluir() {
-    if (!modalExcluir.funcionario) return
-    setModalExcluir((prev) => ({ ...prev, loading: true }))
-    const supabase = createClient()
-    await supabase.from('funcionarios').delete().eq('id', modalExcluir.funcionario.id)
-    setModalExcluir({ open: false, funcionario: null, loading: false })
-    fetchData()
-  }
-
-  const funcionariosFiltrados = funcionarios
-    .filter((f) => !filtroStatus || f.status === filtroStatus)
-    .filter((f) => !filtroSetor || f.setor_id === filtroSetor)
-    .filter((f) => !busca || f.full_name.toLowerCase().includes(busca.toLowerCase()))
-
-  const statusColor = (status: string) => {
-    if (status === 'Ativo') return 'bg-green-100 text-green-700'
-    if (status === 'Férias') return 'bg-blue-100 text-blue-700'
-    if (status === 'Afastado') return 'bg-yellow-100 text-yellow-700'
-    return 'bg-red-100 text-red-700'
-  }
-
-  const FormularioFuncionario = ({ onSubmit, titulo, onCancel }: { onSubmit: (e: React.FormEvent) => void; titulo: string; onCancel: () => void }) => (
+  return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
       <div className="relative bg-card border border-border rounded-lg shadow-lg w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
@@ -266,11 +174,125 @@ export default function FuncionariosPage() {
       </div>
     </div>
   )
+}
+
+const FORM_INICIAL: FormFuncionario = {
+  full_name: '', email: '', cargo: '', setor_id: '',
+  gestor_id: '', status: 'Ativo', profile: 'N/A', data_admissao: '',
+}
+
+export default function FuncionariosPage() {
+  const { empresa } = useEmpresaStore()
+
+  const [funcionarios, setFuncionarios] = useState<any[]>([])
+  const [setores, setSetores] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filtroStatus, setFiltroStatus] = useState('')
+  const [filtroSetor, setFiltroSetor] = useState('')
+  const [busca, setBusca] = useState('')
+  const [menuOpen, setMenuOpen] = useState<string | null>(null)
+
+  const [modalCriar, setModalCriar] = useState(false)
+  const [modalEditar, setModalEditar] = useState<{ open: boolean; funcionario: any | null }>({ open: false, funcionario: null })
+  const [modalExcluir, setModalExcluir] = useState<{ open: boolean; funcionario: any | null; loading: boolean }>({ open: false, funcionario: null, loading: false })
+  const [form, setForm] = useState<FormFuncionario>(FORM_INICIAL)
+
+  const fetchData = useCallback(async () => {
+    if (!empresa) return
+    setLoading(true)
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('funcionarios')
+      .select(`
+        id, full_name, email, cargo, status, profile,
+        data_admissao, setor_id, gestor_id, user_id, is_current,
+        setores!setor_id(name)
+      `)
+      .eq('client_id', empresa.id)
+      .order('full_name')
+    setFuncionarios(data ?? [])
+    setLoading(false)
+  }, [empresa])
+
+  useEffect(() => { fetchData() }, [fetchData])
+
+  useEffect(() => {
+    if (!empresa) return
+    getSetoresByEmpresa(empresa.id).then(({ data }) => setSetores(data ?? []))
+  }, [empresa])
+
+  useEffect(() => {
+    if (!modalEditar.funcionario) return
+    setForm({
+      full_name: modalEditar.funcionario.full_name ?? '',
+      email: modalEditar.funcionario.email ?? '',
+      cargo: modalEditar.funcionario.cargo ?? '',
+      setor_id: modalEditar.funcionario.setor_id ?? '',
+      gestor_id: modalEditar.funcionario.gestor_id ?? '',
+      status: modalEditar.funcionario.status ?? 'Ativo',
+      profile: modalEditar.funcionario.profile ?? 'N/A',
+      data_admissao: modalEditar.funcionario.data_admissao ?? '',
+    })
+  }, [modalEditar.funcionario])
+
+  async function handleCriar(e: React.FormEvent) {
+    e.preventDefault()
+    if (!empresa) return
+    const supabase = createClient()
+    await supabase.from('funcionarios').insert({
+      ...form,
+      email: form.email || undefined,
+      cargo: form.cargo || undefined,
+      setor_id: form.setor_id || undefined,
+      gestor_id: form.gestor_id || undefined,
+      data_admissao: form.data_admissao || undefined,
+      client_id: empresa.id,
+      is_current: true,
+    })
+    setForm(FORM_INICIAL)
+    setModalCriar(false)
+    fetchData()
+  }
+
+  async function handleEditar(e: React.FormEvent) {
+    e.preventDefault()
+    if (!modalEditar.funcionario) return
+    const supabase = createClient()
+    await supabase.from('funcionarios').update({
+      ...form,
+      email: form.email || undefined,
+      cargo: form.cargo || undefined,
+      setor_id: form.setor_id || undefined,
+      gestor_id: form.gestor_id || undefined,
+      data_admissao: form.data_admissao || undefined,
+    }).eq('id', modalEditar.funcionario.id)
+    setModalEditar({ open: false, funcionario: null })
+    fetchData()
+  }
+
+  async function handleExcluir() {
+    if (!modalExcluir.funcionario) return
+    setModalExcluir((prev) => ({ ...prev, loading: true }))
+    const supabase = createClient()
+    await supabase.from('funcionarios').delete().eq('id', modalExcluir.funcionario.id)
+    setModalExcluir({ open: false, funcionario: null, loading: false })
+    fetchData()
+  }
+
+  const funcionariosFiltrados = funcionarios
+    .filter((f) => !filtroStatus || f.status === filtroStatus)
+    .filter((f) => !filtroSetor || f.setor_id === filtroSetor)
+    .filter((f) => !busca || f.full_name.toLowerCase().includes(busca.toLowerCase()))
+
+  const statusColor = (status: string) => {
+    if (status === 'Ativo') return 'bg-green-100 text-green-700'
+    if (status === 'Férias') return 'bg-blue-100 text-blue-700'
+    if (status === 'Afastado') return 'bg-yellow-100 text-yellow-700'
+    return 'bg-red-100 text-red-700'
+  }
 
   return (
     <div className="space-y-6">
-
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Funcionários</h1>
@@ -279,14 +301,13 @@ export default function FuncionariosPage() {
           </p>
         </div>
         <button
-          onClick={() => setModalCriar(true)}
+          onClick={() => { setForm(FORM_INICIAL); setModalCriar(true) }}
           className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
         >
           + Novo Funcionário
         </button>
       </div>
 
-      {/* Filtros */}
       <div className="flex flex-wrap gap-3">
         <input
           type="text"
@@ -317,7 +338,6 @@ export default function FuncionariosPage() {
         </select>
       </div>
 
-      {/* Lista */}
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
@@ -326,11 +346,9 @@ export default function FuncionariosPage() {
         </div>
       ) : funcionariosFiltrados.length === 0 ? (
         <div className="rounded-lg border border-border bg-card p-12 text-center">
-          <p className="text-muted-foreground text-sm mb-3">
-            Nenhum funcionário encontrado.
-          </p>
+          <p className="text-muted-foreground text-sm mb-3">Nenhum funcionário encontrado.</p>
           <button
-            onClick={() => setModalCriar(true)}
+            onClick={() => { setForm(FORM_INICIAL); setModalCriar(true) }}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
           >
             + Adicionar primeiro funcionário
@@ -406,23 +424,27 @@ export default function FuncionariosPage() {
         </div>
       )}
 
-      {/* Modal Criar */}
-      {modalCriar && (
-        <FormularioFuncionario
-          titulo="Novo Funcionário"
-          onSubmit={handleCriar}
-          onCancel={() => setModalCriar(false)}
-        />
-      )}
+      <ModalFuncionario
+        open={modalCriar}
+        titulo="Novo Funcionário"
+        form={form}
+        setForm={setForm}
+        setores={setores}
+        funcionarios={funcionarios}
+        onSubmit={handleCriar}
+        onCancel={() => setModalCriar(false)}
+      />
 
-      {/* Modal Editar */}
-      {modalEditar.open && (
-        <FormularioFuncionario
-          titulo="Editar Funcionário"
-          onSubmit={handleEditar}
-          onCancel={() => setModalEditar({ open: false, funcionario: null })}
-        />
-      )}
+      <ModalFuncionario
+        open={modalEditar.open}
+        titulo="Editar Funcionário"
+        form={form}
+        setForm={setForm}
+        setores={setores}
+        funcionarios={funcionarios}
+        onSubmit={handleEditar}
+        onCancel={() => setModalEditar({ open: false, funcionario: null })}
+      />
 
       <ModalConfirmarExclusao
         open={modalExcluir.open}
