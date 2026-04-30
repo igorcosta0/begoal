@@ -108,7 +108,6 @@ export default function ModalCriarKr({
                 ))}
               </select>
             </div>
-
             <div>
               <label className="text-xs font-medium text-foreground">Setor</label>
               <select
@@ -118,7 +117,7 @@ export default function ModalCriarKr({
               >
                 <option value="">Nenhum</option>
                 {setores.map((s) => (
-                  <option key={s.id} value={s.id}>{s.nome}</option>
+                  <option key={s.id} value={s.id}>{s.name ?? s.nome}</option>
                 ))}
               </select>
             </div>
@@ -145,14 +144,17 @@ export default function ModalCriarKr({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-foreground">Tipo/Unidade</label>
-              <input
-                type="text"
+              <label className="text-xs font-medium text-foreground">Tipo</label>
+              <select
                 value={form.tipo_valor}
                 onChange={(e) => setForm({ ...form, tipo_valor: e.target.value })}
-                placeholder="%, pts..."
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
+                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">Selecione</option>
+                <option value="Numero">Número</option>
+                <option value="Percentual">Percentual</option>
+                <option value="Moeda">Moeda</option>
+              </select>
             </div>
           </div>
 

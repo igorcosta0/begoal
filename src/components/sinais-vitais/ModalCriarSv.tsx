@@ -150,13 +150,16 @@ export default function ModalCriarSv({ open, onClose, onSuccess }: ModalCriarSvP
             </div>
             <div>
               <label className="text-xs font-medium text-foreground">Tipo</label>
-              <input
-                type="text"
+              <select
                 value={form.tipo_valor}
                 onChange={(e) => setForm({ ...form, tipo_valor: e.target.value })}
-                placeholder="%, R$..."
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
+                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">Selecione</option>
+                <option value="Numero">Número</option>
+                <option value="Percentual">Percentual</option>
+                <option value="Moeda">Moeda</option>
+              </select>
             </div>
           </div>
 
