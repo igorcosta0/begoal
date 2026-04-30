@@ -40,8 +40,7 @@ export default function SinaisVitaisPage() {
     .map((sv) => ({
       ...sv,
       responsavel: sv.funcionarios,
-      setor: sv.setores,
-      objetivo: sv.objetivos,
+      setor: sv.setores ? { name: sv.setores.name } : null,
     }))
 
   async function handleExcluir() {

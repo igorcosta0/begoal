@@ -8,8 +8,7 @@ export async function getSinaisVitais(clientId: string) {
       id, titulo, valor_inicial, valor_atual, meta, tipo_valor,
       objetivo_id, responsavel_id, setor_id, client_id, created_at,
       funcionarios!responsavel_id(full_name),
-      setores!setor_id(name),
-      objetivos!objetivo_id(titulo)
+      setores!setor_id(name)
     `)
     .eq('client_id', clientId)
     .order('created_at', { ascending: false })

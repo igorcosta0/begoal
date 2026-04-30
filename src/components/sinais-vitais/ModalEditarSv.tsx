@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { updateSinalVital } from '@/lib/queries/sinais-vitais'
-import { getSetoresByEmpresa, getFuncionariosByEmpresa, getObjetivos } from '@/lib/queries/okr'
+import { getSetoresByEmpresa, getFuncionariosByEmpresa } from '@/lib/queries/okr'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 
 interface ModalEditarSvProps {
@@ -18,13 +18,11 @@ export default function ModalEditarSv({ open, sv, onClose, onSuccess }: ModalEdi
   const [error, setError] = useState<string | null>(null)
   const [setores, setSetores] = useState<any[]>([])
   const [funcionarios, setFuncionarios] = useState<any[]>([])
-  const [objetivos, setObjetivos] = useState<any[]>([])
 
   const [form, setForm] = useState({
     titulo: '',
     responsavel_id: '',
     setor_id: '',
-    objetivo_id: '',
     valor_inicial: '0',
     meta: '',
     tipo_valor: '',
@@ -34,7 +32,6 @@ export default function ModalEditarSv({ open, sv, onClose, onSuccess }: ModalEdi
     if (!open || !empresa) return
     getSetoresByEmpresa(empresa.id).then(({ data }) => setSetores(data ?? []))
     getFuncionariosByEmpresa(empresa.id).then(({ data }) => setFuncionarios(data ?? []))
-    getObjetivos(empresa.id).then(({ data }) => setObjetivos(data ?? []))
   }, [open, empresa])
 
   useEffect(() => {
@@ -43,7 +40,6 @@ export default function ModalEditarSv({ open, sv, onClose, onSuccess }: ModalEdi
       titulo: sv.titulo ?? '',
       responsavel_id: sv.responsavel_id ?? '',
       setor_id: sv.setor_id ?? '',
-      objetivo_id: sv.objetivo_id ?? '',
       valor_inicial: String(sv.valor_inicial ?? 0),
       meta: String(sv.meta ?? ''),
       tipo_valor: sv.tipo_valor ?? '',
@@ -60,7 +56,6 @@ export default function ModalEditarSv({ open, sv, onClose, onSuccess }: ModalEdi
       titulo: form.titulo,
       responsavel_id: form.responsavel_id || undefined,
       setor_id: form.setor_id || undefined,
-      objetivo_id: form.objetivo_id || undefined,
       valor_inicial: parseFloat(form.valor_inicial) || 0,
       meta: parseFloat(form.meta) || 0,
       tipo_valor: form.tipo_valor || undefined,
@@ -120,24 +115,10 @@ export default function ModalEditarSv({ open, sv, onClose, onSuccess }: ModalEdi
               >
                 <option value="">Nenhum</option>
                 {setores.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name ?? s.nome}</option>
+                  <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
               </select>
             </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-foreground">Objetivo vinculado</label>
-            <select
-              value={form.objetivo_id}
-              onChange={(e) => setForm({ ...form, objetivo_id: e.target.value })}
-              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="">Nenhum</option>
-              {objetivos.map((o) => (
-                <option key={o.id} value={o.id}>{o.titulo}</option>
-              ))}
-            </select>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
