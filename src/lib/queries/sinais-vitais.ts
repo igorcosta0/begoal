@@ -57,7 +57,20 @@ export async function createSvLancamento(payload: {
   comentario?: string
 }) {
   const supabase = createClient()
-  return supabase.from('sinais_vitais_lancamentos').insert(payload).select().single()
+  const { data, error } = await supabase
+    .from('sinais_vitais_lancamentos')
+    .insert(payload)
+    .select()
+    .single()
+
+  if (error) return { data: null, error }
+
+  await supabase
+    .from('sinais_vitais')
+    .update({ valor_atual: payload.valor })
+    .eq('id', payload.sinal_vital_id)
+
+  return { data, error: null }
 }
 
 export async function getSvLancamentos(sinalVitalId: string) {
