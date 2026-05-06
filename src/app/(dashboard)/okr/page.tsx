@@ -8,6 +8,7 @@ import {
   getKrsByEmpresa,
   deleteKr,
   deleteObjetivo,
+  updateObjetivo,
   getSetoresByEmpresa,
   getFuncionariosByEmpresa,
   reativarKr,
@@ -20,6 +21,7 @@ import ModalFinalizarKr from '@/components/okr/ModalFinalizarKr'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
 import ModalDetalhesKr from '@/components/okr/ModalDetalhesKr'
 import ModalCriarObjetivo from '@/components/okr/ModalCriarObjetivo'
+import ModalEditarObjetivo from '@/components/okr/ModalEditarObjetivo'
 
 export default function OkrPage() {
   const { empresa } = useEmpresaStore()
@@ -32,6 +34,7 @@ export default function OkrPage() {
   const [loading, setLoading] = useState(true)
 
   const [modalCriarObjetivo, setModalCriarObjetivo] = useState(false)
+  const [modalEditarObjetivo, setModalEditarObjetivo] = useState<{ open: boolean; objetivo: any | null }>({ open: false, objetivo: null })
   const [modalCriarKr, setModalCriarKr] = useState<{ open: boolean; objetivo: any | null }>({ open: false, objetivo: null })
   const [modalEditarKr, setModalEditarKr] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
   const [modalLancarKr, setModalLancarKr] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
@@ -202,7 +205,7 @@ export default function OkrPage() {
               key={objetivo.id}
               objetivo={objetivo}
               onCriarKr={(obj) => setModalCriarKr({ open: true, objetivo: obj })}
-              onEditarObjetivo={() => setModalCriarObjetivo(true)}
+              onEditarObjetivo={(obj) => setModalEditarObjetivo({ open: true, objetivo: obj })}
               onExcluirObjetivo={(obj) => setModalExcluirObjetivo({ open: true, objetivo: obj, loading: false })}
               onLancarKr={(kr) => setModalLancarKr({ open: true, kr })}
               onEditarKr={(kr) => setModalEditarKr({ open: true, kr })}
@@ -218,6 +221,12 @@ export default function OkrPage() {
       <ModalCriarObjetivo
         open={modalCriarObjetivo}
         onClose={() => setModalCriarObjetivo(false)}
+        onSuccess={fetchData}
+      />
+      <ModalEditarObjetivo
+        open={modalEditarObjetivo.open}
+        objetivo={modalEditarObjetivo.objetivo}
+        onClose={() => setModalEditarObjetivo({ open: false, objetivo: null })}
         onSuccess={fetchData}
       />
       <ModalCriarKr

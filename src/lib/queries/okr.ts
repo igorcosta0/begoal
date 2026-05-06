@@ -135,7 +135,20 @@ export async function createKrLancamento(payload: {
   data_lancamento: string
 }) {
   const supabase = createClient()
-  return supabase.from('kr_lancamentos').insert(payload).select().single()
+  const { data, error } = await supabase
+    .from('kr_lancamentos')
+    .insert(payload)
+    .select()
+    .single()
+
+  if (error) return { data: null, error }
+
+  await supabase
+    .from('krs')
+    .update({ valor_atual: payload.valor })
+    .eq('id', payload.kr_id)
+
+  return { data, error: null }
 }
 
 export async function deleteKrLancamento(id: string) {
