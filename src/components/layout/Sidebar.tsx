@@ -19,9 +19,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Building2,
+  Home,
 } from 'lucide-react'
 
 const navItems = [
+  { href: '/inicio', label: 'Início', icon: Home },
   { href: '/okr', label: 'OKRs', icon: Target },
   { href: '/objetivo', label: 'Objetivos', icon: Flag },
   { href: '/taticas', label: 'Táticas', icon: Zap },
@@ -42,7 +44,7 @@ export default function Sidebar() {
     await supabase.auth.signOut()
     clearAuth()
     clearEmpresa()
-    router.push('/login')
+    window.location.href = '/login'
   }
 
   return (
@@ -91,7 +93,6 @@ export default function Sidebar() {
       {/* Nav */}
       <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
-          // Esconder Admin se não for superuser
           if (item.href === '/admin' && role !== 'superuser') return null
 
           const isActive = pathname.startsWith(item.href)
