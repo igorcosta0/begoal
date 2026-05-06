@@ -13,7 +13,9 @@ import {
 
 interface KrChartProps {
   data: {
-    data_lancamento: string
+    data_real?: string
+    data_lancamento?: string
+    texto_exibicao?: string
     valor: number
   }[]
   valorMeta?: number
@@ -32,12 +34,19 @@ export default function KrChart({ data, valorMeta, unidade }: KrChartProps) {
   }
 
   const formatted = data
-    .filter((item) => item.data_lancamento)
+    .filter((item) => item.valor !== undefined)
     .map((item) => {
-      const [year, month, day] = item.data_lancamento.split('T')[0].split('-')
+      let dataLabel = ''
+      if (item.texto_exibicao) {
+        dataLabel = item.texto_exibicao
+      } else if (item.data_real || item.data_lancamento) {
+        const raw = (item.data_real || item.data_lancamento || '').split('T')[0]
+        const [year, month, day] = raw.split('-')
+        dataLabel = `${day}/${month}`
+      }
       return {
         ...item,
-        data: `${day}/${month}`,
+        data: dataLabel,
       }
     })
 
