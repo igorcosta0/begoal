@@ -38,7 +38,7 @@ export default function SelecaoEmpresaPage() {
 
   function handleSelect(empresa: Empresa) {
     setEmpresa(empresa)
-    window.location.href = '/okr'
+    window.location.href = '/inicio'
   }
 
   if (loading) {
