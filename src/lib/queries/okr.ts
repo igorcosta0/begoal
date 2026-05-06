@@ -72,14 +72,6 @@ export async function getKrsByEmpresa(clientId: string) {
     .order('created_at', { ascending: false })
 }
 
-export async function getKrsComCalculo(clientId: string) {
-  const supabase = createClient()
-  const { data, error } = await supabase.rpc('get_krs_com_calculo', {
-    p_client_id: clientId,
-  })
-  return { data, error }
-}
-
 export async function createKr(payload: {
   titulo: string
   objetivo_id: string
@@ -122,6 +114,14 @@ export async function finalizarKr(krId: string, resultado: number) {
   })
 }
 
+export async function reativarKr(id: string) {
+  const supabase = createClient()
+  return supabase
+    .from('krs')
+    .update({ concluido: false })
+    .eq('id', id)
+}
+
 export async function getKrChartData(krId: string) {
   const supabase = createClient()
   return supabase.rpc('get_kr_chart_data', { p_kr_id: krId })
@@ -151,7 +151,7 @@ export async function getSetoresByEmpresa(clientId: string) {
     .from('setores')
     .select('id, name')
     .eq('client_id', clientId)
-    .order('nome')
+    .order('name')
 }
 
 export async function getFuncionariosByEmpresa(clientId: string) {

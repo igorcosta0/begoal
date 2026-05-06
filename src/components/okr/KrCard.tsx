@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { cn, formatPercent, formatNumber } from '@/lib/utils'
+import { cn, formatPercent, formatNumber, getProgressColor, getProgressStatus } from '@/lib/utils'
 import { MoreHorizontal, TrendingUp, User, Building2, Calendar } from 'lucide-react'
 
 interface KrCardProps {
@@ -24,6 +24,7 @@ interface KrCardProps {
   onFinalizar?: (kr: any) => void
   onExcluir?: (kr: any) => void
   onVerGrafico?: (kr: any) => void
+  onReativar?: (kr: any) => void
 }
 
 export default function KrCard({
@@ -33,6 +34,7 @@ export default function KrCard({
   onFinalizar,
   onExcluir,
   onVerGrafico,
+  onReativar,
 }: KrCardProps) {
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -52,7 +54,7 @@ export default function KrCard({
   return (
     <div className="relative bg-card border border-border rounded-xl p-4 hover:shadow-md transition-shadow flex flex-col gap-3">
 
-      {/* Header — título + menu */}
+      {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm font-semibold text-foreground leading-snug flex-1">
           {kr.titulo}
@@ -79,12 +81,19 @@ export default function KrCard({
               >
                 Editar KR
               </button>
-              {!kr.concluido && (
+              {!kr.concluido ? (
                 <button
                   onClick={() => { onFinalizar?.(kr); setMenuOpen(false) }}
                   className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-blue-600"
                 >
                   Finalizar KR
+                </button>
+              ) : (
+                <button
+                  onClick={() => { onReativar?.(kr); setMenuOpen(false) }}
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-green-600"
+                >
+                  Reativar KR
                 </button>
               )}
               <button
@@ -98,7 +107,7 @@ export default function KrCard({
         </div>
       </div>
 
-      {/* Barra de progresso colorida */}
+      {/* Barra de progresso */}
       <div className="space-y-1">
         <div className="flex items-center justify-between text-xs">
           <span className="text-muted-foreground">Progresso</span>
@@ -112,7 +121,7 @@ export default function KrCard({
         </div>
       </div>
 
-      {/* Métricas — 3 colunas */}
+      {/* Métricas */}
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-secondary/60 rounded-lg px-3 py-2 text-center">
           <p className="text-xs text-muted-foreground mb-0.5">Valor Inicial</p>
@@ -157,7 +166,11 @@ export default function KrCard({
       </div>
 
       {/* Ação */}
-      {!kr.concluido && (
+      {kr.concluido ? (
+        <div className="w-full py-2 px-4 bg-secondary text-muted-foreground rounded-lg text-xs font-medium text-center">
+          ✓ KR Finalizado
+        </div>
+      ) : (
         <button
           onClick={() => onLancar?.(kr)}
           className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-lg text-xs font-medium hover:opacity-90 transition-opacity mt-1"

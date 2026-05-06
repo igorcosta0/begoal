@@ -20,6 +20,7 @@ interface ObjetivoCardProps {
   onFinalizarKr?: (kr: any) => void
   onExcluirKr?: (kr: any) => void
   onVerGraficoKr?: (kr: any) => void
+  onReativarKr?: (kr: any) => void
 }
 
 export default function ObjetivoCard({
@@ -32,6 +33,7 @@ export default function ObjetivoCard({
   onFinalizarKr,
   onExcluirKr,
   onVerGraficoKr,
+  onReativarKr,
 }: ObjetivoCardProps) {
   const [expanded, setExpanded] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -61,7 +63,6 @@ export default function ObjetivoCard({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {/* Menu */}
             <div className="relative">
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
@@ -93,7 +94,6 @@ export default function ObjetivoCard({
               )}
             </div>
 
-            {/* Expand/Collapse */}
             <button
               onClick={() => setExpanded(!expanded)}
               className="p-1.5 rounded-md hover:bg-accent transition-colors text-muted-foreground"
@@ -149,6 +149,7 @@ export default function ObjetivoCard({
                   onFinalizar={onFinalizarKr}
                   onExcluir={onExcluirKr}
                   onVerGrafico={onVerGraficoKr}
+                  onReativar={onReativarKr}
                 />
               ))}
             </div>

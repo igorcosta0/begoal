@@ -10,6 +10,7 @@ import {
   deleteObjetivo,
   getSetoresByEmpresa,
   getFuncionariosByEmpresa,
+  reativarKr,
 } from '@/lib/queries/okr'
 import ObjetivoCard from '@/components/okr/ObjetivoCard'
 import ModalCriarKr from '@/components/okr/ModalCriarKr'
@@ -73,15 +74,14 @@ export default function OkrPage() {
           return true
         })
         .map((kr) => ({
-  ...kr,
-  responsavel: kr.funcionarios,
-  setor: kr.setores ? { nome: kr.setores.name } : null,
-  objetivo: kr.objetivos,
-  end_date: obj.end_date,
-  progresso: kr.meta > 0
-    ? Math.max(0, ((kr.valor_atual - kr.valor_inicial) / (kr.meta - kr.valor_inicial)) * 100)
-    : 0,
-})),
+          ...kr,
+          responsavel: kr.funcionarios,
+          setor: kr.setores ? { nome: kr.setores.name } : null,
+          objetivo: kr.objetivos,
+          progresso: kr.meta > 0
+            ? Math.max(0, ((kr.valor_atual - kr.valor_inicial) / (kr.meta - kr.valor_inicial)) * 100)
+            : 0,
+        })),
     }))
 
   const objetivosFinais = objetivosComKrs.map((obj) => ({
@@ -104,6 +104,11 @@ export default function OkrPage() {
     setModalExcluirObjetivo((prev) => ({ ...prev, loading: true }))
     await deleteObjetivo(modalExcluirObjetivo.objetivo.id)
     setModalExcluirObjetivo({ open: false, objetivo: null, loading: false })
+    fetchData()
+  }
+
+  async function handleReativarKr(kr: any) {
+    await reativarKr(kr.id)
     fetchData()
   }
 
@@ -156,7 +161,7 @@ export default function OkrPage() {
         >
           <option value="">Todos os setores</option>
           {setores.map((s) => (
-            <option key={s.id} value={s.id}>{s.nome}</option>
+            <option key={s.id} value={s.id}>{s.name}</option>
           ))}
         </select>
 
@@ -204,6 +209,7 @@ export default function OkrPage() {
               onFinalizarKr={(kr) => setModalFinalizarKr({ open: true, kr })}
               onExcluirKr={(kr) => setModalExcluirKr({ open: true, kr, loading: false })}
               onVerGraficoKr={(kr) => setModalDetalhesKr({ open: true, kr })}
+              onReativarKr={handleReativarKr}
             />
           ))}
         </div>
