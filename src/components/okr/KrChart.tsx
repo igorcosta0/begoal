@@ -31,13 +31,15 @@ export default function KrChart({ data, valorMeta, unidade }: KrChartProps) {
     )
   }
 
-  const formatted = data.map((item) => {
-    const [year, month, day] = item.data_lancamento.split('T')[0].split('-')
-    return {
-      ...item,
-      data: `${day}/${month}`,
-    }
-  })
+  const formatted = data
+    .filter((item) => item.data_lancamento)
+    .map((item) => {
+      const [year, month, day] = item.data_lancamento.split('T')[0].split('-')
+      return {
+        ...item,
+        data: `${day}/${month}`,
+      }
+    })
 
   return (
     <div className="h-48 w-full">
