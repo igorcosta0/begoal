@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getObjetivos, getKrsByEmpresa } from '@/lib/queries/okr'
 import { getSinaisVitais } from '@/lib/queries/sinais-vitais'
 import { formatNumber, formatPercent } from '@/lib/utils'
-import { Target, TrendingUp, Edit2, Check, X } from 'lucide-react'
+import { Edit2, Check, X } from 'lucide-react'
 
 const HUMOR_EMOJIS = [
   { valor: 1, emoji: '😔', label: 'Muito mal' },
@@ -15,6 +15,103 @@ const HUMOR_EMOJIS = [
   { valor: 4, emoji: '😊', label: 'Bem' },
   { valor: 5, emoji: '😄', label: 'Muito bem' },
 ]
+
+interface EditableBlockProps {
+  campo: string
+  label?: string
+  placeholder: string
+  multiline?: boolean
+  value: string
+  editando: string | null
+  onEdit: (campo: string) => void
+  onChange: (campo: string, valor: string) => void
+  onSalvar: (campo: string) => void
+  onCancelar: () => void
+}
+
+function EditableBlock({
+  campo,
+  label,
+  placeholder,
+  multiline = false,
+  value,
+  editando,
+  onEdit,
+  onChange,
+  onSalvar,
+  onCancelar,
+}: EditableBlockProps) {
+  const isEditing = editando === campo
+
+  return (
+    <div className="group relative">
+      {label && (
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</p>
+          {!isEditing && (
+            <button
+              onClick={() => onEdit(campo)}
+              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-accent"
+            >
+              <Edit2 className="w-3 h-3 text-muted-foreground" />
+            </button>
+          )}
+        </div>
+      )}
+      {!label && !isEditing && (
+        <button
+          onClick={() => onEdit(campo)}
+          className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-accent z-10"
+        >
+          <Edit2 className="w-3 h-3 text-muted-foreground" />
+        </button>
+      )}
+      {isEditing ? (
+        <div className="space-y-2">
+          {multiline ? (
+            <textarea
+              value={value}
+              onChange={(e) => onChange(campo, e.target.value)}
+              rows={4}
+              placeholder={placeholder}
+              className="w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+              autoFocus
+            />
+          ) : (
+            <input
+              type="text"
+              value={value}
+              onChange={(e) => onChange(campo, e.target.value)}
+              placeholder={placeholder}
+              className="w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              autoFocus
+            />
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => onSalvar(campo)}
+              className="flex items-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:opacity-90"
+            >
+              <Check className="w-3 h-3" />
+              Salvar
+            </button>
+            <button
+              onClick={onCancelar}
+              className="flex items-center gap-1 px-3 py-1.5 border border-border rounded-md text-xs text-muted-foreground hover:bg-accent"
+            >
+              <X className="w-3 h-3" />
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className={`text-sm ${value ? 'text-foreground' : 'text-muted-foreground italic'}`}>
+          {value || placeholder}
+        </p>
+      )}
+    </div>
+  )
+}
 
 export default function InicioPage() {
   const { empresa } = useEmpresaStore()
@@ -56,7 +153,8 @@ export default function InicioPage() {
       getSinaisVitais(empresa.id),
       supabase.from('humor_registro').select('humor').eq('client_id', empresa.id)
         .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
-      supabase.from('humor_registro').select('humor').eq('client_id', empresa.id)
+      supabase.from('humor_registro').select('humor')
+        .eq('client_id', empresa.id)
         .eq('user_id', user?.id ?? '')
         .gte('created_at', new Date().toISOString().split('T')[0])
         .limit(1),
@@ -72,6 +170,7 @@ export default function InicioPage() {
         campanha_descricao: identidadeData.campanha_descricao ?? '',
       })
     }
+
     setObjetivos(objs ?? [])
     setKrs(krsData ?? [])
     setSvs(svsData ?? [])
@@ -89,22 +188,35 @@ export default function InicioPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  async function handleSalvarIdentidade(campo: string) {
+  const handleChange = useCallback((campo: string, valor: string) => {
+    setFormIdentidade((prev) => ({ ...prev, [campo]: valor }))
+  }, [])
+
+  const handleEdit = useCallback((campo: string) => {
+    setEditando(campo)
+  }, [])
+
+  const handleCancelar = useCallback(() => {
+    setEditando(null)
+  }, [])
+
+  const handleSalvarIdentidade = useCallback(async (campo: string) => {
     if (!empresa) return
     const supabase = createClient()
+    const valor = (formIdentidade as any)[campo]
     if (identidade) {
       await supabase.from('empresa_identidade')
-        .update({ [campo]: (formIdentidade as any)[campo], updated_at: new Date().toISOString() })
+        .update({ [campo]: valor, updated_at: new Date().toISOString() })
         .eq('client_id', empresa.id)
     } else {
       await supabase.from('empresa_identidade')
-        .insert({ client_id: empresa.id, [campo]: (formIdentidade as any)[campo] })
+        .insert({ client_id: empresa.id, [campo]: valor })
     }
     setEditando(null)
     fetchData()
-  }
+  }, [empresa, formIdentidade, identidade, fetchData])
 
-  async function handleHumor(valor: number) {
+  const handleHumor = useCallback(async (valor: number) => {
     if (!empresa) return
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -115,9 +227,8 @@ export default function InicioPage() {
     })
     setHumorHoje(valor)
     fetchData()
-  }
+  }, [empresa, fetchData])
 
-  // Agrupar KRs por objetivo
   const objetivosComKrs = objetivos.map((obj) => ({
     ...obj,
     krs: krs
@@ -143,70 +254,6 @@ export default function InicioPage() {
     if (prog >= 40) return { cor: 'bg-yellow-500', label: 'Atenção' }
     return { cor: 'bg-red-500', label: 'Crítico' }
   }
-
-  const EditableBlock = ({ campo, label, placeholder, multiline = false }: {
-    campo: keyof typeof formIdentidade
-    label: string
-    placeholder: string
-    multiline?: boolean
-  }) => (
-    <div className="group relative">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</p>
-        {editando !== campo && (
-          <button
-            onClick={() => setEditando(campo)}
-            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-accent"
-          >
-            <Edit2 className="w-3 h-3 text-muted-foreground" />
-          </button>
-        )}
-      </div>
-      {editando === campo ? (
-        <div className="space-y-2">
-          {multiline ? (
-            <textarea
-              value={formIdentidade[campo]}
-              onChange={(e) => setFormIdentidade({ ...formIdentidade, [campo]: e.target.value })}
-              rows={4}
-              placeholder={placeholder}
-              className="w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-              autoFocus
-            />
-          ) : (
-            <input
-              type="text"
-              value={formIdentidade[campo]}
-              onChange={(e) => setFormIdentidade({ ...formIdentidade, [campo]: e.target.value })}
-              placeholder={placeholder}
-              className="w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              autoFocus
-            />
-          )}
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleSalvarIdentidade(campo)}
-              className="flex items-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:opacity-90"
-            >
-              <Check className="w-3 h-3" />
-              Salvar
-            </button>
-            <button
-              onClick={() => setEditando(null)}
-              className="flex items-center gap-1 px-3 py-1.5 border border-border rounded-md text-xs text-muted-foreground hover:bg-accent"
-            >
-              <X className="w-3 h-3" />
-              Cancelar
-            </button>
-          </div>
-        </div>
-      ) : (
-        <p className={`text-sm ${formIdentidade[campo] ? 'text-foreground' : 'text-muted-foreground italic'}`}>
-          {formIdentidade[campo] || placeholder}
-        </p>
-      )}
-    </div>
-  )
 
   if (loading) {
     return (
@@ -239,7 +286,7 @@ export default function InicioPage() {
             <div className="space-y-2">
               <textarea
                 value={formIdentidade.visao_futuro}
-                onChange={(e) => setFormIdentidade({ ...formIdentidade, visao_futuro: e.target.value })}
+                onChange={(e) => handleChange('visao_futuro', e.target.value)}
                 rows={4}
                 placeholder="Qual é o norte de longo prazo da empresa?"
                 className="w-full px-3 py-2 text-sm rounded-md border border-white/30 bg-white/10 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/50 resize-none"
@@ -254,7 +301,7 @@ export default function InicioPage() {
                   Salvar
                 </button>
                 <button
-                  onClick={() => setEditando(null)}
+                  onClick={handleCancelar}
                   className="flex items-center gap-1 px-3 py-1.5 border border-white/30 rounded-md text-xs text-white/70 hover:bg-white/10"
                 >
                   <X className="w-3 h-3" />
@@ -265,10 +312,10 @@ export default function InicioPage() {
           ) : (
             <div className="group relative">
               <p className={`text-base font-semibold leading-snug ${formIdentidade.visao_futuro ? '' : 'opacity-50 italic text-sm font-normal'}`}>
-                {formIdentidade.visao_futuro || 'Clique no lápis para adicionar a visão de futuro da empresa'}
+                {formIdentidade.visao_futuro || 'Clique no lápis para adicionar a visão de futuro'}
               </p>
               <button
-                onClick={() => setEditando('visao_futuro')}
+                onClick={() => handleEdit('visao_futuro')}
                 className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-white/10"
               >
                 <Edit2 className="w-3 h-3" />
@@ -284,6 +331,12 @@ export default function InicioPage() {
             label="Mercado e Posicionamento"
             placeholder="Onde atuamos e qual nosso diferencial?"
             multiline
+            value={formIdentidade.mercado_posicionamento}
+            editando={editando}
+            onEdit={handleEdit}
+            onChange={handleChange}
+            onSalvar={handleSalvarIdentidade}
+            onCancelar={handleCancelar}
           />
         </div>
 
@@ -294,6 +347,12 @@ export default function InicioPage() {
             label="Nossos Valores"
             placeholder="Ex: Foco no Cliente, Inovação, Integridade..."
             multiline
+            value={formIdentidade.valores}
+            editando={editando}
+            onEdit={handleEdit}
+            onChange={handleChange}
+            onSalvar={handleSalvarIdentidade}
+            onCancelar={handleCancelar}
           />
         </div>
       </div>
@@ -303,7 +362,7 @@ export default function InicioPage() {
 
         {/* Widget de Humor */}
         <div className="bg-card border border-border rounded-xl p-5">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Como você está hoje?</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Como você está hoje?</p>
           {humorHoje ? (
             <div className="space-y-2">
               <p className="text-sm text-foreground">
@@ -317,7 +376,7 @@ export default function InicioPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="flex gap-3 mt-2">
+              <div className="flex gap-3">
                 {HUMOR_EMOJIS.map((h) => (
                   <button
                     key={h.valor}
@@ -341,19 +400,27 @@ export default function InicioPage() {
 
         {/* Campanha */}
         <div className="bg-card border border-border rounded-xl p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Campanha Ativa</p>
-          </div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Campanha Ativa</p>
           <EditableBlock
             campo="campanha_titulo"
-            label=""
             placeholder="Título da campanha"
+            value={formIdentidade.campanha_titulo}
+            editando={editando}
+            onEdit={handleEdit}
+            onChange={handleChange}
+            onSalvar={handleSalvarIdentidade}
+            onCancelar={handleCancelar}
           />
           <EditableBlock
             campo="campanha_descricao"
-            label=""
             placeholder="Descrição da campanha ou ação de endomarketing..."
             multiline
+            value={formIdentidade.campanha_descricao}
+            editando={editando}
+            onEdit={handleEdit}
+            onChange={handleChange}
+            onSalvar={handleSalvarIdentidade}
+            onCancelar={handleCancelar}
           />
         </div>
       </div>
