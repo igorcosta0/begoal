@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getObjetivos, getKrsByEmpresa } from '@/lib/queries/okr'
 import { getSinaisVitais } from '@/lib/queries/sinais-vitais'
 import { formatNumber, formatPercent } from '@/lib/utils'
-import { Edit2, Check, X, ArrowRight, TrendingUp, Activity, Heart, Megaphone, Target, Plus } from 'lucide-react'
+import { Edit2, Check, X, ArrowRight, TrendingUp, Activity, Heart, Megaphone, Target, Plus, Send, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 
 const HUMOR_EMOJIS = [
@@ -84,6 +84,119 @@ function EditableBlock({
   )
 }
 
+interface ComentariosBlockProps {
+  campo: string
+  clientId: string
+  userId: string
+  nomeUsuario: string
+}
+
+function ComentariosBlock({ campo, clientId, userId, nomeUsuario }: ComentariosBlockProps) {
+  const [comentarios, setComentarios] = useState<any[]>([])
+  const [novoComentario, setNovoComentario] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [mostrar, setMostrar] = useState(false)
+
+  const fetchComentarios = useCallback(async () => {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('empresa_identidade_comentarios')
+      .select('*')
+      .eq('client_id', clientId)
+      .eq('campo', campo)
+      .order('created_at', { ascending: true })
+    setComentarios(data ?? [])
+  }, [clientId, campo])
+
+  useEffect(() => {
+    if (mostrar) fetchComentarios()
+  }, [mostrar, fetchComentarios])
+
+  async function handleEnviar(e: React.FormEvent) {
+    e.preventDefault()
+    if (!novoComentario.trim()) return
+    setLoading(true)
+    const supabase = createClient()
+    await supabase.from('empresa_identidade_comentarios').insert({
+      client_id: clientId,
+      campo,
+      comentario: novoComentario.trim(),
+      autor_nome: nomeUsuario || 'Usuário',
+      user_id: userId,
+    })
+    setNovoComentario('')
+    await fetchComentarios()
+    setLoading(false)
+  }
+
+  async function handleExcluir(id: string) {
+    const supabase = createClient()
+    await supabase.from('empresa_identidade_comentarios').delete().eq('id', id)
+    await fetchComentarios()
+  }
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border">
+      <button
+        onClick={() => setMostrar(!mostrar)}
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <span className="text-base">💬</span>
+        {mostrar ? 'Ocultar comentários' : `Comentários${comentarios.length > 0 ? ` (${comentarios.length})` : ''}`}
+      </button>
+
+      {mostrar && (
+        <div className="mt-3 space-y-3">
+          {comentarios.length === 0 && (
+            <p className="text-xs text-muted-foreground italic">Nenhum comentário ainda.</p>
+          )}
+          {comentarios.map((c) => (
+            <div key={c.id} className="flex items-start gap-2 group/comment">
+              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold text-primary">
+                {(c.autor_nome ?? 'U').charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <p className="text-xs font-semibold text-foreground">{c.autor_nome}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {new Date(c.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+                <p className="text-xs text-foreground leading-relaxed">{c.comentario}</p>
+              </div>
+              {c.user_id === userId && (
+                <button
+                  onClick={() => handleExcluir(c.id)}
+                  className="opacity-0 group-hover/comment:opacity-100 transition-opacity p-1 rounded hover:bg-accent shrink-0"
+                >
+                  <Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive" />
+                </button>
+              )}
+            </div>
+          ))}
+
+          <form onSubmit={handleEnviar} className="flex gap-2 mt-2">
+            <input
+              type="text"
+              value={novoComentario}
+              onChange={(e) => setNovoComentario(e.target.value)}
+              placeholder="Adicionar comentário..."
+              className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <button
+              type="submit"
+              disabled={loading || !novoComentario.trim()}
+              className="p-1.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
+            >
+              <Send className="w-3.5 h-3.5" />
+            </button>
+          </form>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function InicioPage() {
   const { empresa } = useEmpresaStore()
   const [identidade, setIdentidade] = useState<any>(null)
@@ -99,6 +212,7 @@ export default function InicioPage() {
   const [mediaHumor, setMediaHumor] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [nomeUsuario, setNomeUsuario] = useState('')
+  const [userId, setUserId] = useState('')
   const [hora, setHora] = useState('')
   const [dataHoje, setDataHoje] = useState('')
 
@@ -116,6 +230,7 @@ export default function InicioPage() {
     setLoading(true)
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
+    if (user) setUserId(user.id)
 
     const [
       { data: identidadeData },
@@ -136,7 +251,7 @@ export default function InicioPage() {
         .eq('client_id', empresa.id).eq('user_id', user?.id ?? '')
         .gte('created_at', new Date().toISOString().split('T')[0]).limit(1),
       supabase.from('funcionarios').select('full_name')
-        .eq('user_id', user?.id ?? '').eq('client_id', empresa.id).single(),
+        .eq('user_id', user?.id ?? '').limit(1).single(),
     ])
 
     setIdentidade(identidadeData)
@@ -237,8 +352,6 @@ export default function InicioPage() {
           style={{ background: 'radial-gradient(circle, #60a5fa, transparent)' }} />
 
         <div className="relative z-10 p-8 md:p-10">
-
-          {/* Topo: data + stats */}
           <div className="flex items-start justify-between mb-8">
             <div>
               <p className="text-blue-200/60 text-xs font-medium uppercase tracking-widest mb-1 capitalize">{dataHoje}</p>
@@ -258,12 +371,10 @@ export default function InicioPage() {
             </div>
           </div>
 
-          {/* Nome da empresa em destaque */}
           <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight leading-none mb-6">
-  {nomeUsuario || empresa?.company_name}
-</h1>
+            {nomeUsuario || empresa?.company_name}
+          </h1>
 
-          {/* Visão de futuro — destaque com linha lateral e fundo */}
           <div className="group relative">
             {editando === 'visao_futuro' ? (
               <div className="space-y-2">
@@ -275,10 +386,10 @@ export default function InicioPage() {
                   autoFocus
                 />
                 <div className="flex gap-2">
-                  <button onClick={() => handleSalvar('visao_futuro')} className="flex items-center gap-1.5 px-4 py-1.5 bg-white text-gray-900 rounded-lg text-xs font-semibold hover:bg-white/90">
+                  <button onClick={() => handleSalvar('visao_futuro')} className="flex items-center gap-1.5 px-4 py-1.5 bg-white text-gray-900 rounded-lg text-xs font-semibold">
                     <Check className="w-3 h-3" /> Salvar
                   </button>
-                  <button onClick={handleCancelar} className="flex items-center gap-1.5 px-4 py-1.5 border border-white/20 rounded-lg text-xs text-white/60 hover:bg-white/10">
+                  <button onClick={handleCancelar} className="flex items-center gap-1.5 px-4 py-1.5 border border-white/20 rounded-lg text-xs text-white/60">
                     <X className="w-3 h-3" /> Cancelar
                   </button>
                 </div>
@@ -322,6 +433,14 @@ export default function InicioPage() {
             editando={editando} onEdit={handleEdit} onChange={handleChange}
             onSalvar={handleSalvar} onCancelar={handleCancelar}
           />
+          {empresa && (
+            <ComentariosBlock
+              campo="mercado_posicionamento"
+              clientId={empresa.id}
+              userId={userId}
+              nomeUsuario={nomeUsuario}
+            />
+          )}
         </div>
 
         {/* Valores */}
@@ -342,6 +461,14 @@ export default function InicioPage() {
             editando={editando} onEdit={handleEdit} onChange={handleChange}
             onSalvar={handleSalvar} onCancelar={handleCancelar}
           />
+          {empresa && (
+            <ComentariosBlock
+              campo="valores"
+              clientId={empresa.id}
+              userId={userId}
+              nomeUsuario={nomeUsuario}
+            />
+          )}
         </div>
 
         {/* Pulso do time */}
