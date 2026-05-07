@@ -17,9 +17,18 @@ export default async function DashboardLayout({
     redirect('/login')
   }
 
+  const { data: roleData } = await supabase
+    .from('user_company_roles')
+    .select('permission_level')
+    .eq('user_id', user.id)
+    .limit(1)
+    .single()
+
+  const permissionLevel = roleData?.permission_level ?? 'visualizador'
+
   return (
     <div className="flex h-screen bg-background overflow-hidden">
-      <Sidebar />
+      <Sidebar permissionLevel={permissionLevel} />
       <main className="flex-1 overflow-y-auto">
         <div className="p-6">
           {children}

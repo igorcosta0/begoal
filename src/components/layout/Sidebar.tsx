@@ -4,7 +4,6 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { useAuthStore } from '@/store/useAuthStore'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { cn } from '@/lib/utils'
 import {
@@ -32,17 +31,18 @@ const navItems = [
   { href: '/admin', label: 'Administração', icon: Settings },
 ]
 
-export default function Sidebar() {
+interface SidebarProps {
+  permissionLevel?: string
+}
+
+export default function Sidebar({ permissionLevel }: SidebarProps) {
   const pathname = usePathname()
-  const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
-  const { clear: clearAuth, role } = useAuthStore()
   const { empresa, clear: clearEmpresa } = useEmpresaStore()
 
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    clearAuth()
     clearEmpresa()
     window.location.href = '/login'
   }
@@ -93,7 +93,7 @@ export default function Sidebar() {
       {/* Nav */}
       <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
-          if (item.href === '/admin' && role !== 'superuser') return null
+          if (item.href === '/admin' && permissionLevel !== 'administrador') return null
 
           const isActive = pathname.startsWith(item.href)
           const Icon = item.icon
