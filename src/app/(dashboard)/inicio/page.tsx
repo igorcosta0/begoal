@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getObjetivos, getKrsByEmpresa } from '@/lib/queries/okr'
 import { getSinaisVitais } from '@/lib/queries/sinais-vitais'
 import { formatNumber, formatPercent } from '@/lib/utils'
-import { Edit2, Check, X, ArrowRight, TrendingUp, Activity } from 'lucide-react'
+import { Edit2, Check, X, ArrowRight, TrendingUp, Activity, Heart, Megaphone, Target, Plus } from 'lucide-react'
 import Link from 'next/link'
 
 const HUMOR_EMOJIS = [
@@ -14,7 +14,7 @@ const HUMOR_EMOJIS = [
   { valor: 2, emoji: '😟', label: 'Mal' },
   { valor: 3, emoji: '😐', label: 'Neutro' },
   { valor: 4, emoji: '😊', label: 'Bem' },
-  { valor: 5, emoji: '😄', label: 'Muito bem' },
+  { valor: 5, emoji: '😄', label: 'Ótimo' },
 ]
 
 interface EditableBlockProps {
@@ -28,52 +28,55 @@ interface EditableBlockProps {
   onChange: (campo: string, valor: string) => void
   onSalvar: (campo: string) => void
   onCancelar: () => void
+  dark?: boolean
 }
 
 function EditableBlock({
   campo, label, placeholder, multiline = false,
-  value, editando, onEdit, onChange, onSalvar, onCancelar,
+  value, editando, onEdit, onChange, onSalvar, onCancelar, dark = false,
 }: EditableBlockProps) {
   const isEditing = editando === campo
+  const baseInput = `w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 resize-none`
+  const lightInput = `${baseInput} border-border bg-background text-foreground placeholder:text-muted-foreground focus:ring-ring`
+  const darkInput = `${baseInput} border-white/20 bg-white/10 text-white placeholder:text-white/40 focus:ring-white/30`
+
   return (
     <div className="group relative">
       {label && (
         <div className="flex items-center justify-between mb-2">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">{label}</p>
+          <p className={`text-[11px] font-semibold uppercase tracking-widest ${dark ? 'text-white/50' : 'text-muted-foreground'}`}>{label}</p>
           {!isEditing && (
-            <button onClick={() => onEdit(campo)} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-accent">
-              <Edit2 className="w-3 h-3 text-muted-foreground" />
+            <button onClick={() => onEdit(campo)} className={`opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded ${dark ? 'hover:bg-white/10' : 'hover:bg-accent'}`}>
+              <Edit2 className={`w-3 h-3 ${dark ? 'text-white/50' : 'text-muted-foreground'}`} />
             </button>
           )}
         </div>
       )}
       {!label && !isEditing && (
-        <button onClick={() => onEdit(campo)} className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-accent z-10">
-          <Edit2 className="w-3 h-3 text-muted-foreground" />
+        <button onClick={() => onEdit(campo)} className={`absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded z-10 ${dark ? 'hover:bg-white/10' : 'hover:bg-accent'}`}>
+          <Edit2 className={`w-3 h-3 ${dark ? 'text-white/50' : 'text-muted-foreground'}`} />
         </button>
       )}
       {isEditing ? (
         <div className="space-y-2">
           {multiline ? (
             <textarea value={value} onChange={(e) => onChange(campo, e.target.value)} rows={4}
-              placeholder={placeholder}
-              className="w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none" autoFocus />
+              placeholder={placeholder} className={dark ? darkInput : lightInput} autoFocus />
           ) : (
             <input type="text" value={value} onChange={(e) => onChange(campo, e.target.value)}
-              placeholder={placeholder}
-              className="w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" autoFocus />
+              placeholder={placeholder} className={dark ? darkInput.replace('resize-none', '') : lightInput.replace('resize-none', '')} autoFocus />
           )}
           <div className="flex gap-2">
-            <button onClick={() => onSalvar(campo)} className="flex items-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium">
+            <button onClick={() => onSalvar(campo)} className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${dark ? 'bg-white text-gray-900' : 'bg-primary text-primary-foreground'}`}>
               <Check className="w-3 h-3" /> Salvar
             </button>
-            <button onClick={onCancelar} className="flex items-center gap-1 px-3 py-1.5 border border-border rounded-md text-xs text-muted-foreground">
+            <button onClick={onCancelar} className={`flex items-center gap-1 px-3 py-1.5 border rounded-lg text-xs ${dark ? 'border-white/20 text-white/60' : 'border-border text-muted-foreground'}`}>
               <X className="w-3 h-3" /> Cancelar
             </button>
           </div>
         </div>
       ) : (
-        <p className={`text-sm leading-relaxed ${value ? 'text-foreground' : 'text-muted-foreground italic'}`}>
+        <p className={`text-sm leading-relaxed ${value ? (dark ? 'text-white/90' : 'text-foreground') : (dark ? 'text-white/30 italic' : 'text-muted-foreground/50 italic')}`}>
           {value || placeholder}
         </p>
       )}
@@ -97,6 +100,7 @@ export default function InicioPage() {
   const [loading, setLoading] = useState(true)
   const [nomeUsuario, setNomeUsuario] = useState('')
   const [hora, setHora] = useState('')
+  const [dataHoje, setDataHoje] = useState('')
 
   useEffect(() => {
     const agora = new Date()
@@ -104,6 +108,7 @@ export default function InicioPage() {
     if (h < 12) setHora('Bom dia')
     else if (h < 18) setHora('Boa tarde')
     else setHora('Boa noite')
+    setDataHoje(agora.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }))
   }, [])
 
   const fetchData = useCallback(async () => {
@@ -201,100 +206,142 @@ export default function InicioPage() {
 
   const sinalStatus = (sv: any) => {
     const prog = sv.meta > 0 ? Math.max(0, ((sv.valor_atual - sv.valor_inicial) / (sv.meta - sv.valor_inicial)) * 100) : 0
-    if (prog >= 70) return { cor: 'bg-green-500', texto: 'text-green-600', label: 'Saudável' }
-    if (prog >= 40) return { cor: 'bg-yellow-500', texto: 'text-yellow-600', label: 'Atenção' }
+    if (prog >= 70) return { cor: 'bg-emerald-500', texto: 'text-emerald-600', label: 'Saudável' }
+    if (prog >= 40) return { cor: 'bg-amber-500', texto: 'text-amber-600', label: 'Atenção' }
     return { cor: 'bg-red-500', texto: 'text-red-600', label: 'Crítico' }
   }
 
   if (loading) {
     return (
-      <div className="space-y-4 animate-pulse">
-        <div className="h-40 rounded-2xl bg-secondary" />
+      <div className="space-y-5 animate-pulse">
+        <div className="h-56 rounded-2xl bg-secondary" />
         <div className="grid grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => <div key={i} className="h-24 rounded-xl bg-secondary" />)}
+          {[1, 2, 3].map(i => <div key={i} className="h-36 rounded-2xl bg-secondary" />)}
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          {[1, 2].map(i => <div key={i} className="h-48 rounded-2xl bg-secondary" />)}
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 max-w-6xl">
 
-      {/* Hero */}
-      <div className="relative bg-primary rounded-2xl p-6 md:p-8 overflow-hidden">
-        <div className="absolute inset-0 opacity-10"
-          style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, white 0%, transparent 60%)' }} />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="flex-1">
-            <p className="text-primary-foreground/70 text-sm font-medium mb-1">
-              {hora}{nomeUsuario ? `, ${nomeUsuario}` : ''}! 👋
-            </p>
-            <h1 className="text-2xl md:text-3xl font-bold text-primary-foreground mb-3 leading-snug">
-              {empresa?.company_name}
-            </h1>
-            <div className="group relative max-w-lg">
-              {editando === 'visao_futuro' ? (
-                <div className="space-y-2">
-                  <textarea
-                    value={formIdentidade.visao_futuro}
-                    onChange={(e) => handleChange('visao_futuro', e.target.value)}
-                    rows={3} placeholder="Qual é o norte de longo prazo da empresa?"
-                    className="w-full px-3 py-2 text-sm rounded-md border border-white/30 bg-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/50 resize-none" autoFocus
-                  />
-                  <div className="flex gap-2">
-                    <button onClick={() => handleSalvar('visao_futuro')} className="flex items-center gap-1 px-3 py-1.5 bg-white text-primary rounded-md text-xs font-medium">
-                      <Check className="w-3 h-3" /> Salvar
-                    </button>
-                    <button onClick={handleCancelar} className="flex items-center gap-1 px-3 py-1.5 border border-white/30 rounded-md text-xs text-white/70">
-                      <X className="w-3 h-3" /> Cancelar
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <p className={`text-primary-foreground/80 text-sm leading-relaxed ${!formIdentidade.visao_futuro && 'italic opacity-50'}`}>
-                    {formIdentidade.visao_futuro || 'Adicione a visão de futuro da empresa...'}
-                  </p>
-                  <button onClick={() => handleEdit('visao_futuro')} className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-white/10">
-                    <Edit2 className="w-3 h-3 text-white/60" />
-                  </button>
-                </>
-              )}
+      {/* ═══ HERO — Capa da empresa ═══ */}
+      <div className="relative rounded-2xl overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5986 40%, #1a4a7a 100%)' }}>
+
+        {/* Padrão de fundo sutil */}
+        <div className="absolute inset-0 opacity-5"
+          style={{
+            backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
+            backgroundSize: '32px 32px'
+          }} />
+        <div className="absolute top-0 right-0 w-96 h-96 opacity-10 rounded-full blur-3xl"
+          style={{ background: 'radial-gradient(circle, #60a5fa, transparent)' }} />
+
+        <div className="relative z-10 p-8 md:p-10">
+          {/* Data + saudação */}
+          <div className="flex items-start justify-between mb-8">
+            <div>
+              <p className="text-blue-200/70 text-xs font-medium uppercase tracking-widest mb-1 capitalize">{dataHoje}</p>
+              <p className="text-white/80 text-sm">
+                {hora}{nomeUsuario ? `, ${nomeUsuario}` : ''}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-2 text-center">
+                <p className="text-xl font-bold text-white">{krsAtivos}</p>
+                <p className="text-[10px] text-white/50 uppercase tracking-wider mt-0.5">KRs ativos</p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-2 text-center">
+                <p className="text-xl font-bold text-white">{formatPercent(progressoGeral)}</p>
+                <p className="text-[10px] text-white/50 uppercase tracking-wider mt-0.5">Progresso</p>
+              </div>
             </div>
           </div>
 
-          {/* Stats */}
-          <div className="flex gap-3 md:flex-col md:gap-2 shrink-0">
-            <div className="bg-white/10 rounded-xl px-4 py-3 text-center min-w-24">
-              <p className="text-2xl font-bold text-white">{formatPercent(progressoGeral)}</p>
-              <p className="text-xs text-white/60 mt-0.5">Progresso geral</p>
-            </div>
-            <div className="bg-white/10 rounded-xl px-4 py-3 text-center min-w-24">
-              <p className="text-2xl font-bold text-white">{krsAtivos}</p>
-              <p className="text-xs text-white/60 mt-0.5">KRs ativos</p>
-            </div>
-            <div className="bg-white/10 rounded-xl px-4 py-3 text-center min-w-24">
-              <p className="text-2xl font-bold text-white">{svs.length}</p>
-              <p className="text-xs text-white/60 mt-0.5">Sinais vitais</p>
-            </div>
+          {/* Nome da empresa */}
+          <div className="mb-2">
+            <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight leading-none">
+              {empresa?.company_name}
+            </h1>
+          </div>
+
+          {/* Visão de futuro */}
+          <div className="group relative max-w-2xl mt-4">
+            {editando === 'visao_futuro' ? (
+              <div className="space-y-2">
+                <textarea
+                  value={formIdentidade.visao_futuro}
+                  onChange={(e) => handleChange('visao_futuro', e.target.value)}
+                  rows={2} placeholder="Qual é o norte de longo prazo da empresa?"
+                  className="w-full px-4 py-3 text-sm rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/30 resize-none"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button onClick={() => handleSalvar('visao_futuro')} className="flex items-center gap-1.5 px-4 py-1.5 bg-white text-gray-900 rounded-lg text-xs font-semibold hover:bg-white/90">
+                    <Check className="w-3 h-3" /> Salvar
+                  </button>
+                  <button onClick={handleCancelar} className="flex items-center gap-1.5 px-4 py-1.5 border border-white/20 rounded-lg text-xs text-white/60 hover:bg-white/10">
+                    <X className="w-3 h-3" /> Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-3">
+                <div className="w-0.5 h-12 bg-blue-400/40 rounded-full shrink-0 mt-1" />
+                <div className="flex-1">
+                  <p className={`text-base leading-relaxed font-light ${formIdentidade.visao_futuro ? 'text-white/80' : 'text-white/25 italic'}`}>
+                    {formIdentidade.visao_futuro || 'Adicione a visão de futuro da empresa...'}
+                  </p>
+                </div>
+                <button onClick={() => handleEdit('visao_futuro')} className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-white/10 shrink-0">
+                  <Edit2 className="w-3.5 h-3.5 text-white/40" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Identidade */}
+      {/* ═══ IDENTIDADE — 3 pilares ═══ */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-card border border-border rounded-xl p-5">
+
+        {/* Mercado */}
+        <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center border border-blue-100">
+              <Target className="w-4 h-4 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-foreground">Mercado</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Posicionamento</p>
+            </div>
+          </div>
           <EditableBlock
-            campo="mercado_posicionamento" label="Mercado e Posicionamento"
+            campo="mercado_posicionamento"
             placeholder="Onde atuamos e qual nosso diferencial competitivo?"
             multiline value={formIdentidade.mercado_posicionamento}
             editando={editando} onEdit={handleEdit} onChange={handleChange}
             onSalvar={handleSalvar} onCancelar={handleCancelar}
           />
         </div>
-        <div className="bg-card border border-border rounded-xl p-5">
+
+        {/* Valores */}
+        <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center border border-violet-100">
+              <Heart className="w-4 h-4 text-violet-600" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-foreground">Valores</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Princípios</p>
+            </div>
+          </div>
           <EditableBlock
-            campo="valores" label="Nossos Valores"
+            campo="valores"
             placeholder="Ex: Foco no Cliente, Inovação, Integridade..."
             multiline value={formIdentidade.valores}
             editando={editando} onEdit={handleEdit} onChange={handleChange}
@@ -302,39 +349,50 @@ export default function InicioPage() {
           />
         </div>
 
-        {/* Humor */}
-        <div className="bg-card border border-border rounded-xl p-5">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Como você está hoje?</p>
+        {/* Pulso do time */}
+        <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center border border-emerald-100">
+              <span className="text-sm">💚</span>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-foreground">Pulso do time</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Como você está?</p>
+            </div>
+          </div>
+
           {humorHoje ? (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
+            <div>
+              <div className="flex items-center gap-3 mb-3">
                 <span className="text-3xl">{HUMOR_EMOJIS.find(h => h.valor === humorHoje)?.emoji}</span>
                 <div>
-                  <p className="text-sm font-medium text-foreground">{HUMOR_EMOJIS.find(h => h.valor === humorHoje)?.label}</p>
+                  <p className="text-sm font-semibold text-foreground">{HUMOR_EMOJIS.find(h => h.valor === humorHoje)?.label}</p>
                   <p className="text-xs text-muted-foreground">Registrado hoje</p>
                 </div>
               </div>
               {mediaHumor && (
-                <div className="mt-2 pt-2 border-t border-border">
-                  <p className="text-xs text-muted-foreground">
-                    Média do time esta semana: <span className="text-base">{HUMOR_EMOJIS.find(h => h.valor === mediaHumor)?.emoji}</span> {HUMOR_EMOJIS.find(h => h.valor === mediaHumor)?.label}
+                <div className="pt-3 border-t border-border">
+                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1">Média do time</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {HUMOR_EMOJIS.find(h => h.valor === mediaHumor)?.emoji} {HUMOR_EMOJIS.find(h => h.valor === mediaHumor)?.label}
                   </p>
                 </div>
               )}
             </div>
           ) : (
             <div>
-              <div className="flex gap-2 mb-2">
+              <p className="text-xs text-muted-foreground mb-3">Selecione como está se sentindo hoje</p>
+              <div className="flex gap-1.5">
                 {HUMOR_EMOJIS.map((h) => (
                   <button key={h.valor} onClick={() => handleHumor(h.valor)}
-                    className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg hover:bg-accent transition-colors group flex-1" title={h.label}>
-                    <span className="text-xl group-hover:scale-125 transition-transform">{h.emoji}</span>
+                    className="flex-1 flex flex-col items-center py-2 rounded-xl hover:bg-accent transition-all hover:scale-105" title={h.label}>
+                    <span className="text-xl">{h.emoji}</span>
                   </button>
                 ))}
               </div>
               {mediaHumor && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Média do time: {HUMOR_EMOJIS.find(h => h.valor === mediaHumor)?.emoji}
+                <p className="text-xs text-muted-foreground mt-3">
+                  Média do time: {HUMOR_EMOJIS.find(h => h.valor === mediaHumor)?.emoji} {HUMOR_EMOJIS.find(h => h.valor === mediaHumor)?.label}
                 </p>
               )}
             </div>
@@ -342,16 +400,19 @@ export default function InicioPage() {
         </div>
       </div>
 
-      {/* Campanha */}
+      {/* ═══ CAMPANHA ═══ */}
       {(formIdentidade.campanha_titulo || formIdentidade.campanha_descricao) ? (
-        <div className="bg-gradient-to-r from-violet-500/10 to-blue-500/10 border border-violet-200 rounded-xl p-5">
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-lg bg-violet-500/20 flex items-center justify-center shrink-0">
-              <span className="text-xl">📢</span>
+        <div className="relative rounded-2xl overflow-hidden border border-amber-200/60"
+          style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)' }}>
+          <div className="absolute right-0 top-0 bottom-0 w-1 bg-amber-400" />
+          <div className="p-6 flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+              <Megaphone className="w-5 h-5 text-amber-600" />
             </div>
-            <div className="flex-1 space-y-2">
+            <div className="flex-1 space-y-1">
+              <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-widest">Campanha Ativa</p>
               <EditableBlock
-                campo="campanha_titulo" label="Campanha Ativa"
+                campo="campanha_titulo"
                 placeholder="Título da campanha"
                 value={formIdentidade.campanha_titulo}
                 editando={editando} onEdit={handleEdit} onChange={handleChange}
@@ -359,7 +420,7 @@ export default function InicioPage() {
               />
               <EditableBlock
                 campo="campanha_descricao"
-                placeholder="Descrição da campanha ou ação de endomarketing..."
+                placeholder="Descrição da campanha..."
                 multiline value={formIdentidade.campanha_descricao}
                 editando={editando} onEdit={handleEdit} onChange={handleChange}
                 onSalvar={handleSalvar} onCancelar={handleCancelar}
@@ -368,90 +429,109 @@ export default function InicioPage() {
           </div>
         </div>
       ) : (
-        <button
-          onClick={() => handleEdit('campanha_titulo')}
-          className="w-full border-2 border-dashed border-border rounded-xl p-4 text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
-        >
-          <span>+</span> Adicionar campanha ativa
+        <button onClick={() => handleEdit('campanha_titulo')}
+          className="w-full border border-dashed border-border rounded-2xl p-5 hover:border-primary/50 hover:bg-accent/20 transition-all group">
+          <div className="flex items-center justify-center gap-2 text-muted-foreground group-hover:text-foreground">
+            <Plus className="w-4 h-4" />
+            <span className="text-sm font-medium">Adicionar campanha ativa</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">Comunique iniciativas, treinamentos ou movimentos estratégicos</p>
         </button>
       )}
 
-      {/* OKRs e Sinais Vitais */}
+      {/* ═══ PERFORMANCE ═══ */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-card border border-border rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                <TrendingUp className="w-3.5 h-3.5 text-primary" />
+
+        {/* OKRs */}
+        <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center">
+                <TrendingUp className="w-4 h-4 text-blue-600" />
               </div>
-              <p className="text-sm font-semibold text-foreground">OKRs</p>
+              <div>
+                <p className="text-sm font-semibold text-foreground">OKRs</p>
+                <p className="text-[10px] text-muted-foreground">{objetivos.length} objetivo{objetivos.length !== 1 ? 's' : ''} · {krs.length} KRs</p>
+              </div>
             </div>
-            <Link href="/okr" className="flex items-center gap-1 text-xs text-primary hover:underline">
+            <Link href="/okr" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
               Ver tudo <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
+
           <div className="space-y-4">
             {objetivosComKrs.slice(0, 4).map((obj) => (
               <div key={obj.id}>
                 <div className="flex items-center justify-between mb-1.5">
                   <p className="text-xs font-medium text-foreground truncate flex-1 mr-3">{obj.titulo}</p>
-                  <span className={`text-xs font-semibold shrink-0 ${obj.progresso >= 70 ? 'text-green-600' : obj.progresso >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+                  <span className={`text-xs font-bold shrink-0 ${obj.progresso >= 70 ? 'text-emerald-600' : obj.progresso >= 40 ? 'text-amber-600' : 'text-red-600'}`}>
                     {formatPercent(obj.progresso)}
                   </span>
                 </div>
                 <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all ${obj.progresso >= 70 ? 'bg-green-500' : obj.progresso >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                    className={`h-full rounded-full transition-all ${obj.progresso >= 70 ? 'bg-emerald-500' : obj.progresso >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
                     style={{ width: `${Math.min(obj.progresso, 100)}%` }}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">{obj.krs.length} Key Result{obj.krs.length !== 1 ? 's' : ''}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{obj.krs.length} Key Result{obj.krs.length !== 1 ? 's' : ''}</p>
               </div>
             ))}
             {objetivosComKrs.length === 0 && (
-              <div className="text-center py-4">
+              <div className="text-center py-6">
                 <p className="text-xs text-muted-foreground mb-2">Nenhum objetivo cadastrado.</p>
-                <Link href="/okr" className="text-xs text-primary hover:underline">Criar primeiro objetivo →</Link>
+                <Link href="/okr" className="text-xs text-primary hover:underline font-medium">Criar primeiro objetivo →</Link>
               </div>
             )}
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Activity className="w-3.5 h-3.5 text-primary" />
+        {/* Sinais Vitais */}
+        <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                <Activity className="w-4 h-4 text-emerald-600" />
               </div>
-              <p className="text-sm font-semibold text-foreground">Sinais Vitais</p>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Sinais Vitais</p>
+                <p className="text-[10px] text-muted-foreground">Saúde do negócio</p>
+              </div>
             </div>
-            <Link href="/sinais-vitais" className="flex items-center gap-1 text-xs text-primary hover:underline">
+            <Link href="/sinais-vitais" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
               Ver tudo <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
-          <div className="space-y-3">
-            {svs.slice(0, 5).map((sv) => {
-              const status = sinalStatus(sv)
-              return (
-                <div key={sv.id} className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${status.cor}`} />
-                    <p className="text-xs font-medium text-foreground truncate">{sv.titulo}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-xs font-bold text-foreground">{formatNumber(sv.valor_atual ?? sv.valor_inicial ?? 0)}</p>
-                    <p className={`text-xs font-medium ${status.texto}`}>{status.label}</p>
-                  </div>
-                </div>
-              )
-            })}
-            {svs.length === 0 && (
-              <div className="text-center py-4">
-                <p className="text-xs text-muted-foreground mb-2">Nenhum sinal vital cadastrado.</p>
-                <Link href="/sinais-vitais" className="text-xs text-primary hover:underline">Criar primeiro sinal vital →</Link>
+
+          {svs.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-3">
+                <Activity className="w-5 h-5 text-muted-foreground" />
               </div>
-            )}
-          </div>
+              <p className="text-sm font-medium text-foreground mb-1">Nenhum indicador configurado</p>
+              <p className="text-xs text-muted-foreground mb-4">Configure KPIs para monitorar a saúde do negócio.</p>
+              <Link href="/sinais-vitais"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-medium hover:opacity-90">
+                <Plus className="w-3 h-3" /> Criar indicador
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {svs.slice(0, 6).map((sv) => {
+                const status = sinalStatus(sv)
+                return (
+                  <div key={sv.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-accent/40 transition-colors">
+                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${status.cor}`} />
+                    <p className="text-xs font-medium text-foreground truncate flex-1">{sv.titulo}</p>
+                    <div className="text-right shrink-0">
+                      <p className="text-xs font-bold text-foreground">{formatNumber(sv.valor_atual ?? sv.valor_inicial ?? 0)}</p>
+                      <p className={`text-[10px] font-medium ${status.texto}`}>{status.label}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
