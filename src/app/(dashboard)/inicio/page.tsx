@@ -260,8 +260,8 @@ export default function InicioPage() {
 
           {/* Nome da empresa em destaque */}
           <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight leading-none mb-6">
-            {empresa?.company_name}
-          </h1>
+  {nomeUsuario || empresa?.company_name}
+</h1>
 
           {/* Visão de futuro — destaque com linha lateral e fundo */}
           <div className="group relative">
