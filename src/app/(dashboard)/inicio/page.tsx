@@ -522,7 +522,12 @@ export default function InicioPage() {
       </div>
 
       {/* ═══ CAMPANHA ═══ */}
-      {(formIdentidade.campanha_titulo || formIdentidade.campanha_descricao) ? (
+      {(
+  formIdentidade.campanha_titulo ||
+  formIdentidade.campanha_descricao ||
+  editando === 'campanha_titulo' ||
+  editando === 'campanha_descricao'
+) ? (
         <div className="relative rounded-2xl overflow-hidden border border-amber-200/60"
           style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)' }}>
           <div className="absolute right-0 top-0 bottom-0 w-1 bg-amber-400" />
