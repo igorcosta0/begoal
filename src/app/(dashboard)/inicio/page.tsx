@@ -218,21 +218,16 @@ export default function InicioPage() {
         <div className="grid grid-cols-3 gap-4">
           {[1, 2, 3].map(i => <div key={i} className="h-36 rounded-2xl bg-secondary" />)}
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          {[1, 2].map(i => <div key={i} className="h-48 rounded-2xl bg-secondary" />)}
-        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-5 max-w-6xl">
+    <div className="space-y-5">
 
-      {/* ═══ HERO — Capa da empresa ═══ */}
+      {/* ═══ HERO ═══ */}
       <div className="relative rounded-2xl overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5986 40%, #1a4a7a 100%)' }}>
-
-        {/* Padrão de fundo sutil */}
         <div className="absolute inset-0 opacity-5"
           style={{
             backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
@@ -242,35 +237,34 @@ export default function InicioPage() {
           style={{ background: 'radial-gradient(circle, #60a5fa, transparent)' }} />
 
         <div className="relative z-10 p-8 md:p-10">
-          {/* Data + saudação */}
+
+          {/* Topo: data + stats */}
           <div className="flex items-start justify-between mb-8">
             <div>
-              <p className="text-blue-200/70 text-xs font-medium uppercase tracking-widest mb-1 capitalize">{dataHoje}</p>
-              <p className="text-white/80 text-sm">
-                {hora}{nomeUsuario ? `, ${nomeUsuario}` : ''}
+              <p className="text-blue-200/60 text-xs font-medium uppercase tracking-widest mb-1 capitalize">{dataHoje}</p>
+              <p className="text-white/90 text-lg font-medium">
+                {hora}{nomeUsuario ? `, ${nomeUsuario}` : ''} 👋
               </p>
             </div>
             <div className="flex gap-2">
-              <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-2 text-center">
+              <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-2.5 text-center min-w-20">
                 <p className="text-xl font-bold text-white">{krsAtivos}</p>
                 <p className="text-[10px] text-white/50 uppercase tracking-wider mt-0.5">KRs ativos</p>
               </div>
-              <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-2 text-center">
+              <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-2.5 text-center min-w-20">
                 <p className="text-xl font-bold text-white">{formatPercent(progressoGeral)}</p>
                 <p className="text-[10px] text-white/50 uppercase tracking-wider mt-0.5">Progresso</p>
               </div>
             </div>
           </div>
 
-          {/* Nome da empresa */}
-          <div className="mb-2">
-            <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight leading-none">
-              {empresa?.company_name}
-            </h1>
-          </div>
+          {/* Nome da empresa em destaque */}
+          <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight leading-none mb-6">
+            {empresa?.company_name}
+          </h1>
 
-          {/* Visão de futuro */}
-          <div className="group relative max-w-2xl mt-4">
+          {/* Visão de futuro — destaque com linha lateral e fundo */}
+          <div className="group relative">
             {editando === 'visao_futuro' ? (
               <div className="space-y-2">
                 <textarea
@@ -290,15 +284,16 @@ export default function InicioPage() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-start gap-3">
-                <div className="w-0.5 h-12 bg-blue-400/40 rounded-full shrink-0 mt-1" />
+              <div className="relative bg-white/8 backdrop-blur-sm border border-white/10 rounded-xl p-4 flex items-center gap-4">
+                <div className="w-1 self-stretch bg-blue-400/60 rounded-full shrink-0" />
                 <div className="flex-1">
-                  <p className={`text-base leading-relaxed font-light ${formIdentidade.visao_futuro ? 'text-white/80' : 'text-white/25 italic'}`}>
-                    {formIdentidade.visao_futuro || 'Adicione a visão de futuro da empresa...'}
+                  <p className="text-[10px] font-semibold text-blue-300/70 uppercase tracking-widest mb-1">Visão de Futuro</p>
+                  <p className={`text-base font-light leading-relaxed ${formIdentidade.visao_futuro ? 'text-white/90' : 'text-white/25 italic text-sm'}`}>
+                    {formIdentidade.visao_futuro || 'Clique no lápis para adicionar a visão de futuro da empresa...'}
                   </p>
                 </div>
-                <button onClick={() => handleEdit('visao_futuro')} className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-white/10 shrink-0">
-                  <Edit2 className="w-3.5 h-3.5 text-white/40" />
+                <button onClick={() => handleEdit('visao_futuro')} className="opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-lg hover:bg-white/10 shrink-0">
+                  <Edit2 className="w-4 h-4 text-white/40" />
                 </button>
               </div>
             )}
@@ -306,7 +301,7 @@ export default function InicioPage() {
         </div>
       </div>
 
-      {/* ═══ IDENTIDADE — 3 pilares ═══ */}
+      {/* ═══ IDENTIDADE ═══ */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
         {/* Mercado */}
@@ -360,7 +355,6 @@ export default function InicioPage() {
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Como você está?</p>
             </div>
           </div>
-
           {humorHoje ? (
             <div>
               <div className="flex items-center gap-3 mb-3">
@@ -458,7 +452,6 @@ export default function InicioPage() {
               Ver tudo <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
-
           <div className="space-y-4">
             {objetivosComKrs.slice(0, 4).map((obj) => (
               <div key={obj.id}>
@@ -502,7 +495,6 @@ export default function InicioPage() {
               Ver tudo <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
-
           {svs.length === 0 ? (
             <div className="text-center py-8">
               <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-3">
