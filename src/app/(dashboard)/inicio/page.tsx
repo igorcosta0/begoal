@@ -17,73 +17,6 @@ const HUMOR_EMOJIS = [
   { valor: 5, emoji: '😄', label: 'Ótimo' },
 ]
 
-interface EditableBlockProps {
-  campo: string
-  label?: string
-  placeholder: string
-  multiline?: boolean
-  value: string
-  editando: string | null
-  onEdit: (campo: string) => void
-  onChange: (campo: string, valor: string) => void
-  onSalvar: (campo: string) => void
-  onCancelar: () => void
-  dark?: boolean
-}
-
-function EditableBlock({
-  campo, label, placeholder, multiline = false,
-  value, editando, onEdit, onChange, onSalvar, onCancelar, dark = false,
-}: EditableBlockProps) {
-  const isEditing = editando === campo
-  const baseInput = `w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 resize-none`
-  const lightInput = `${baseInput} border-border bg-background text-foreground placeholder:text-muted-foreground focus:ring-ring`
-  const darkInput = `${baseInput} border-white/20 bg-white/10 text-white placeholder:text-white/40 focus:ring-white/30`
-
-  return (
-    <div className="group relative">
-      {label && (
-        <div className="flex items-center justify-between mb-2">
-          <p className={`text-[11px] font-semibold uppercase tracking-widest ${dark ? 'text-white/50' : 'text-muted-foreground'}`}>{label}</p>
-          {!isEditing && (
-            <button onClick={() => onEdit(campo)} className={`opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded ${dark ? 'hover:bg-white/10' : 'hover:bg-accent'}`}>
-              <Edit2 className={`w-3 h-3 ${dark ? 'text-white/50' : 'text-muted-foreground'}`} />
-            </button>
-          )}
-        </div>
-      )}
-      {!label && !isEditing && (
-        <button onClick={() => onEdit(campo)} className={`absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded z-10 ${dark ? 'hover:bg-white/10' : 'hover:bg-accent'}`}>
-          <Edit2 className={`w-3 h-3 ${dark ? 'text-white/50' : 'text-muted-foreground'}`} />
-        </button>
-      )}
-      {isEditing ? (
-        <div className="space-y-2">
-          {multiline ? (
-            <textarea value={value} onChange={(e) => onChange(campo, e.target.value)} rows={4}
-              placeholder={placeholder} className={dark ? darkInput : lightInput} autoFocus />
-          ) : (
-            <input type="text" value={value} onChange={(e) => onChange(campo, e.target.value)}
-              placeholder={placeholder} className={dark ? darkInput.replace('resize-none', '') : lightInput.replace('resize-none', '')} autoFocus />
-          )}
-          <div className="flex gap-2">
-            <button onClick={() => onSalvar(campo)} className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${dark ? 'bg-white text-gray-900' : 'bg-primary text-primary-foreground'}`}>
-              <Check className="w-3 h-3" /> Salvar
-            </button>
-            <button onClick={onCancelar} className={`flex items-center gap-1 px-3 py-1.5 border rounded-lg text-xs ${dark ? 'border-white/20 text-white/60' : 'border-border text-muted-foreground'}`}>
-              <X className="w-3 h-3" /> Cancelar
-            </button>
-          </div>
-        </div>
-      ) : (
-        <p className={`text-sm leading-relaxed ${value ? (dark ? 'text-white/90' : 'text-foreground') : (dark ? 'text-white/30 italic' : 'text-muted-foreground/50 italic')}`}>
-          {value || placeholder}
-        </p>
-      )}
-    </div>
-  )
-}
-
 interface ComentariosBlockProps {
   campo: string
   clientId: string
@@ -108,9 +41,7 @@ function ComentariosBlock({ campo, clientId, userId, nomeUsuario }: ComentariosB
     setComentarios(data ?? [])
   }, [clientId, campo])
 
-  useEffect(() => {
-    if (mostrar) fetchComentarios()
-  }, [mostrar, fetchComentarios])
+  useEffect(() => { fetchComentarios() }, [fetchComentarios])
 
   async function handleEnviar(e: React.FormEvent) {
     e.preventDefault()
@@ -139,10 +70,10 @@ function ComentariosBlock({ campo, clientId, userId, nomeUsuario }: ComentariosB
     <div className="mt-3 pt-3 border-t border-border">
       <button
         onClick={() => setMostrar(!mostrar)}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
       >
         <span className="text-base">💬</span>
-        {mostrar ? 'Ocultar comentários' : `Comentários${comentarios.length > 0 ? ` (${comentarios.length})` : ''}`}
+        {mostrar ? 'Ocultar comentários' : `Comentários${comentarios.length > 0 ? ` (${comentarios.length})` : ' · Adicionar'}`}
       </button>
 
       {mostrar && (
@@ -165,16 +96,12 @@ function ComentariosBlock({ campo, clientId, userId, nomeUsuario }: ComentariosB
                 <p className="text-xs text-foreground leading-relaxed">{c.comentario}</p>
               </div>
               {c.user_id === userId && (
-                <button
-                  onClick={() => handleExcluir(c.id)}
-                  className="opacity-0 group-hover/comment:opacity-100 transition-opacity p-1 rounded hover:bg-accent shrink-0"
-                >
+                <button onClick={() => handleExcluir(c.id)} className="opacity-0 group-hover/comment:opacity-100 transition-opacity p-1 rounded hover:bg-accent shrink-0">
                   <Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive" />
                 </button>
               )}
             </div>
           ))}
-
           <form onSubmit={handleEnviar} className="flex gap-2 mt-2">
             <input
               type="text"
@@ -183,11 +110,8 @@ function ComentariosBlock({ campo, clientId, userId, nomeUsuario }: ComentariosB
               placeholder="Adicionar comentário..."
               className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
-            <button
-              type="submit"
-              disabled={loading || !novoComentario.trim()}
-              className="p-1.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
-            >
+            <button type="submit" disabled={loading || !novoComentario.trim()}
+              className="p-1.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50">
               <Send className="w-3.5 h-3.5" />
             </button>
           </form>
@@ -197,14 +121,128 @@ function ComentariosBlock({ campo, clientId, userId, nomeUsuario }: ComentariosB
   )
 }
 
+interface ListaItensProps {
+  campo: string
+  itens: string[]
+  placeholder: string
+  onSalvar: (campo: string, itens: string[]) => Promise<void>
+}
+
+function ListaItens({ campo, itens, placeholder, onSalvar }: ListaItensProps) {
+  const [editandoIdx, setEditandoIdx] = useState<number | null>(null)
+  const [textoEdicao, setTextoEdicao] = useState('')
+  const [novoItem, setNovoItem] = useState('')
+  const [adicionando, setAdicionando] = useState(false)
+
+  async function handleEditarSalvar(idx: number) {
+    if (!textoEdicao.trim()) return
+    const novos = [...itens]
+    novos[idx] = textoEdicao.trim()
+    await onSalvar(campo, novos)
+    setEditandoIdx(null)
+  }
+
+  async function handleExcluir(idx: number) {
+    const novos = itens.filter((_, i) => i !== idx)
+    await onSalvar(campo, novos)
+  }
+
+  async function handleAdicionar(e: React.FormEvent) {
+    e.preventDefault()
+    if (!novoItem.trim()) return
+    await onSalvar(campo, [...itens, novoItem.trim()])
+    setNovoItem('')
+    setAdicionando(false)
+  }
+
+  return (
+    <div className="space-y-1">
+      {/* Lista com scroll */}
+      <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+        {itens.length === 0 && !adicionando && (
+          <p className="text-sm text-muted-foreground/50 italic">{placeholder}</p>
+        )}
+        {itens.map((item, idx) => (
+          <div key={idx} className="group/item flex items-start gap-2">
+            {editandoIdx === idx ? (
+              <div className="flex-1 flex gap-1.5">
+                <input
+                  type="text"
+                  value={textoEdicao}
+                  onChange={(e) => setTextoEdicao(e.target.value)}
+                  className="flex-1 px-2 py-1 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  autoFocus
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleEditarSalvar(idx); if (e.key === 'Escape') setEditandoIdx(null) }}
+                />
+                <button onClick={() => handleEditarSalvar(idx)} className="p-1 rounded-md bg-primary text-primary-foreground hover:opacity-90">
+                  <Check className="w-3 h-3" />
+                </button>
+                <button onClick={() => setEditandoIdx(null)} className="p-1 rounded-md border border-border text-muted-foreground hover:bg-accent">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="w-1.5 h-1.5 rounded-full bg-primary/40 shrink-0 mt-1.5" />
+                <p className="flex-1 text-sm text-foreground leading-snug">{item}</p>
+                <div className="flex gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0">
+                  <button onClick={() => { setEditandoIdx(idx); setTextoEdicao(item) }} className="p-1 rounded hover:bg-accent">
+                    <Edit2 className="w-3 h-3 text-muted-foreground" />
+                  </button>
+                  <button onClick={() => handleExcluir(idx)} className="p-1 rounded hover:bg-accent">
+                    <Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive" />
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Adicionar novo item */}
+      {adicionando ? (
+        <form onSubmit={handleAdicionar} className="flex gap-1.5 mt-2">
+          <input
+            type="text"
+            value={novoItem}
+            onChange={(e) => setNovoItem(e.target.value)}
+            placeholder="Novo item..."
+            className="flex-1 px-2 py-1.5 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            autoFocus
+            onKeyDown={(e) => { if (e.key === 'Escape') setAdicionando(false) }}
+          />
+          <button type="submit" disabled={!novoItem.trim()} className="p-1.5 rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50">
+            <Check className="w-3.5 h-3.5" />
+          </button>
+          <button type="button" onClick={() => setAdicionando(false)} className="p-1.5 rounded-md border border-border text-muted-foreground hover:bg-accent">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </form>
+      ) : (
+        <button
+          onClick={() => setAdicionando(true)}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-2"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Adicionar item
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function InicioPage() {
   const { empresa } = useEmpresaStore()
   const [identidade, setIdentidade] = useState<any>(null)
-  const [editando, setEditando] = useState<string | null>(null)
   const [formIdentidade, setFormIdentidade] = useState({
-    visao_futuro: '', mercado_posicionamento: '', valores: '',
-    campanha_titulo: '', campanha_descricao: '',
+    visao_futuro: '',
+    campanha_titulo: '',
+    campanha_descricao: '',
   })
+  const [mercadoItens, setMercadoItens] = useState<string[]>([])
+  const [valoresItens, setValoresItens] = useState<string[]>([])
+  const [editando, setEditando] = useState<string | null>(null)
+
   const [objetivos, setObjetivos] = useState<any[]>([])
   const [krs, setKrs] = useState<any[]>([])
   const [svs, setSvs] = useState<any[]>([])
@@ -258,12 +296,20 @@ export default function InicioPage() {
     if (identidadeData) {
       setFormIdentidade({
         visao_futuro: identidadeData.visao_futuro ?? '',
-        mercado_posicionamento: identidadeData.mercado_posicionamento ?? '',
-        valores: identidadeData.valores ?? '',
         campanha_titulo: identidadeData.campanha_titulo ?? '',
         campanha_descricao: identidadeData.campanha_descricao ?? '',
       })
+
+      // Converter mercado e valores de jsonb para array
+      const parseLista = (val: any): string[] => {
+        if (!val) return []
+        if (Array.isArray(val)) return val
+        try { return JSON.parse(val) } catch { return [String(val)] }
+      }
+      setMercadoItens(parseLista(identidadeData.mercado_posicionamento))
+      setValoresItens(parseLista(identidadeData.valores))
     }
+
     setObjetivos(objs ?? [])
     setKrs(krsData ?? [])
     setSvs(svsData ?? [])
@@ -282,7 +328,8 @@ export default function InicioPage() {
   }, [])
   const handleEdit = useCallback((campo: string) => { setEditando(campo) }, [])
   const handleCancelar = useCallback(() => { setEditando(null) }, [])
-  const handleSalvar = useCallback(async (campo: string) => {
+
+  const handleSalvarTexto = useCallback(async (campo: string) => {
     if (!empresa) return
     const supabase = createClient()
     const valor = (formIdentidade as any)[campo]
@@ -294,6 +341,19 @@ export default function InicioPage() {
     setEditando(null)
     fetchData()
   }, [empresa, formIdentidade, identidade, fetchData])
+
+  const handleSalvarLista = useCallback(async (campo: string, novosItens: string[]) => {
+    if (!empresa) return
+    const supabase = createClient()
+    if (identidade) {
+      await supabase.from('empresa_identidade').update({ [campo]: novosItens, updated_at: new Date().toISOString() }).eq('client_id', empresa.id)
+    } else {
+      await supabase.from('empresa_identidade').insert({ client_id: empresa.id, [campo]: novosItens })
+    }
+    if (campo === 'mercado_posicionamento') setMercadoItens(novosItens)
+    if (campo === 'valores') setValoresItens(novosItens)
+    fetchData()
+  }, [empresa, identidade, fetchData])
 
   const handleHumor = useCallback(async (valor: number) => {
     if (!empresa) return
@@ -331,7 +391,7 @@ export default function InicioPage() {
       <div className="space-y-5 animate-pulse">
         <div className="h-56 rounded-2xl bg-secondary" />
         <div className="grid grid-cols-3 gap-4">
-          {[1, 2, 3].map(i => <div key={i} className="h-36 rounded-2xl bg-secondary" />)}
+          {[1, 2, 3].map(i => <div key={i} className="h-48 rounded-2xl bg-secondary" />)}
         </div>
       </div>
     )
@@ -344,10 +404,7 @@ export default function InicioPage() {
       <div className="relative rounded-2xl overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5986 40%, #1a4a7a 100%)' }}>
         <div className="absolute inset-0 opacity-5"
-          style={{
-            backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
-            backgroundSize: '32px 32px'
-          }} />
+          style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
         <div className="absolute top-0 right-0 w-96 h-96 opacity-10 rounded-full blur-3xl"
           style={{ background: 'radial-gradient(circle, #60a5fa, transparent)' }} />
 
@@ -355,9 +412,7 @@ export default function InicioPage() {
           <div className="flex items-start justify-between mb-8">
             <div>
               <p className="text-blue-200/60 text-xs font-medium uppercase tracking-widest mb-1 capitalize">{dataHoje}</p>
-              <p className="text-white/90 text-lg font-medium">
-                {hora}{nomeUsuario ? `, ${nomeUsuario}` : ''} 👋
-              </p>
+              <p className="text-white/90 text-lg font-medium">{hora}{nomeUsuario ? `, ${nomeUsuario}` : ''} 👋</p>
             </div>
             <div className="flex gap-2">
               <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-2.5 text-center min-w-20">
@@ -375,6 +430,7 @@ export default function InicioPage() {
             {nomeUsuario || empresa?.company_name}
           </h1>
 
+          {/* Visão de futuro */}
           <div className="group relative">
             {editando === 'visao_futuro' ? (
               <div className="space-y-2">
@@ -386,7 +442,7 @@ export default function InicioPage() {
                   autoFocus
                 />
                 <div className="flex gap-2">
-                  <button onClick={() => handleSalvar('visao_futuro')} className="flex items-center gap-1.5 px-4 py-1.5 bg-white text-gray-900 rounded-lg text-xs font-semibold">
+                  <button onClick={() => handleSalvarTexto('visao_futuro')} className="flex items-center gap-1.5 px-4 py-1.5 bg-white text-gray-900 rounded-lg text-xs font-semibold">
                     <Check className="w-3 h-3" /> Salvar
                   </button>
                   <button onClick={handleCancelar} className="flex items-center gap-1.5 px-4 py-1.5 border border-white/20 rounded-lg text-xs text-white/60">
@@ -416,8 +472,8 @@ export default function InicioPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
         {/* Mercado */}
-        <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-2.5 mb-4">
+        <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-shadow flex flex-col">
+          <div className="flex items-center gap-2.5 mb-4 shrink-0">
             <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center border border-blue-100">
               <Target className="w-4 h-4 text-blue-600" />
             </div>
@@ -426,13 +482,14 @@ export default function InicioPage() {
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Posicionamento</p>
             </div>
           </div>
-          <EditableBlock
-            campo="mercado_posicionamento"
-            placeholder="Onde atuamos e qual nosso diferencial competitivo?"
-            multiline value={formIdentidade.mercado_posicionamento}
-            editando={editando} onEdit={handleEdit} onChange={handleChange}
-            onSalvar={handleSalvar} onCancelar={handleCancelar}
-          />
+          <div className="flex-1 min-h-0">
+            <ListaItens
+              campo="mercado_posicionamento"
+              itens={mercadoItens}
+              placeholder="Adicione onde atuamos e nosso diferencial..."
+              onSalvar={handleSalvarLista}
+            />
+          </div>
           {empresa && (
             <ComentariosBlock
               campo="mercado_posicionamento"
@@ -444,8 +501,8 @@ export default function InicioPage() {
         </div>
 
         {/* Valores */}
-        <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-2.5 mb-4">
+        <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-shadow flex flex-col">
+          <div className="flex items-center gap-2.5 mb-4 shrink-0">
             <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center border border-violet-100">
               <Heart className="w-4 h-4 text-violet-600" />
             </div>
@@ -454,13 +511,14 @@ export default function InicioPage() {
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Princípios</p>
             </div>
           </div>
-          <EditableBlock
-            campo="valores"
-            placeholder="Ex: Foco no Cliente, Inovação, Integridade..."
-            multiline value={formIdentidade.valores}
-            editando={editando} onEdit={handleEdit} onChange={handleChange}
-            onSalvar={handleSalvar} onCancelar={handleCancelar}
-          />
+          <div className="flex-1 min-h-0">
+            <ListaItens
+              campo="valores"
+              itens={valoresItens}
+              placeholder="Adicione os princípios da empresa..."
+              onSalvar={handleSalvarLista}
+            />
+          </div>
           {empresa && (
             <ComentariosBlock
               campo="valores"
@@ -522,12 +580,7 @@ export default function InicioPage() {
       </div>
 
       {/* ═══ CAMPANHA ═══ */}
-      {(
-  formIdentidade.campanha_titulo ||
-  formIdentidade.campanha_descricao ||
-  editando === 'campanha_titulo' ||
-  editando === 'campanha_descricao'
-) ? (
+      {(formIdentidade.campanha_titulo || formIdentidade.campanha_descricao || editando === 'campanha_titulo' || editando === 'campanha_descricao') ? (
         <div className="relative rounded-2xl overflow-hidden border border-amber-200/60"
           style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)' }}>
           <div className="absolute right-0 top-0 bottom-0 w-1 bg-amber-400" />
@@ -535,22 +588,69 @@ export default function InicioPage() {
             <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
               <Megaphone className="w-5 h-5 text-amber-600" />
             </div>
-            <div className="flex-1 space-y-1">
+            <div className="flex-1 space-y-2">
               <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-widest">Campanha Ativa</p>
-              <EditableBlock
-                campo="campanha_titulo"
-                placeholder="Título da campanha"
-                value={formIdentidade.campanha_titulo}
-                editando={editando} onEdit={handleEdit} onChange={handleChange}
-                onSalvar={handleSalvar} onCancelar={handleCancelar}
-              />
-              <EditableBlock
-                campo="campanha_descricao"
-                placeholder="Descrição da campanha..."
-                multiline value={formIdentidade.campanha_descricao}
-                editando={editando} onEdit={handleEdit} onChange={handleChange}
-                onSalvar={handleSalvar} onCancelar={handleCancelar}
-              />
+              {/* Título campanha */}
+              <div className="group relative">
+                {editando === 'campanha_titulo' ? (
+                  <div className="space-y-1.5">
+                    <input type="text" value={formIdentidade.campanha_titulo}
+                      onChange={(e) => handleChange('campanha_titulo', e.target.value)}
+                      placeholder="Título da campanha"
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-amber-300 bg-white text-foreground focus:outline-none focus:ring-2 focus:ring-amber-400"
+                      autoFocus
+                    />
+                    <div className="flex gap-2">
+                      <button onClick={() => handleSalvarTexto('campanha_titulo')} className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-medium">
+                        <Check className="w-3 h-3" /> Salvar
+                      </button>
+                      <button onClick={handleCancelar} className="flex items-center gap-1 px-3 py-1.5 border border-amber-300 rounded-lg text-xs text-amber-700">
+                        <X className="w-3 h-3" /> Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <p className={`text-sm font-semibold ${formIdentidade.campanha_titulo ? 'text-foreground' : 'text-amber-400 italic'}`}>
+                      {formIdentidade.campanha_titulo || 'Título da campanha'}
+                    </p>
+                    <button onClick={() => handleEdit('campanha_titulo')} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-amber-200">
+                      <Edit2 className="w-3 h-3 text-amber-600" />
+                    </button>
+                  </div>
+                )}
+              </div>
+              {/* Descrição campanha */}
+              <div className="group relative">
+                {editando === 'campanha_descricao' ? (
+                  <div className="space-y-1.5">
+                    <textarea value={formIdentidade.campanha_descricao}
+                      onChange={(e) => handleChange('campanha_descricao', e.target.value)}
+                      placeholder="Descrição da campanha..."
+                      rows={3}
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-amber-300 bg-white text-foreground focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
+                      autoFocus
+                    />
+                    <div className="flex gap-2">
+                      <button onClick={() => handleSalvarTexto('campanha_descricao')} className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-medium">
+                        <Check className="w-3 h-3" /> Salvar
+                      </button>
+                      <button onClick={handleCancelar} className="flex items-center gap-1 px-3 py-1.5 border border-amber-300 rounded-lg text-xs text-amber-700">
+                        <X className="w-3 h-3" /> Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2">
+                    <p className={`text-sm flex-1 ${formIdentidade.campanha_descricao ? 'text-foreground' : 'text-amber-400 italic'}`}>
+                      {formIdentidade.campanha_descricao || 'Descrição da campanha...'}
+                    </p>
+                    <button onClick={() => handleEdit('campanha_descricao')} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-amber-200 shrink-0">
+                      <Edit2 className="w-3 h-3 text-amber-600" />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
