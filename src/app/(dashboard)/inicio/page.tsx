@@ -157,7 +157,6 @@ function ListaItens({ campo, itens, placeholder, onSalvar }: ListaItensProps) {
 
   return (
     <div className="space-y-1">
-      {/* Lista com scroll */}
       <div className="max-h-32 overflow-y-auto space-y-1 pr-1">
         {itens.length === 0 && !adicionando && (
           <p className="text-sm text-muted-foreground/50 italic">{placeholder}</p>
@@ -172,7 +171,10 @@ function ListaItens({ campo, itens, placeholder, onSalvar }: ListaItensProps) {
                   onChange={(e) => setTextoEdicao(e.target.value)}
                   className="flex-1 px-2 py-1 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   autoFocus
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleEditarSalvar(idx); if (e.key === 'Escape') setEditandoIdx(null) }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleEditarSalvar(idx)
+                    if (e.key === 'Escape') setEditandoIdx(null)
+                  }}
                 />
                 <button onClick={() => handleEditarSalvar(idx)} className="p-1 rounded-md bg-primary text-primary-foreground hover:opacity-90">
                   <Check className="w-3 h-3" />
@@ -199,7 +201,6 @@ function ListaItens({ campo, itens, placeholder, onSalvar }: ListaItensProps) {
         ))}
       </div>
 
-      {/* Adicionar novo item */}
       {adicionando ? (
         <form onSubmit={handleAdicionar} className="flex gap-1.5 mt-2">
           <input
@@ -242,6 +243,7 @@ export default function InicioPage() {
   const [mercadoItens, setMercadoItens] = useState<string[]>([])
   const [valoresItens, setValoresItens] = useState<string[]>([])
   const [editando, setEditando] = useState<string | null>(null)
+  const [verCampanha, setVerCampanha] = useState(false)
 
   const [objetivos, setObjetivos] = useState<any[]>([])
   const [krs, setKrs] = useState<any[]>([])
@@ -299,8 +301,6 @@ export default function InicioPage() {
         campanha_titulo: identidadeData.campanha_titulo ?? '',
         campanha_descricao: identidadeData.campanha_descricao ?? '',
       })
-
-      // Converter mercado e valores de jsonb para array
       const parseLista = (val: any): string[] => {
         if (!val) return []
         if (Array.isArray(val)) return val
@@ -386,6 +386,8 @@ export default function InicioPage() {
     return { cor: 'bg-red-500', texto: 'text-red-600', label: 'Crítico' }
   }
 
+  const temCampanha = !!(formIdentidade.campanha_titulo || formIdentidade.campanha_descricao)
+
   if (loading) {
     return (
       <div className="space-y-5 animate-pulse">
@@ -400,73 +402,183 @@ export default function InicioPage() {
   return (
     <div className="space-y-5">
 
-      {/* ═══ HERO ═══ */}
-      <div className="relative rounded-2xl overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5986 40%, #1a4a7a 100%)' }}>
-        <div className="absolute inset-0 opacity-5"
-          style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
-        <div className="absolute top-0 right-0 w-96 h-96 opacity-10 rounded-full blur-3xl"
-          style={{ background: 'radial-gradient(circle, #60a5fa, transparent)' }} />
-
-        <div className="relative z-10 p-8 md:p-10">
-          <div className="flex items-start justify-between mb-8">
-            <div>
-              <p className="text-blue-200/60 text-xs font-medium uppercase tracking-widest mb-1 capitalize">{dataHoje}</p>
-              <p className="text-white/90 text-lg font-medium">{hora}{nomeUsuario ? `, ${nomeUsuario}` : ''} 👋</p>
-            </div>
-            <div className="flex gap-2">
-              <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-2.5 text-center min-w-20">
-                <p className="text-xl font-bold text-white">{krsAtivos}</p>
-                <p className="text-[10px] text-white/50 uppercase tracking-wider mt-0.5">KRs ativos</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-2.5 text-center min-w-20">
-                <p className="text-xl font-bold text-white">{formatPercent(progressoGeral)}</p>
-                <p className="text-[10px] text-white/50 uppercase tracking-wider mt-0.5">Progresso</p>
-              </div>
-            </div>
-          </div>
-
-          <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight leading-none mb-6">
-            {nomeUsuario || empresa?.company_name}
-          </h1>
-
-          {/* Visão de futuro */}
-          <div className="group relative">
-            {editando === 'visao_futuro' ? (
-              <div className="space-y-2">
-                <textarea
-                  value={formIdentidade.visao_futuro}
-                  onChange={(e) => handleChange('visao_futuro', e.target.value)}
-                  rows={2} placeholder="Qual é o norte de longo prazo da empresa?"
-                  className="w-full px-4 py-3 text-sm rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/30 resize-none"
-                  autoFocus
-                />
-                <div className="flex gap-2">
-                  <button onClick={() => handleSalvarTexto('visao_futuro')} className="flex items-center gap-1.5 px-4 py-1.5 bg-white text-gray-900 rounded-lg text-xs font-semibold">
-                    <Check className="w-3 h-3" /> Salvar
-                  </button>
-                  <button onClick={handleCancelar} className="flex items-center gap-1.5 px-4 py-1.5 border border-white/20 rounded-lg text-xs text-white/60">
-                    <X className="w-3 h-3" /> Cancelar
-                  </button>
+      {/* ═══ HERO / CAMPANHA ═══ */}
+      {verCampanha ? (
+        /* ── CAMPANHA EXPANDIDA ── */
+        <div className="relative rounded-2xl overflow-hidden border border-amber-200/60"
+          style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)' }}>
+          <div className="absolute right-0 top-0 bottom-0 w-1 bg-amber-400" />
+          <div className="p-8 md:p-10">
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+                  <Megaphone className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-widest">Campanha Ativa</p>
+                  <p className="text-xs text-amber-500">Clique em fechar para voltar ao início</p>
                 </div>
               </div>
-            ) : (
-              <div className="relative bg-white/8 backdrop-blur-sm border border-white/10 rounded-xl p-4 flex items-center gap-4">
-                <div className="w-1 self-stretch bg-blue-400/60 rounded-full shrink-0" />
-                <div className="flex-1">
-                  <p className="text-[10px] font-semibold text-blue-300/70 uppercase tracking-widest mb-1">Visão de Futuro</p>
-                  <p className={`text-base font-light leading-relaxed ${formIdentidade.visao_futuro ? 'text-white/90' : 'text-white/25 italic text-sm'}`}>
-                    {formIdentidade.visao_futuro || 'Clique no lápis para adicionar a visão de futuro da empresa...'}
+              <button
+                onClick={() => { setVerCampanha(false); setEditando(null) }}
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-amber-300 rounded-lg text-xs text-amber-700 hover:bg-amber-100 transition-colors"
+              >
+                <X className="w-3 h-3" /> Fechar
+              </button>
+            </div>
+
+            {/* Título */}
+            <div className="group relative mb-3">
+              {editando === 'campanha_titulo' ? (
+                <div className="space-y-1.5">
+                  <input type="text" value={formIdentidade.campanha_titulo}
+                    onChange={(e) => handleChange('campanha_titulo', e.target.value)}
+                    placeholder="Título da campanha"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-amber-300 bg-white text-foreground focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={() => handleSalvarTexto('campanha_titulo')} className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-medium">
+                      <Check className="w-3 h-3" /> Salvar
+                    </button>
+                    <button onClick={handleCancelar} className="flex items-center gap-1 px-3 py-1.5 border border-amber-300 rounded-lg text-xs text-amber-700">
+                      <X className="w-3 h-3" /> Cancelar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <h2 className={`text-2xl font-bold ${formIdentidade.campanha_titulo ? 'text-gray-800' : 'text-amber-400 italic text-lg font-normal'}`}>
+                    {formIdentidade.campanha_titulo || 'Clique para adicionar o título...'}
+                  </h2>
+                  <button onClick={() => handleEdit('campanha_titulo')} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-amber-200">
+                    <Edit2 className="w-3.5 h-3.5 text-amber-600" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Descrição */}
+            <div className="group relative">
+              {editando === 'campanha_descricao' ? (
+                <div className="space-y-1.5">
+                  <textarea value={formIdentidade.campanha_descricao}
+                    onChange={(e) => handleChange('campanha_descricao', e.target.value)}
+                    placeholder="Descrição da campanha..."
+                    rows={4}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-amber-300 bg-white text-foreground focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={() => handleSalvarTexto('campanha_descricao')} className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-medium">
+                      <Check className="w-3 h-3" /> Salvar
+                    </button>
+                    <button onClick={handleCancelar} className="flex items-center gap-1 px-3 py-1.5 border border-amber-300 rounded-lg text-xs text-amber-700">
+                      <X className="w-3 h-3" /> Cancelar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2">
+                  <p className={`text-sm flex-1 leading-relaxed ${formIdentidade.campanha_descricao ? 'text-gray-700' : 'text-amber-400 italic'}`}>
+                    {formIdentidade.campanha_descricao || 'Clique para adicionar a descrição...'}
                   </p>
+                  <button onClick={() => handleEdit('campanha_descricao')} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-amber-200 shrink-0">
+                    <Edit2 className="w-3.5 h-3.5 text-amber-600" />
+                  </button>
                 </div>
-                <button onClick={() => handleEdit('visao_futuro')} className="opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-lg hover:bg-white/10 shrink-0">
-                  <Edit2 className="w-4 h-4 text-white/40" />
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        /* ── HERO NORMAL ── */
+        <div className="relative rounded-2xl overflow-hidden"
+          style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5986 40%, #1a4a7a 100%)' }}>
+          <div className="absolute inset-0 opacity-5"
+            style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+          <div className="absolute top-0 right-0 w-96 h-96 opacity-10 rounded-full blur-3xl"
+            style={{ background: 'radial-gradient(circle, #60a5fa, transparent)' }} />
+
+          <div className="relative z-10 p-8 md:p-10">
+            <div className="flex items-start justify-between mb-8">
+              <div>
+                <p className="text-blue-200/60 text-xs font-medium uppercase tracking-widest mb-1 capitalize">{dataHoje}</p>
+                <p className="text-white/90 text-lg font-medium">{hora}{nomeUsuario ? `, ${nomeUsuario}` : ''} 👋</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {/* Badge campanha ativa */}
+                {temCampanha ? (
+                  <button
+                    onClick={() => setVerCampanha(true)}
+                    className="flex items-center gap-1.5 bg-amber-400/20 hover:bg-amber-400/30 border border-amber-400/40 text-amber-300 rounded-xl px-3 py-2 text-xs font-medium transition-colors"
+                  >
+                    <Megaphone className="w-3.5 h-3.5" />
+                    <span>Campanha ativa</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => { setVerCampanha(true); handleEdit('campanha_titulo') }}
+                    className="flex items-center gap-1.5 bg-white/8 hover:bg-white/15 border border-white/15 text-white/50 hover:text-white/80 rounded-xl px-3 py-2 text-xs transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Adicionar campanha</span>
+                  </button>
+                )}
+                <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-2.5 text-center min-w-20">
+                  <p className="text-xl font-bold text-white">{krsAtivos}</p>
+                  <p className="text-[10px] text-white/50 uppercase tracking-wider mt-0.5">KRs ativos</p>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-2.5 text-center min-w-20">
+                  <p className="text-xl font-bold text-white">{formatPercent(progressoGeral)}</p>
+                  <p className="text-[10px] text-white/50 uppercase tracking-wider mt-0.5">Progresso</p>
+                </div>
+              </div>
+            </div>
+
+            <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight leading-none mb-6">
+              {nomeUsuario || empresa?.company_name}
+            </h1>
+
+            {/* Visão de futuro */}
+            <div className="group relative">
+              {editando === 'visao_futuro' ? (
+                <div className="space-y-2">
+                  <textarea
+                    value={formIdentidade.visao_futuro}
+                    onChange={(e) => handleChange('visao_futuro', e.target.value)}
+                    rows={2} placeholder="Qual é o norte de longo prazo da empresa?"
+                    className="w-full px-4 py-3 text-sm rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/30 resize-none"
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={() => handleSalvarTexto('visao_futuro')} className="flex items-center gap-1.5 px-4 py-1.5 bg-white text-gray-900 rounded-lg text-xs font-semibold">
+                      <Check className="w-3 h-3" /> Salvar
+                    </button>
+                    <button onClick={handleCancelar} className="flex items-center gap-1.5 px-4 py-1.5 border border-white/20 rounded-lg text-xs text-white/60">
+                      <X className="w-3 h-3" /> Cancelar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="relative bg-white/8 backdrop-blur-sm border border-white/10 rounded-xl p-4 flex items-center gap-4">
+                  <div className="w-1 self-stretch bg-blue-400/60 rounded-full shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-[10px] font-semibold text-blue-300/70 uppercase tracking-widest mb-1">Visão de Futuro</p>
+                    <p className={`text-base font-light leading-relaxed ${formIdentidade.visao_futuro ? 'text-white/90' : 'text-white/25 italic text-sm'}`}>
+                      {formIdentidade.visao_futuro || 'Clique no lápis para adicionar a visão de futuro da empresa...'}
+                    </p>
+                  </div>
+                  <button onClick={() => handleEdit('visao_futuro')} className="opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-lg hover:bg-white/10 shrink-0">
+                    <Edit2 className="w-4 h-4 text-white/40" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ═══ IDENTIDADE ═══ */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -578,92 +690,6 @@ export default function InicioPage() {
           )}
         </div>
       </div>
-
-      {/* ═══ CAMPANHA ═══ */}
-      {(formIdentidade.campanha_titulo || formIdentidade.campanha_descricao || editando === 'campanha_titulo' || editando === 'campanha_descricao') ? (
-        <div className="relative rounded-2xl overflow-hidden border border-amber-200/60"
-          style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)' }}>
-          <div className="absolute right-0 top-0 bottom-0 w-1 bg-amber-400" />
-          <div className="p-6 flex items-start gap-4">
-            <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
-              <Megaphone className="w-5 h-5 text-amber-600" />
-            </div>
-            <div className="flex-1 space-y-2">
-              <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-widest">Campanha Ativa</p>
-              {/* Título campanha */}
-              <div className="group relative">
-                {editando === 'campanha_titulo' ? (
-                  <div className="space-y-1.5">
-                    <input type="text" value={formIdentidade.campanha_titulo}
-                      onChange={(e) => handleChange('campanha_titulo', e.target.value)}
-                      placeholder="Título da campanha"
-                      className="w-full px-3 py-2 text-sm rounded-lg border border-amber-300 bg-white text-foreground focus:outline-none focus:ring-2 focus:ring-amber-400"
-                      autoFocus
-                    />
-                    <div className="flex gap-2">
-                      <button onClick={() => handleSalvarTexto('campanha_titulo')} className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-medium">
-                        <Check className="w-3 h-3" /> Salvar
-                      </button>
-                      <button onClick={handleCancelar} className="flex items-center gap-1 px-3 py-1.5 border border-amber-300 rounded-lg text-xs text-amber-700">
-                        <X className="w-3 h-3" /> Cancelar
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <p className={`text-sm font-semibold ${formIdentidade.campanha_titulo ? 'text-foreground' : 'text-amber-400 italic'}`}>
-                      {formIdentidade.campanha_titulo || 'Título da campanha'}
-                    </p>
-                    <button onClick={() => handleEdit('campanha_titulo')} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-amber-200">
-                      <Edit2 className="w-3 h-3 text-amber-600" />
-                    </button>
-                  </div>
-                )}
-              </div>
-              {/* Descrição campanha */}
-              <div className="group relative">
-                {editando === 'campanha_descricao' ? (
-                  <div className="space-y-1.5">
-                    <textarea value={formIdentidade.campanha_descricao}
-                      onChange={(e) => handleChange('campanha_descricao', e.target.value)}
-                      placeholder="Descrição da campanha..."
-                      rows={3}
-                      className="w-full px-3 py-2 text-sm rounded-lg border border-amber-300 bg-white text-foreground focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
-                      autoFocus
-                    />
-                    <div className="flex gap-2">
-                      <button onClick={() => handleSalvarTexto('campanha_descricao')} className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-medium">
-                        <Check className="w-3 h-3" /> Salvar
-                      </button>
-                      <button onClick={handleCancelar} className="flex items-center gap-1 px-3 py-1.5 border border-amber-300 rounded-lg text-xs text-amber-700">
-                        <X className="w-3 h-3" /> Cancelar
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-start gap-2">
-                    <p className={`text-sm flex-1 ${formIdentidade.campanha_descricao ? 'text-foreground' : 'text-amber-400 italic'}`}>
-                      {formIdentidade.campanha_descricao || 'Descrição da campanha...'}
-                    </p>
-                    <button onClick={() => handleEdit('campanha_descricao')} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-amber-200 shrink-0">
-                      <Edit2 className="w-3 h-3 text-amber-600" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <button onClick={() => handleEdit('campanha_titulo')}
-          className="w-full border border-dashed border-border rounded-2xl p-5 hover:border-primary/50 hover:bg-accent/20 transition-all group">
-          <div className="flex items-center justify-center gap-2 text-muted-foreground group-hover:text-foreground">
-            <Plus className="w-4 h-4" />
-            <span className="text-sm font-medium">Adicionar campanha ativa</span>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">Comunique iniciativas, treinamentos ou movimentos estratégicos</p>
-        </button>
-      )}
 
       {/* ═══ PERFORMANCE ═══ */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
