@@ -158,7 +158,7 @@ function ListaItens({ campo, itens, placeholder, onSalvar }: ListaItensProps) {
   return (
     <div className="space-y-1">
       {/* Lista com scroll */}
-      <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+      <div className="max-h-32 overflow-y-auto space-y-1 pr-1">
         {itens.length === 0 && !adicionando && (
           <p className="text-sm text-muted-foreground/50 italic">{placeholder}</p>
         )}
