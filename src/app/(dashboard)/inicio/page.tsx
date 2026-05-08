@@ -187,11 +187,11 @@ export default function InicioPage() {
       { data: identidadeData }, { data: objs }, { data: krsData }, { data: svsData },
       { data: humorData }, { data: humorHojeData }, { data: funcData },
     ] = await Promise.all([
-      supabase.from('empresa_identidade').select('*').eq('client_id', empresa.id).single(),
+      supabase.from('empresa_identidade').select('*').eq('client_id', empresa.id).maybeSingle(),
       getObjetivos(empresa.id), getKrsByEmpresa(empresa.id), getSinaisVitais(empresa.id),
       supabase.from('humor_registro').select('humor').eq('client_id', empresa.id).gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
       supabase.from('humor_registro').select('humor').eq('client_id', empresa.id).eq('user_id', user?.id ?? '').gte('created_at', new Date().toISOString().split('T')[0]).limit(1),
-      supabase.from('funcionarios').select('full_name').eq('user_id', user?.id ?? '').limit(1).single(),
+      supabase.from('funcionarios').select('full_name').eq('user_id', user?.id ?? '').maybeSingle(),
     ])
 
     setIdentidade(identidadeData)
@@ -279,7 +279,7 @@ export default function InicioPage() {
         <div className="flex-1 space-y-4">
           <div className="h-40 rounded-2xl bg-secondary" />
           <div className="grid grid-cols-3 gap-3">
-            {[1,2,3].map(i => <div key={i} className="h-40 rounded-2xl bg-secondary" />)}
+            {[1, 2, 3].map(i => <div key={i} className="h-40 rounded-2xl bg-secondary" />)}
           </div>
           <div className="h-36 rounded-2xl bg-secondary" />
         </div>
@@ -489,16 +489,18 @@ export default function InicioPage() {
           </div>
         </div>
 
-        {/* OKRs — GRÁFICO DE COLUNAS */}
+        {/* ═══ OKRs — GRÁFICO DE COLUNAS CORRIGIDO ═══ */}
         <div className="bg-card border border-border rounded-2xl p-4 flex-1 min-h-0 flex flex-col">
-          <div className="flex items-center justify-between mb-3 shrink-0">
+          <div className="flex items-center justify-between mb-6 shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-blue-50 border border-blue-100 flex items-center justify-center">
                 <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
               </div>
               <div>
                 <p className="text-xs font-semibold text-foreground">OKRs</p>
-                <p className="text-[9px] text-muted-foreground">{objetivos.length} objetivo{objetivos.length !== 1 ? 's' : ''} · {krs.length} KRs</p>
+                <p className="text-[9px] text-muted-foreground">
+                  {objetivos.length} objetivo{objetivos.length !== 1 ? 's' : ''} · {krs.length} KRs
+                </p>
               </div>
             </div>
             <Link href="/okr" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
@@ -506,46 +508,40 @@ export default function InicioPage() {
             </Link>
           </div>
 
-          <div className="flex-1 flex items-end">
+          <div className="flex-1 flex items-end justify-around gap-4 pb-2 px-2">
             {objetivosComKrs.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center">
+              <div className="flex-1 flex items-center justify-center mb-8">
                 <div className="text-center">
                   <p className="text-xs text-muted-foreground mb-2">Nenhum objetivo cadastrado.</p>
                   <Link href="/okr" className="text-xs text-primary hover:underline">Criar primeiro objetivo →</Link>
                 </div>
               </div>
-            ) : objetivosComKrs.length > 5 ? (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <p className="text-xs text-muted-foreground mb-2">Muitos objetivos para exibir aqui.</p>
-                  <Link href="/okr" className="text-xs text-primary hover:underline">Ver todos os OKRs →</Link>
-                </div>
-              </div>
             ) : (
-              <div className="flex-1 flex flex-col justify-end" style={{ height: '100px' }}>
-                <div className="flex items-end justify-around gap-3 h-16">
-                  {objetivosComKrs.map((obj) => {
-                    const cor = obj.progresso >= 70 ? 'bg-emerald-500' : obj.progresso >= 40 ? 'bg-amber-500' : 'bg-red-500'
-                    const corTexto = obj.progresso >= 70 ? 'text-emerald-600' : obj.progresso >= 40 ? 'text-amber-600' : 'text-red-600'
-                    const alturaPixels = Math.max(Math.round((obj.progresso / 100) * 56), 3)
-                    return (
-                      <div key={obj.id} className="flex flex-col items-center gap-1 flex-1">
-                        <span className={`text-[10px] font-bold ${corTexto}`}>{formatPercent(obj.progresso)}</span>
-                        <div className="w-full flex items-end" style={{ height: '56px' }}>
-                          <div className={`w-full rounded-t-lg ${cor} transition-all`} style={{ height: `${alturaPixels}px` }} />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-                <div className="flex justify-around gap-3 mt-1.5">
-                  {objetivosComKrs.map((obj) => (
-                    <p key={obj.id} className="flex-1 text-[9px] text-muted-foreground text-center leading-tight truncate">
-                      {obj.titulo.split(' ').slice(0, 3).join(' ')}
+              objetivosComKrs.slice(0, 5).map((obj) => {
+                const progresso = Math.min(obj.progresso, 100);
+                const corBarra = progresso >= 70 ? 'bg-emerald-500' : progresso >= 40 ? 'bg-amber-500' : 'bg-red-500';
+                const corTexto = progresso >= 70 ? 'text-emerald-600' : progresso >= 40 ? 'text-amber-600' : 'text-red-600';
+
+                return (
+                  <div key={obj.id} className="flex-1 flex flex-col items-center group relative h-full justify-end">
+                    <span className={`text-[10px] font-bold mb-2 ${corTexto}`}>
+                      {formatPercent(progresso)}
+                    </span>
+
+                    {/* Container da Barra */}
+                    <div className="w-full max-w-[40px] bg-secondary/30 rounded-t-lg relative flex items-end overflow-hidden h-[120px]">
+                      <div
+                        className={`w-full ${corBarra} transition-all duration-500 ease-out rounded-t-sm`}
+                        style={{ height: `${Math.max(progresso, 4)}%` }}
+                      />
+                    </div>
+
+                    <p className="text-[9px] text-muted-foreground text-center mt-3 leading-tight line-clamp-2 h-6 w-full">
+                      {obj.titulo}
                     </p>
-                  ))}
-                </div>
-              </div>
+                  </div>
+                )
+              })
             )}
           </div>
         </div>
