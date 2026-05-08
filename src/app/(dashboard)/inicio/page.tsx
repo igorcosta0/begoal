@@ -384,8 +384,8 @@ export default function InicioPage() {
               </div>
 
               <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight leading-none mb-4">
-                {nomeUsuario || empresa?.company_name}
-              </h1>
+  {empresa?.company_name}
+</h1>
 
               <div className="group relative">
                 {editando === 'visao_futuro' ? (
