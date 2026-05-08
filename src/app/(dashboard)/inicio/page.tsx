@@ -275,7 +275,7 @@ export default function InicioPage() {
 
   if (loading) {
     return (
-      <div className="h-screen flex gap-4 animate-pulse p-1">
+      <div className="flex gap-4 h-[calc(100vh-48px)] animate-pulse">
         <div className="flex-1 space-y-4">
           <div className="h-40 rounded-2xl bg-secondary" />
           <div className="grid grid-cols-3 gap-3">
@@ -283,7 +283,7 @@ export default function InicioPage() {
           </div>
           <div className="h-36 rounded-2xl bg-secondary" />
         </div>
-        <div className="w-72 rounded-2xl bg-secondary" />
+        <div className="w-64 rounded-2xl bg-secondary" />
       </div>
     )
   }
@@ -302,7 +302,7 @@ export default function InicioPage() {
             <div className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+                  <div className="w-7 h-7 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center">
                     <Megaphone className="w-3.5 h-3.5 text-amber-600" />
                   </div>
                   <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-widest">Campanha Ativa</p>
@@ -383,7 +383,6 @@ export default function InicioPage() {
                 {nomeUsuario || empresa?.company_name}
               </h1>
 
-              {/* Visão de futuro */}
               <div className="group relative">
                 {editando === 'visao_futuro' ? (
                   <div className="space-y-2">
@@ -414,10 +413,8 @@ export default function InicioPage() {
           </div>
         )}
 
-        {/* IDENTIDADE — 3 cards */}
+        {/* IDENTIDADE */}
         <div className="grid grid-cols-3 gap-3 shrink-0">
-
-          {/* Mercado */}
           <div className="bg-card border border-border rounded-2xl p-4 flex flex-col">
             <div className="flex items-center gap-2 mb-3 shrink-0">
               <div className="w-6 h-6 rounded-md bg-blue-50 flex items-center justify-center border border-blue-100">
@@ -434,7 +431,6 @@ export default function InicioPage() {
             {empresa && <ComentariosBlock campo="mercado_posicionamento" clientId={empresa.id} userId={userId} nomeUsuario={nomeUsuario} />}
           </div>
 
-          {/* Valores */}
           <div className="bg-card border border-border rounded-2xl p-4 flex flex-col">
             <div className="flex items-center gap-2 mb-3 shrink-0">
               <div className="w-6 h-6 rounded-md bg-violet-50 flex items-center justify-center border border-violet-100">
@@ -451,7 +447,6 @@ export default function InicioPage() {
             {empresa && <ComentariosBlock campo="valores" clientId={empresa.id} userId={userId} nomeUsuario={nomeUsuario} />}
           </div>
 
-          {/* Pulso */}
           <div className="bg-card border border-border rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-6 h-6 rounded-md bg-emerald-50 flex items-center justify-center border border-emerald-100">
@@ -494,9 +489,9 @@ export default function InicioPage() {
           </div>
         </div>
 
-        {/* OKRs — HISTOGRAMA HORIZONTAL */}
-        <div className="bg-card border border-border rounded-2xl p-4 flex-1 min-h-0">
-          <div className="flex items-center justify-between mb-3">
+        {/* OKRs — GRÁFICO DE COLUNAS */}
+        <div className="bg-card border border-border rounded-2xl p-4 flex-1 min-h-0 flex flex-col">
+          <div className="flex items-center justify-between mb-3 shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-blue-50 border border-blue-100 flex items-center justify-center">
                 <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
@@ -511,41 +506,48 @@ export default function InicioPage() {
             </Link>
           </div>
 
-          {objetivosComKrs.length === 0 ? (
-            <div className="flex items-center justify-center h-24">
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground mb-2">Nenhum objetivo cadastrado.</p>
-                <Link href="/okr" className="text-xs text-primary hover:underline">Criar primeiro objetivo →</Link>
+          <div className="flex-1 flex items-end">
+            {objetivosComKrs.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground mb-2">Nenhum objetivo cadastrado.</p>
+                  <Link href="/okr" className="text-xs text-primary hover:underline">Criar primeiro objetivo →</Link>
+                </div>
               </div>
-            </div>
-          ) : objetivosComKrs.length > 5 ? (
-            <div className="flex items-center justify-center h-24">
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground mb-2">Muitos objetivos para exibir aqui.</p>
-                <Link href="/okr" className="text-xs text-primary hover:underline">Ver todos os OKRs →</Link>
+            ) : objetivosComKrs.length > 5 ? (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground mb-2">Muitos objetivos para exibir aqui.</p>
+                  <Link href="/okr" className="text-xs text-primary hover:underline">Ver todos os OKRs →</Link>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="flex items-end justify-around gap-2 h-28 px-2">
-              {objetivosComKrs.map((obj) => {
-                const cor = obj.progresso >= 70 ? 'bg-emerald-500' : obj.progresso >= 40 ? 'bg-amber-500' : 'bg-red-500'
-                const corTexto = obj.progresso >= 70 ? 'text-emerald-600' : obj.progresso >= 40 ? 'text-amber-600' : 'text-red-600'
-                const altura = Math.max(obj.progresso, 4)
-                return (
-                  <div key={obj.id} className="flex flex-col items-center gap-1 flex-1">
-                    <span className={`text-[10px] font-bold ${corTexto}`}>{formatPercent(obj.progresso)}</span>
-                    <div className="w-full flex items-end h-16">
-                      <div
-                        className={`w-full rounded-t-md transition-all ${cor}`}
-                        style={{ height: `${altura}%` }}
-                      />
-                    </div>
-                    <p className="text-[9px] text-muted-foreground text-center leading-tight truncate w-full">{obj.titulo}</p>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+            ) : (
+              <div className="flex-1 flex flex-col justify-end" style={{ height: '100px' }}>
+                <div className="flex items-end justify-around gap-3 h-16">
+                  {objetivosComKrs.map((obj) => {
+                    const cor = obj.progresso >= 70 ? 'bg-emerald-500' : obj.progresso >= 40 ? 'bg-amber-500' : 'bg-red-500'
+                    const corTexto = obj.progresso >= 70 ? 'text-emerald-600' : obj.progresso >= 40 ? 'text-amber-600' : 'text-red-600'
+                    const alturaPixels = Math.max(Math.round((obj.progresso / 100) * 56), 3)
+                    return (
+                      <div key={obj.id} className="flex flex-col items-center gap-1 flex-1">
+                        <span className={`text-[10px] font-bold ${corTexto}`}>{formatPercent(obj.progresso)}</span>
+                        <div className="w-full flex items-end" style={{ height: '56px' }}>
+                          <div className={`w-full rounded-t-lg ${cor} transition-all`} style={{ height: `${alturaPixels}px` }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="flex justify-around gap-3 mt-1.5">
+                  {objetivosComKrs.map((obj) => (
+                    <p key={obj.id} className="flex-1 text-[9px] text-muted-foreground text-center leading-tight truncate">
+                      {obj.titulo.split(' ').slice(0, 3).join(' ')}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -585,7 +587,7 @@ export default function InicioPage() {
                     <p className="text-[11px] font-medium text-foreground leading-snug flex-1">{sv.titulo}</p>
                     <div className={`w-2 h-2 rounded-full shrink-0 mt-0.5 ${status.cor}`} />
                   </div>
-                  <div className="flex items-end justify-between">
+                  <div className="flex items-end justify-between mb-2">
                     <div>
                       <p className="text-base font-bold text-foreground leading-none">{formatNumber(sv.valor_atual ?? sv.valor_inicial ?? 0)}</p>
                       <p className={`text-[10px] font-medium mt-0.5 ${status.texto}`}>{status.label}</p>
@@ -595,8 +597,7 @@ export default function InicioPage() {
                       <p className="text-xs font-semibold text-foreground">{formatNumber(sv.meta ?? 0)}</p>
                     </div>
                   </div>
-                  {/* Mini barra de progresso */}
-                  <div className="mt-2 h-1 bg-secondary rounded-full overflow-hidden">
+                  <div className="h-1 bg-secondary rounded-full overflow-hidden">
                     <div className={`h-full rounded-full ${status.cor}`} style={{ width: `${Math.min(status.prog, 100)}%` }} />
                   </div>
                 </div>
