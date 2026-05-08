@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { cn, formatPercent, formatNumber, getProgressColor, getProgressStatus } from '@/lib/utils'
-import { MoreHorizontal, TrendingUp, User, Building2, Calendar } from 'lucide-react'
+import { MoreHorizontal, TrendingUp, User, Building2, Calendar, Zap } from 'lucide-react'
 
 interface KrCardProps {
   kr: {
@@ -25,6 +25,7 @@ interface KrCardProps {
   onExcluir?: (kr: any) => void
   onVerGrafico?: (kr: any) => void
   onReativar?: (kr: any) => void
+  onVerTaticas?: (kr: any) => void
 }
 
 export default function KrCard({
@@ -35,6 +36,7 @@ export default function KrCard({
   onExcluir,
   onVerGrafico,
   onReativar,
+  onVerTaticas,
 }: KrCardProps) {
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -74,6 +76,13 @@ export default function KrCard({
               >
                 <TrendingUp className="w-3 h-3" />
                 Ver gráfico
+              </button>
+              <button
+                onClick={() => { onVerTaticas?.(kr); setMenuOpen(false) }}
+                className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors flex items-center gap-2"
+              >
+                <Zap className="w-3 h-3" />
+                Táticas
               </button>
               <button
                 onClick={() => { onEditar?.(kr); setMenuOpen(false) }}

@@ -22,6 +22,7 @@ import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
 import ModalDetalhesKr from '@/components/okr/ModalDetalhesKr'
 import ModalCriarObjetivo from '@/components/okr/ModalCriarObjetivo'
 import ModalEditarObjetivo from '@/components/okr/ModalEditarObjetivo'
+import ModalTaticasKr from '@/components/okr/ModalTaticasKr'
 
 export default function OkrPage() {
   const { empresa } = useEmpresaStore()
@@ -40,6 +41,7 @@ export default function OkrPage() {
   const [modalLancarKr, setModalLancarKr] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
   const [modalFinalizarKr, setModalFinalizarKr] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
   const [modalDetalhesKr, setModalDetalhesKr] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
+  const [modalTaticasKr, setModalTaticasKr] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
   const [modalExcluirKr, setModalExcluirKr] = useState<{ open: boolean; kr: any | null; loading: boolean }>({ open: false, kr: null, loading: false })
   const [modalExcluirObjetivo, setModalExcluirObjetivo] = useState<{ open: boolean; objetivo: any | null; loading: boolean }>({ open: false, objetivo: null, loading: false })
 
@@ -55,9 +57,7 @@ export default function OkrPage() {
     setLoading(false)
   }, [empresa])
 
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
+  useEffect(() => { fetchData() }, [fetchData])
 
   useEffect(() => {
     if (!empresa) return
@@ -213,6 +213,7 @@ export default function OkrPage() {
               onExcluirKr={(kr) => setModalExcluirKr({ open: true, kr, loading: false })}
               onVerGraficoKr={(kr) => setModalDetalhesKr({ open: true, kr })}
               onReativarKr={handleReativarKr}
+              onVerTaticasKr={(kr) => setModalTaticasKr({ open: true, kr })}
             />
           ))}
         </div>
@@ -259,6 +260,11 @@ export default function OkrPage() {
         kr={modalDetalhesKr.kr}
         onClose={() => setModalDetalhesKr({ open: false, kr: null })}
         onLancar={(kr) => setModalLancarKr({ open: true, kr })}
+      />
+      <ModalTaticasKr
+        open={modalTaticasKr.open}
+        kr={modalTaticasKr.kr}
+        onClose={() => setModalTaticasKr({ open: false, kr: null })}
       />
       <ModalConfirmarExclusao
         open={modalExcluirKr.open}

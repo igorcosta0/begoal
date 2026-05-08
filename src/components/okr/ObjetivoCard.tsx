@@ -21,6 +21,7 @@ interface ObjetivoCardProps {
   onExcluirKr?: (kr: any) => void
   onVerGraficoKr?: (kr: any) => void
   onReativarKr?: (kr: any) => void
+  onVerTaticasKr?: (kr: any) => void
 }
 
 export default function ObjetivoCard({
@@ -34,6 +35,7 @@ export default function ObjetivoCard({
   onExcluirKr,
   onVerGraficoKr,
   onReativarKr,
+  onVerTaticasKr,
 }: ObjetivoCardProps) {
   const [expanded, setExpanded] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -150,6 +152,7 @@ export default function ObjetivoCard({
                   onExcluir={onExcluirKr}
                   onVerGrafico={onVerGraficoKr}
                   onReativar={onReativarKr}
+                  onVerTaticas={onVerTaticasKr}
                 />
               ))}
             </div>
