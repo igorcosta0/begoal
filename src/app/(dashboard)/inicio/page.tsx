@@ -518,29 +518,32 @@ export default function InicioPage() {
                 <Link href="/okr" className="text-xs text-primary hover:underline">Criar primeiro objetivo →</Link>
               </div>
             </div>
+          ) : objetivosComKrs.length > 5 ? (
+            <div className="flex items-center justify-center h-24">
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground mb-2">Muitos objetivos para exibir aqui.</p>
+                <Link href="/okr" className="text-xs text-primary hover:underline">Ver todos os OKRs →</Link>
+              </div>
+            </div>
           ) : (
-            <div className="space-y-2 overflow-y-auto max-h-32">
-              {objetivosComKrs.map((obj) => (
-                <div key={obj.id} className="flex items-center gap-3">
-                  <p className="text-[11px] font-medium text-foreground truncate w-40 shrink-0">{obj.titulo}</p>
-                  <div className="flex-1 flex items-center gap-2">
-                    <div className="flex-1 h-5 bg-secondary rounded-md overflow-hidden relative">
+            <div className="flex items-end justify-around gap-2 h-28 px-2">
+              {objetivosComKrs.map((obj) => {
+                const cor = obj.progresso >= 70 ? 'bg-emerald-500' : obj.progresso >= 40 ? 'bg-amber-500' : 'bg-red-500'
+                const corTexto = obj.progresso >= 70 ? 'text-emerald-600' : obj.progresso >= 40 ? 'text-amber-600' : 'text-red-600'
+                const altura = Math.max(obj.progresso, 4)
+                return (
+                  <div key={obj.id} className="flex flex-col items-center gap-1 flex-1">
+                    <span className={`text-[10px] font-bold ${corTexto}`}>{formatPercent(obj.progresso)}</span>
+                    <div className="w-full flex items-end h-16">
                       <div
-                        className={`h-full rounded-md transition-all flex items-center justify-end pr-1.5 ${obj.progresso >= 70 ? 'bg-emerald-500' : obj.progresso >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
-                        style={{ width: `${Math.min(Math.max(obj.progresso, 4), 100)}%` }}
-                      >
-                        {obj.progresso >= 20 && (
-                          <span className="text-[10px] font-bold text-white">{formatPercent(obj.progresso)}</span>
-                        )}
-                      </div>
-                      {obj.progresso < 20 && (
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">{formatPercent(obj.progresso)}</span>
-                      )}
+                        className={`w-full rounded-t-md transition-all ${cor}`}
+                        style={{ height: `${altura}%` }}
+                      />
                     </div>
-                    <span className="text-[10px] text-muted-foreground shrink-0 w-14">{obj.krs.length} KR{obj.krs.length !== 1 ? 's' : ''}</span>
+                    <p className="text-[9px] text-muted-foreground text-center leading-tight truncate w-full">{obj.titulo}</p>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
