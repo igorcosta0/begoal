@@ -17,6 +17,8 @@ const HUMOR_EMOJIS = [
   { valor: 5, emoji: '😄', label: 'Ótimo' },
 ]
 
+// --- COMPONENTES AUXILIARES ---
+
 function ComentariosBlock({ campo, clientId, userId, nomeUsuario }: { campo: string; clientId: string; userId: string; nomeUsuario: string }) {
   const [comentarios, setComentarios] = useState<any[]>([])
   const [novoComentario, setNovoComentario] = useState('')
@@ -147,6 +149,8 @@ function ListaItens({ campo, itens, placeholder, onSalvar }: { campo: string; it
     </div>
   )
 }
+
+// --- PÁGINA PRINCIPAL ---
 
 export default function InicioPage() {
   const { empresa } = useEmpresaStore()
@@ -489,56 +493,79 @@ export default function InicioPage() {
           </div>
         </div>
 
-        {/* ═══ OKRs — GRÁFICO DE COLUNAS CORRIGIDO ═══ */}
-        <div className="bg-card border border-border rounded-2xl p-4 flex-1 min-h-0 flex flex-col">
-          <div className="flex items-center justify-between mb-6 shrink-0">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-blue-50 border border-blue-100 flex items-center justify-center">
-                <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
+        {/* ═══ OKRs — GRÁFICO DE PERFORMANCE PREMIUM ═══ */}
+        <div className="bg-card border border-border rounded-2xl p-6 flex-1 min-h-0 flex flex-col shadow-sm">
+          <div className="flex items-center justify-between mb-8 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shadow-inner">
+                <TrendingUp className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-foreground">OKRs</p>
-                <p className="text-[9px] text-muted-foreground">
-                  {objetivos.length} objetivo{objetivos.length !== 1 ? 's' : ''} · {krs.length} KRs
+                <p className="text-sm font-bold text-foreground tracking-tight">Performance de OKRs</p>
+                <p className="text-[11px] text-muted-foreground font-medium">
+                  {objetivos.length} objetivos estratégicos ativos
                 </p>
               </div>
             </div>
-            <Link href="/okr" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
-              Ver tudo <ArrowRight className="w-3 h-3" />
+            <Link href="/okr" className="group flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-bold transition-all">
+              Painel Completo
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
             </Link>
           </div>
 
-          <div className="flex-1 flex items-end justify-around gap-4 pb-2 px-2">
+          <div className="flex-1 relative flex items-end justify-around gap-6 px-4 pb-4">
+            {/* Linhas de Grade de Fundo */}
+            <div className="absolute inset-x-4 inset-y-0 flex flex-col justify-between pointer-events-none opacity-[0.03]">
+              {[100, 75, 50, 25, 0].map((line) => (
+                <div key={line} className="w-full border-t border-foreground flex justify-end">
+                  <span className="text-[8px] -mt-2 pr-1">{line}%</span>
+                </div>
+              ))}
+            </div>
+
             {objetivosComKrs.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center mb-8">
+              <div className="flex-1 flex flex-col items-center justify-center mb-10 gap-3">
+                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                  <Target className="w-6 h-6 text-muted-foreground/40" />
+                </div>
                 <div className="text-center">
-                  <p className="text-xs text-muted-foreground mb-2">Nenhum objetivo cadastrado.</p>
-                  <Link href="/okr" className="text-xs text-primary hover:underline">Criar primeiro objetivo →</Link>
+                  <p className="text-sm font-medium text-muted-foreground">Nenhum dado para exibir</p>
+                  <Link href="/okr" className="text-xs text-primary hover:underline font-bold">Definir metas agora</Link>
                 </div>
               </div>
             ) : (
               objetivosComKrs.slice(0, 5).map((obj) => {
                 const progresso = Math.min(obj.progresso, 100);
-                const corBarra = progresso >= 70 ? 'bg-emerald-500' : progresso >= 40 ? 'bg-amber-500' : 'bg-red-500';
-                const corTexto = progresso >= 70 ? 'text-emerald-600' : progresso >= 40 ? 'text-amber-600' : 'text-red-600';
+                
+                const config = 
+                  progresso >= 70 ? { bg: 'from-emerald-400 to-emerald-600', shadow: 'shadow-emerald-500/20', text: 'text-emerald-600' } :
+                  progresso >= 40 ? { bg: 'from-amber-400 to-amber-600', shadow: 'shadow-amber-500/20', text: 'text-amber-600' } :
+                  { bg: 'from-red-400 to-red-600', shadow: 'shadow-red-500/20', text: 'text-red-600' };
 
                 return (
-                  <div key={obj.id} className="flex-1 flex flex-col items-center group relative h-full justify-end">
-                    <span className={`text-[10px] font-bold mb-2 ${corTexto}`}>
+                  <div key={obj.id} className="flex-1 flex flex-col items-center group relative h-full justify-end max-w-[80px]">
+                    <div className={`absolute -top-2 opacity-0 group-hover:opacity-100 group-hover:-top-6 transition-all duration-300 z-10 px-2 py-1 rounded-md bg-foreground text-background text-[10px] font-bold shadow-xl`}>
+                      {formatPercent(progresso)}
+                    </div>
+
+                    <span className={`text-[11px] font-black mb-3 transition-colors duration-300 ${config.text}`}>
                       {formatPercent(progresso)}
                     </span>
 
-                    {/* Container da Barra */}
-                    <div className="w-full max-w-[40px] bg-secondary/30 rounded-t-lg relative flex items-end overflow-hidden h-[120px]">
+                    <div className="w-full max-w-[36px] bg-muted/30 backdrop-blur-[2px] rounded-t-xl relative flex items-end overflow-hidden h-[160px] border border-foreground/[0.03] shadow-inner">
                       <div
-                        className={`w-full ${corBarra} transition-all duration-500 ease-out rounded-t-sm`}
-                        style={{ height: `${Math.max(progresso, 4)}%` }}
-                      />
+                        className={`w-full bg-gradient-to-t ${config.bg} ${config.shadow} transition-all duration-1000 ease-out rounded-t-lg group-hover:brightness-110 shadow-lg`}
+                        style={{ height: `${Math.max(progresso, 6)}%` }}
+                      >
+                        <div className="absolute inset-y-0 left-0 w-1/3 bg-white/20 skew-x-[-15deg] translate-x-[-50%]" />
+                      </div>
                     </div>
 
-                    <p className="text-[9px] text-muted-foreground text-center mt-3 leading-tight line-clamp-2 h-6 w-full">
-                      {obj.titulo}
-                    </p>
+                    <div className="mt-4 h-10 flex items-start justify-center">
+                      <p className="text-[10px] font-bold text-muted-foreground group-hover:text-foreground text-center leading-tight line-clamp-2 transition-colors">
+                        {obj.titulo}
+                      </p>
+                    </div>
                   </div>
                 )
               })
