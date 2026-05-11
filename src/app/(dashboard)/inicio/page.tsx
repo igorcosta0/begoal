@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getObjetivos, getKrsByEmpresa } from '@/lib/queries/okr'
 import { getSinaisVitais } from '@/lib/queries/sinais-vitais'
 import { formatNumber, formatPercent } from '@/lib/utils'
-import { Edit2, Check, X, ArrowRight, TrendingUp, Activity, Heart, Megaphone, Target, Plus, Send, Trash2 } from 'lucide-react'
+import { Edit2, Check, X, ArrowRight, TrendingUp, Activity, Megaphone, Target, Plus, Send, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 
 const HUMOR_EMOJIS = [
@@ -16,8 +16,6 @@ const HUMOR_EMOJIS = [
   { valor: 4, emoji: '😊', label: 'Bem' },
   { valor: 5, emoji: '😄', label: 'Ótimo' },
 ]
-
-// --- COMPONENTES AUXILIARES ---
 
 function ComentariosBlock({ campo, clientId, userId, nomeUsuario }: { campo: string; clientId: string; userId: string; nomeUsuario: string }) {
   const [comentarios, setComentarios] = useState<any[]>([])
@@ -150,14 +148,11 @@ function ListaItens({ campo, itens, placeholder, onSalvar }: { campo: string; it
   )
 }
 
-// --- PÁGINA PRINCIPAL ---
-
 export default function InicioPage() {
   const { empresa } = useEmpresaStore()
   const [identidade, setIdentidade] = useState<any>(null)
   const [formIdentidade, setFormIdentidade] = useState({ visao_futuro: '', campanha_titulo: '', campanha_descricao: '' })
   const [mercadoItens, setMercadoItens] = useState<string[]>([])
-  const [valoresItens, setValoresItens] = useState<string[]>([])
   const [editando, setEditando] = useState<string | null>(null)
   const [verCampanha, setVerCampanha] = useState(false)
   const [objetivos, setObjetivos] = useState<any[]>([])
@@ -207,7 +202,6 @@ export default function InicioPage() {
         try { return JSON.parse(val) } catch { return [String(val)] }
       }
       setMercadoItens(parseLista(identidadeData.mercado_posicionamento))
-      setValoresItens(parseLista(identidadeData.valores))
     }
     setObjetivos(objs ?? []); setKrs(krsData ?? []); setSvs(svsData ?? [])
     if (funcData) setNomeUsuario(funcData.full_name?.split(' ')[0] ?? '')
@@ -243,7 +237,6 @@ export default function InicioPage() {
       await supabase.from('empresa_identidade').insert({ client_id: empresa.id, [campo]: novosItens })
     }
     if (campo === 'mercado_posicionamento') setMercadoItens(novosItens)
-    if (campo === 'valores') setValoresItens(novosItens)
     fetchData()
   }, [empresa, identidade, fetchData])
 
@@ -260,13 +253,13 @@ export default function InicioPage() {
     krs: krs.filter((kr) => kr.objetivo_id === obj.id).map((kr) => ({
       ...kr,
       progresso: (() => {
-  const atual = kr.valor_atual ?? kr.valor_inicial ?? 0
-  const inicial = kr.valor_inicial ?? 0
-  const meta = kr.meta ?? 0
-  if (meta === inicial) return 0
-  if (meta < inicial) return Math.min(100, Math.max(0, ((inicial - atual) / (inicial - meta)) * 100))
-  return Math.min(100, Math.max(0, ((atual - inicial) / (meta - inicial)) * 100))
-})(),
+        const atual = kr.valor_atual ?? kr.valor_inicial ?? 0
+        const inicial = kr.valor_inicial ?? 0
+        const meta = kr.meta ?? 0
+        if (meta === inicial) return 0
+        if (meta < inicial) return Math.min(100, Math.max(0, ((inicial - atual) / (inicial - meta)) * 100))
+        return Math.min(100, Math.max(0, ((atual - inicial) / (meta - inicial)) * 100))
+      })(),
     })),
   })).map((obj) => ({
     ...obj,
@@ -274,7 +267,7 @@ export default function InicioPage() {
   }))
 
   const progressoGeral = objetivosComKrs.length > 0 ? objetivosComKrs.reduce((a, obj) => a + obj.progresso, 0) / objetivosComKrs.length : 0
-  const krsAtivos = krs.filter((kr) => !kr.concluido).length
+  const krsAtivos = krs.filter((kr: any) => !kr.concluido).length
   const temCampanha = !!(formIdentidade.campanha_titulo || formIdentidade.campanha_descricao)
 
   const sinalStatus = (sv: any) => {
@@ -289,8 +282,8 @@ export default function InicioPage() {
       <div className="flex gap-4 h-[calc(100vh-48px)] animate-pulse">
         <div className="flex-1 space-y-4">
           <div className="h-40 rounded-2xl bg-secondary" />
-          <div className="grid grid-cols-3 gap-3">
-            {[1, 2, 3].map(i => <div key={i} className="h-40 rounded-2xl bg-secondary" />)}
+          <div className="grid grid-cols-2 gap-3">
+            {[1, 2].map(i => <div key={i} className="h-40 rounded-2xl bg-secondary" />)}
           </div>
           <div className="h-36 rounded-2xl bg-secondary" />
         </div>
@@ -391,8 +384,8 @@ export default function InicioPage() {
               </div>
 
               <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight leading-none mb-4">
-  {empresa?.company_name}
-</h1>
+                {empresa?.company_name}
+              </h1>
 
               <div className="group relative">
                 {editando === 'visao_futuro' ? (
@@ -424,8 +417,10 @@ export default function InicioPage() {
           </div>
         )}
 
-        {/* IDENTIDADE */}
-        <div className="grid grid-cols-3 gap-3 shrink-0">
+        {/* IDENTIDADE — 2 cards (Mercado + Pulso) */}
+        <div className="grid grid-cols-2 gap-3 shrink-0">
+
+          {/* Mercado */}
           <div className="bg-card border border-border rounded-2xl p-4 flex flex-col">
             <div className="flex items-center gap-2 mb-3 shrink-0">
               <div className="w-6 h-6 rounded-md bg-blue-50 flex items-center justify-center border border-blue-100">
@@ -442,22 +437,7 @@ export default function InicioPage() {
             {empresa && <ComentariosBlock campo="mercado_posicionamento" clientId={empresa.id} userId={userId} nomeUsuario={nomeUsuario} />}
           </div>
 
-          <div className="bg-card border border-border rounded-2xl p-4 flex flex-col">
-            <div className="flex items-center gap-2 mb-3 shrink-0">
-              <div className="w-6 h-6 rounded-md bg-violet-50 flex items-center justify-center border border-violet-100">
-                <Heart className="w-3.5 h-3.5 text-violet-600" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-foreground">Valores</p>
-                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Princípios</p>
-              </div>
-            </div>
-            <div className="flex-1">
-              <ListaItens campo="valores" itens={valoresItens} placeholder="Adicione os princípios..." onSalvar={handleSalvarLista} />
-            </div>
-            {empresa && <ComentariosBlock campo="valores" clientId={empresa.id} userId={userId} nomeUsuario={nomeUsuario} />}
-          </div>
-
+          {/* Pulso do time */}
           <div className="bg-card border border-border rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-6 h-6 rounded-md bg-emerald-50 flex items-center justify-center border border-emerald-100">
@@ -500,7 +480,7 @@ export default function InicioPage() {
           </div>
         </div>
 
-        {/* ═══ OKRs — GRÁFICO DE PERFORMANCE PREMIUM ═══ */}
+        {/* OKRs — GRÁFICO DE PERFORMANCE */}
         <div className="bg-card border border-border rounded-2xl p-6 flex-1 min-h-0 flex flex-col shadow-sm">
           <div className="flex items-center justify-between mb-8 shrink-0">
             <div className="flex items-center gap-3">
@@ -521,7 +501,6 @@ export default function InicioPage() {
           </div>
 
           <div className="flex-1 relative flex items-end justify-around gap-6 px-4 pb-4">
-            {/* Linhas de Grade de Fundo */}
             <div className="absolute inset-x-4 inset-y-0 flex flex-col justify-between pointer-events-none opacity-[0.03]">
               {[100, 75, 50, 25, 0].map((line) => (
                 <div key={line} className="w-full border-t border-foreground flex justify-end">
@@ -542,23 +521,20 @@ export default function InicioPage() {
               </div>
             ) : (
               objetivosComKrs.slice(0, 5).map((obj) => {
-                const progresso = Math.min(obj.progresso, 100);
-                
-                const config = 
+                const progresso = Math.min(obj.progresso, 100)
+                const config =
                   progresso >= 70 ? { bg: 'from-emerald-400 to-emerald-600', shadow: 'shadow-emerald-500/20', text: 'text-emerald-600' } :
                   progresso >= 40 ? { bg: 'from-amber-400 to-amber-600', shadow: 'shadow-amber-500/20', text: 'text-amber-600' } :
-                  { bg: 'from-red-400 to-red-600', shadow: 'shadow-red-500/20', text: 'text-red-600' };
+                  { bg: 'from-red-400 to-red-600', shadow: 'shadow-red-500/20', text: 'text-red-600' }
 
                 return (
                   <div key={obj.id} className="flex-1 flex flex-col items-center group relative h-full justify-end max-w-[80px]">
-                    <div className={`absolute -top-2 opacity-0 group-hover:opacity-100 group-hover:-top-6 transition-all duration-300 z-10 px-2 py-1 rounded-md bg-foreground text-background text-[10px] font-bold shadow-xl`}>
+                    <div className="absolute -top-2 opacity-0 group-hover:opacity-100 group-hover:-top-6 transition-all duration-300 z-10 px-2 py-1 rounded-md bg-foreground text-background text-[10px] font-bold shadow-xl">
                       {formatPercent(progresso)}
                     </div>
-
                     <span className={`text-[11px] font-black mb-3 transition-colors duration-300 ${config.text}`}>
                       {formatPercent(progresso)}
                     </span>
-
                     <div className="w-full max-w-[36px] bg-muted/30 backdrop-blur-[2px] rounded-t-xl relative flex items-end overflow-hidden h-[160px] border border-foreground/[0.03] shadow-inner">
                       <div
                         className={`w-full bg-gradient-to-t ${config.bg} ${config.shadow} transition-all duration-1000 ease-out rounded-t-lg group-hover:brightness-110 shadow-lg`}
@@ -567,7 +543,6 @@ export default function InicioPage() {
                         <div className="absolute inset-y-0 left-0 w-1/3 bg-white/20 skew-x-[-15deg] translate-x-[-50%]" />
                       </div>
                     </div>
-
                     <div className="mt-4 h-10 flex items-start justify-center">
                       <p className="text-[10px] font-bold text-muted-foreground group-hover:text-foreground text-center leading-tight line-clamp-2 transition-colors">
                         {obj.titulo}
