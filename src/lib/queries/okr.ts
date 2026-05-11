@@ -59,7 +59,7 @@ export async function deleteObjetivo(id: string) {
 
 export async function getKrsByEmpresa(clientId: string) {
   const supabase = createClient()
-  return supabase
+  const { data, error } = await supabase
     .from('krs')
     .select(`
       id, titulo, valor_inicial, valor_atual, meta, tipo_valor,
@@ -70,6 +70,30 @@ export async function getKrsByEmpresa(clientId: string) {
     `)
     .eq('client_id', clientId)
     .order('created_at', { ascending: false })
+
+  if (error || !data) return { data: [], error }
+
+  const krIds = data.map((kr: any) => kr.id)
+  const { data: lancamentos } = await supabase
+    .from('kr_lancamentos')
+    .select('kr_id, data_lancamento')
+    .in('kr_id', krIds)
+    .order('data_lancamento', { ascending: false })
+
+  const ultimoLancamento: Record<string, string> = {}
+  lancamentos?.forEach((l: any) => {
+    if (!ultimoLancamento[l.kr_id]) {
+      ultimoLancamento[l.kr_id] = l.data_lancamento
+    }
+  })
+
+  return {
+    data: data.map((kr: any) => ({
+      ...kr,
+      data_ultimo_lancamento: ultimoLancamento[kr.id] ?? null,
+    })),
+    error: null,
+  }
 }
 
 export async function createKr(payload: {

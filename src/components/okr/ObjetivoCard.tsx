@@ -22,6 +22,7 @@ interface ObjetivoCardProps {
   onVerGraficoKr?: (kr: any) => void
   onReativarKr?: (kr: any) => void
   onVerTaticasKr?: (kr: any) => void
+  onEditarLancamentosKr?: (kr: any) => void
 }
 
 export default function ObjetivoCard({
@@ -36,6 +37,7 @@ export default function ObjetivoCard({
   onVerGraficoKr,
   onReativarKr,
   onVerTaticasKr,
+  onEditarLancamentosKr,
 }: ObjetivoCardProps) {
   const [expanded, setExpanded] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -153,6 +155,7 @@ export default function ObjetivoCard({
                   onVerGrafico={onVerGraficoKr}
                   onReativar={onReativarKr}
                   onVerTaticas={onVerTaticasKr}
+                  onEditarLancamentos={onEditarLancamentosKr}
                 />
               ))}
             </div>

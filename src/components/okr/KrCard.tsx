@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { cn, formatPercent, formatNumber, getProgressColor, getProgressStatus } from '@/lib/utils'
-import { MoreHorizontal, TrendingUp, User, Building2, Calendar, Zap } from 'lucide-react'
+import { MoreHorizontal, TrendingUp, User, Building2, Calendar, Zap, ClipboardList } from 'lucide-react'
 
 interface KrCardProps {
   kr: {
@@ -14,6 +14,7 @@ interface KrCardProps {
     progresso?: number
     tipo_valor?: string
     end_date?: string
+    data_ultimo_lancamento?: string | null
     responsavel?: { full_name: string }
     setor?: { nome?: string; name?: string }
     objetivo?: { titulo: string }
@@ -26,6 +27,7 @@ interface KrCardProps {
   onVerGrafico?: (kr: any) => void
   onReativar?: (kr: any) => void
   onVerTaticas?: (kr: any) => void
+  onEditarLancamentos?: (kr: any) => void
 }
 
 export default function KrCard({
@@ -37,6 +39,7 @@ export default function KrCard({
   onVerGrafico,
   onReativar,
   onVerTaticas,
+  onEditarLancamentos,
 }: KrCardProps) {
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -51,6 +54,10 @@ export default function KrCard({
   const setorNome = kr.setor?.nome ?? kr.setor?.name
   const endDate = kr.end_date
     ? new Date(kr.end_date).toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' })
+    : null
+
+  const dataUltimoLancamento = kr.data_ultimo_lancamento
+    ? new Date(kr.data_ultimo_lancamento + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
     : null
 
   return (
@@ -69,7 +76,7 @@ export default function KrCard({
             <MoreHorizontal className="w-4 h-4" />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-7 bg-popover border border-border rounded-md shadow-lg z-10 min-w-36 py-1">
+            <div className="absolute right-0 top-7 bg-popover border border-border rounded-md shadow-lg z-10 min-w-40 py-1">
               <button
                 onClick={() => { onVerGrafico?.(kr); setMenuOpen(false) }}
                 className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors flex items-center gap-2"
@@ -83,6 +90,13 @@ export default function KrCard({
               >
                 <Zap className="w-3 h-3" />
                 Táticas
+              </button>
+              <button
+                onClick={() => { onEditarLancamentos?.(kr); setMenuOpen(false) }}
+                className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors flex items-center gap-2"
+              >
+                <ClipboardList className="w-3 h-3" />
+                Editar lançamentos
               </button>
               <button
                 onClick={() => { onEditar?.(kr); setMenuOpen(false) }}
@@ -143,6 +157,11 @@ export default function KrCard({
           <p className="text-sm font-semibold text-foreground">
             {formatNumber(kr.valor_atual ?? kr.valor_inicial ?? 0)}
           </p>
+          {dataUltimoLancamento && (
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {dataUltimoLancamento}
+            </p>
+          )}
         </div>
         <div className="bg-secondary/60 rounded-lg px-3 py-2 text-center">
           <p className="text-xs text-muted-foreground mb-0.5">Meta</p>

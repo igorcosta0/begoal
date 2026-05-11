@@ -23,6 +23,7 @@ import ModalDetalhesKr from '@/components/okr/ModalDetalhesKr'
 import ModalCriarObjetivo from '@/components/okr/ModalCriarObjetivo'
 import ModalEditarObjetivo from '@/components/okr/ModalEditarObjetivo'
 import ModalTaticasKr from '@/components/okr/ModalTaticasKr'
+import ModalEditarLancamentos from '@/components/okr/ModalEditarLancamentos'
 
 export default function OkrPage() {
   const { empresa } = useEmpresaStore()
@@ -42,6 +43,7 @@ export default function OkrPage() {
   const [modalFinalizarKr, setModalFinalizarKr] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
   const [modalDetalhesKr, setModalDetalhesKr] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
   const [modalTaticasKr, setModalTaticasKr] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
+  const [modalEditarLancamentos, setModalEditarLancamentos] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
   const [modalExcluirKr, setModalExcluirKr] = useState<{ open: boolean; kr: any | null; loading: boolean }>({ open: false, kr: null, loading: false })
   const [modalExcluirObjetivo, setModalExcluirObjetivo] = useState<{ open: boolean; objetivo: any | null; loading: boolean }>({ open: false, objetivo: null, loading: false })
 
@@ -82,17 +84,13 @@ export default function OkrPage() {
           setor: kr.setores ? { nome: kr.setores.name } : null,
           objetivo: kr.objetivos,
           progresso: (() => {
-  const atual = kr.valor_atual ?? kr.valor_inicial ?? 0
-  const inicial = kr.valor_inicial ?? 0
-  const meta = kr.meta ?? 0
-  if (meta === inicial) return 0
-  // KR de redução: meta < inicial
-  if (meta < inicial) {
-    return Math.min(100, Math.max(0, ((inicial - atual) / (inicial - meta)) * 100))
-  }
-  // KR de crescimento: meta > inicial
-  return Math.min(100, Math.max(0, ((atual - inicial) / (meta - inicial)) * 100))
-})(),
+            const atual = kr.valor_atual ?? kr.valor_inicial ?? 0
+            const inicial = kr.valor_inicial ?? 0
+            const meta = kr.meta ?? 0
+            if (meta === inicial) return 0
+            if (meta < inicial) return Math.min(100, Math.max(0, ((inicial - atual) / (inicial - meta)) * 100))
+            return Math.min(100, Math.max(0, ((atual - inicial) / (meta - inicial)) * 100))
+          })(),
         })),
     }))
 
@@ -223,6 +221,7 @@ export default function OkrPage() {
               onVerGraficoKr={(kr) => setModalDetalhesKr({ open: true, kr })}
               onReativarKr={handleReativarKr}
               onVerTaticasKr={(kr) => setModalTaticasKr({ open: true, kr })}
+              onEditarLancamentosKr={(kr) => setModalEditarLancamentos({ open: true, kr })}
             />
           ))}
         </div>
@@ -274,6 +273,12 @@ export default function OkrPage() {
         open={modalTaticasKr.open}
         kr={modalTaticasKr.kr}
         onClose={() => setModalTaticasKr({ open: false, kr: null })}
+      />
+      <ModalEditarLancamentos
+        open={modalEditarLancamentos.open}
+        kr={modalEditarLancamentos.kr}
+        onClose={() => setModalEditarLancamentos({ open: false, kr: null })}
+        onSuccess={fetchData}
       />
       <ModalConfirmarExclusao
         open={modalExcluirKr.open}
