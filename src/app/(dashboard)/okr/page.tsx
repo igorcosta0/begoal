@@ -81,9 +81,18 @@ export default function OkrPage() {
           responsavel: kr.funcionarios,
           setor: kr.setores ? { nome: kr.setores.name } : null,
           objetivo: kr.objetivos,
-          progresso: kr.meta > 0
-            ? Math.max(0, ((kr.valor_atual - kr.valor_inicial) / (kr.meta - kr.valor_inicial)) * 100)
-            : 0,
+          progresso: (() => {
+  const atual = kr.valor_atual ?? kr.valor_inicial ?? 0
+  const inicial = kr.valor_inicial ?? 0
+  const meta = kr.meta ?? 0
+  if (meta === inicial) return 0
+  // KR de redução: meta < inicial
+  if (meta < inicial) {
+    return Math.min(100, Math.max(0, ((inicial - atual) / (inicial - meta)) * 100))
+  }
+  // KR de crescimento: meta > inicial
+  return Math.min(100, Math.max(0, ((atual - inicial) / (meta - inicial)) * 100))
+})(),
         })),
     }))
 

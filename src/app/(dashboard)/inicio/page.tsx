@@ -259,7 +259,14 @@ export default function InicioPage() {
     ...obj,
     krs: krs.filter((kr) => kr.objetivo_id === obj.id).map((kr) => ({
       ...kr,
-      progresso: kr.meta > 0 ? Math.max(0, ((kr.valor_atual - kr.valor_inicial) / (kr.meta - kr.valor_inicial)) * 100) : 0,
+      progresso: (() => {
+  const atual = kr.valor_atual ?? kr.valor_inicial ?? 0
+  const inicial = kr.valor_inicial ?? 0
+  const meta = kr.meta ?? 0
+  if (meta === inicial) return 0
+  if (meta < inicial) return Math.min(100, Math.max(0, ((inicial - atual) / (inicial - meta)) * 100))
+  return Math.min(100, Math.max(0, ((atual - inicial) / (meta - inicial)) * 100))
+})(),
     })),
   })).map((obj) => ({
     ...obj,
