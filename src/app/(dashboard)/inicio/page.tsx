@@ -4,9 +4,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
 import { getObjetivos, getKrsByEmpresa } from '@/lib/queries/okr'
-import { getSinaisVitais } from '@/lib/queries/sinais-vitais'
-import { formatNumber, formatPercent } from '@/lib/utils'
-import { Edit2, Check, X, ArrowRight, TrendingUp, Activity, Megaphone, Target, Plus, Send, Trash2 } from 'lucide-react'
+import { formatPercent } from '@/lib/utils'
+import { Edit2, Check, X, ArrowRight, TrendingUp, Megaphone, Target, Plus, Send, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 
 function ComentariosBlock({ campo, clientId, userId, nomeUsuario }: { campo: string; clientId: string; userId: string; nomeUsuario: string }) {
@@ -180,7 +179,6 @@ export default function InicioPage() {
   const [editando, setEditando] = useState<string | null>(null)
   const [verCampanha, setVerCampanha] = useState(false)
 
-  // Valores da empresa
   const [valores, setValores] = useState<any[]>([])
   const [modalValor, setModalValor] = useState<{ open: boolean; valor: any | null }>({ open: false, valor: null })
   const [textoValor, setTextoValor] = useState('')
@@ -188,7 +186,6 @@ export default function InicioPage() {
 
   const [objetivos, setObjetivos] = useState<any[]>([])
   const [krs, setKrs] = useState<any[]>([])
-  const [svs, setSvs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [nomeUsuario, setNomeUsuario] = useState('')
   const [userId, setUserId] = useState('')
@@ -219,11 +216,10 @@ export default function InicioPage() {
     if (user) setUserId(user.id)
 
     const [
-      { data: identidadeData }, { data: objs }, { data: krsData }, { data: svsData },
-      { data: funcData },
+      { data: identidadeData }, { data: objs }, { data: krsData }, { data: funcData },
     ] = await Promise.all([
       supabase.from('empresa_identidade').select('*').eq('client_id', empresa.id).maybeSingle(),
-      getObjetivos(empresa.id), getKrsByEmpresa(empresa.id), getSinaisVitais(empresa.id),
+      getObjetivos(empresa.id), getKrsByEmpresa(empresa.id),
       supabase.from('funcionarios').select('full_name').eq('user_id', user?.id ?? '').maybeSingle(),
     ])
 
@@ -237,7 +233,7 @@ export default function InicioPage() {
       }
       setMercadoItens(parseLista(identidadeData.mercado_posicionamento))
     }
-    setObjetivos(objs ?? []); setKrs(krsData ?? []); setSvs(svsData ?? [])
+    setObjetivos(objs ?? []); setKrs(krsData ?? [])
     if (funcData) setNomeUsuario(funcData.full_name?.split(' ')[0] ?? '')
     setLoading(false)
   }, [empresa])
@@ -320,15 +316,6 @@ export default function InicioPage() {
   const progressoGeral = objetivosComKrs.length > 0 ? objetivosComKrs.reduce((a, obj) => a + obj.progresso, 0) / objetivosComKrs.length : 0
   const krsAtivos = krs.filter((kr: any) => !kr.concluido).length
   const temCampanha = !!(formIdentidade.campanha_titulo || formIdentidade.campanha_descricao)
-
-  const sinalStatus = (sv: any) => {
-    const prog = sv.meta > 0 ? Math.max(0, ((sv.valor_atual - sv.valor_inicial) / (sv.meta - sv.valor_inicial)) * 100) : 0
-    if (prog >= 70) return { cor: 'bg-emerald-500', borda: 'border-emerald-200', texto: 'text-emerald-600', label: 'Saudável', prog }
-    if (prog >= 40) return { cor: 'bg-amber-500', borda: 'border-amber-200', texto: 'text-amber-600', label: 'Atenção', prog }
-    return { cor: 'bg-red-500', borda: 'border-red-200', texto: 'text-red-600', label: 'Crítico', prog }
-  }
-
-  // Preenche até 4 slots para os cards de valores
   const valorSlots = Array.from({ length: 4 }, (_, i) => valores[i] ?? null)
 
   if (loading) {
@@ -336,12 +323,10 @@ export default function InicioPage() {
       <div className="flex gap-4 h-[calc(100vh-48px)] animate-pulse">
         <div className="flex-1 space-y-4">
           <div className="h-40 rounded-2xl bg-secondary" />
-          <div className="grid grid-cols-2 gap-3">
-            {[1, 2].map(i => <div key={i} className="h-40 rounded-2xl bg-secondary" />)}
-          </div>
+          <div className="h-40 rounded-2xl bg-secondary" />
           <div className="h-36 rounded-2xl bg-secondary" />
         </div>
-        <div className="w-64 rounded-2xl bg-secondary" />
+        <div className="w-72 rounded-2xl bg-secondary" />
       </div>
     )
   }
@@ -469,52 +454,21 @@ export default function InicioPage() {
           </div>
         )}
 
-        {/* IDENTIDADE — Mercado + Valores */}
-        <div className="grid grid-cols-2 gap-3 shrink-0">
-
-          {/* Mercado */}
-          <div className="bg-card border border-border rounded-2xl p-4 flex flex-col">
-            <div className="flex items-center gap-2 mb-3 shrink-0">
-              <div className="w-6 h-6 rounded-md bg-blue-50 flex items-center justify-center border border-blue-100">
-                <Target className="w-3.5 h-3.5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-foreground">Mercado</p>
-                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Posicionamento</p>
-              </div>
+        {/* MERCADO */}
+        <div className="bg-card border border-border rounded-2xl p-4 flex flex-col shrink-0">
+          <div className="flex items-center gap-2 mb-3 shrink-0">
+            <div className="w-6 h-6 rounded-md bg-blue-50 flex items-center justify-center border border-blue-100">
+              <Target className="w-3.5 h-3.5 text-blue-600" />
             </div>
-            <div className="flex-1">
-              <ListaItens campo="mercado_posicionamento" itens={mercadoItens} placeholder="Adicione onde atuamos..." onSalvar={handleSalvarLista} />
-            </div>
-            {empresa && <ComentariosBlock campo="mercado_posicionamento" clientId={empresa.id} userId={userId} nomeUsuario={nomeUsuario} />}
-          </div>
-
-          {/* Valores da Empresa — 4 slots */}
-          <div className="bg-card border border-border rounded-2xl p-4 flex flex-col">
-            <div className="flex items-center gap-2 mb-3 shrink-0">
-              <div className="w-6 h-6 rounded-md bg-violet-50 flex items-center justify-center border border-violet-100">
-                <span className="text-xs">✦</span>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-foreground">Valores</p>
-                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Da empresa</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2 flex-1">
-              {valorSlots.map((valor, idx) =>
-                valor ? (
-                  <ValorCard
-                    key={valor.id}
-                    valor={valor}
-                    onEditar={handleAbrirModalValor}
-                    onExcluir={handleExcluirValor}
-                  />
-                ) : (
-                  <ValorVazioCard key={`empty-${idx}`} onCadastrar={() => handleAbrirModalValor()} />
-                )
-              )}
+            <div>
+              <p className="text-xs font-semibold text-foreground">Mercado</p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Posicionamento</p>
             </div>
           </div>
+          <div className="flex-1">
+            <ListaItens campo="mercado_posicionamento" itens={mercadoItens} placeholder="Adicione onde atuamos..." onSalvar={handleSalvarLista} />
+          </div>
+          {empresa && <ComentariosBlock campo="mercado_posicionamento" clientId={empresa.id} userId={userId} nomeUsuario={nomeUsuario} />}
         </div>
 
         {/* OKRs — GRÁFICO */}
@@ -584,60 +538,34 @@ export default function InicioPage() {
         </div>
       </div>
 
-      {/* ═══ COLUNA DIREITA — SINAIS VITAIS ═══ */}
-      <div className="w-64 shrink-0 bg-card border border-border rounded-2xl p-4 flex flex-col overflow-hidden">
+      {/* ═══ COLUNA DIREITA — VALORES DA EMPRESA ═══ */}
+      <div className="w-72 shrink-0 bg-card border border-border rounded-2xl p-4 flex flex-col overflow-hidden">
         <div className="flex items-center justify-between mb-4 shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-emerald-50 border border-emerald-100 flex items-center justify-center">
-              <Activity className="w-3.5 h-3.5 text-emerald-600" />
+            <div className="w-6 h-6 rounded-md bg-violet-50 border border-violet-100 flex items-center justify-center">
+              <span className="text-xs">✦</span>
             </div>
             <div>
-              <p className="text-xs font-semibold text-foreground">Sinais Vitais</p>
-              <p className="text-[9px] text-muted-foreground">Saúde do negócio</p>
+              <p className="text-xs font-semibold text-foreground">Valores</p>
+              <p className="text-[9px] text-muted-foreground">Da empresa</p>
             </div>
           </div>
-          <Link href="/sinais-vitais" className="text-[10px] text-primary hover:underline font-medium">Ver tudo</Link>
         </div>
 
-        {svs.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center">
-            <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center mb-3">
-              <Activity className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <p className="text-xs font-medium text-foreground mb-1">Nenhum indicador</p>
-            <p className="text-[10px] text-muted-foreground mb-3">Configure KPIs para monitorar a saúde do negócio.</p>
-            <Link href="/sinais-vitais" className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-medium hover:opacity-90">
-              <Plus className="w-3 h-3" /> Criar
-            </Link>
-          </div>
-        ) : (
-          <div className="flex-1 overflow-y-auto space-y-2 pr-0.5">
-            {svs.map((sv) => {
-              const status = sinalStatus(sv)
-              return (
-                <div key={sv.id} className={`p-3 rounded-xl border ${status.borda} bg-card hover:shadow-sm transition-shadow`}>
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <p className="text-[11px] font-medium text-foreground leading-snug flex-1">{sv.titulo}</p>
-                    <div className={`w-2 h-2 rounded-full shrink-0 mt-0.5 ${status.cor}`} />
-                  </div>
-                  <div className="flex items-end justify-between mb-2">
-                    <div>
-                      <p className="text-base font-bold text-foreground leading-none">{formatNumber(sv.valor_atual ?? sv.valor_inicial ?? 0)}</p>
-                      <p className={`text-[10px] font-medium mt-0.5 ${status.texto}`}>{status.label}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[9px] text-muted-foreground">Meta</p>
-                      <p className="text-xs font-semibold text-foreground">{formatNumber(sv.meta ?? 0)}</p>
-                    </div>
-                  </div>
-                  <div className="h-1 bg-secondary rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${status.cor}`} style={{ width: `${Math.min(status.prog, 100)}%` }} />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+        <div className="flex-1 grid grid-cols-2 gap-2 overflow-y-auto content-start">
+          {valorSlots.map((valor, idx) =>
+            valor ? (
+              <ValorCard
+                key={valor.id}
+                valor={valor}
+                onEditar={handleAbrirModalValor}
+                onExcluir={handleExcluirValor}
+              />
+            ) : (
+              <ValorVazioCard key={`empty-${idx}`} onCadastrar={() => handleAbrirModalValor()} />
+            )
+          )}
+        </div>
       </div>
 
       {/* Modal Cadastrar/Editar Valor */}
@@ -656,8 +584,7 @@ export default function InicioPage() {
                   onChange={(e) => setTextoValor(e.target.value)}
                   rows={3}
                   placeholder="Ex: Foco no cliente, Integridade, Inovação..."
-                  required
-                  autoFocus
+                  required autoFocus
                   className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                 />
               </div>
