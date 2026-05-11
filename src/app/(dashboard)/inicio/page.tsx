@@ -9,14 +9,6 @@ import { formatNumber, formatPercent } from '@/lib/utils'
 import { Edit2, Check, X, ArrowRight, TrendingUp, Activity, Megaphone, Target, Plus, Send, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 
-const HUMOR_EMOJIS = [
-  { valor: 1, emoji: '😔', label: 'Muito mal' },
-  { valor: 2, emoji: '😟', label: 'Mal' },
-  { valor: 3, emoji: '😐', label: 'Neutro' },
-  { valor: 4, emoji: '😊', label: 'Bem' },
-  { valor: 5, emoji: '😄', label: 'Ótimo' },
-]
-
 function ComentariosBlock({ campo, clientId, userId, nomeUsuario }: { campo: string; clientId: string; userId: string; nomeUsuario: string }) {
   const [comentarios, setComentarios] = useState<any[]>([])
   const [novoComentario, setNovoComentario] = useState('')
@@ -148,6 +140,38 @@ function ListaItens({ campo, itens, placeholder, onSalvar }: { campo: string; it
   )
 }
 
+function ValorCard({ valor, onEditar, onExcluir }: { valor: any; onEditar: (v: any) => void; onExcluir: (id: string) => void }) {
+  return (
+    <div className="relative group bg-card rounded-2xl p-4 flex flex-col gap-2
+      shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.10)]
+      border border-border/60 transition-all duration-200
+      before:absolute before:inset-0 before:rounded-2xl before:border before:border-white/60 before:pointer-events-none">
+      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button onClick={() => onEditar(valor)} className="p-1 rounded-md hover:bg-accent transition-colors">
+          <Edit2 className="w-3 h-3 text-muted-foreground" />
+        </button>
+        <button onClick={() => onExcluir(valor.id)} className="p-1 rounded-md hover:bg-accent transition-colors">
+          <Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive" />
+        </button>
+      </div>
+      <div className="w-6 h-0.5 bg-primary/40 rounded-full" />
+      <p className="text-xs font-medium text-foreground leading-relaxed pr-10">{valor.texto}</p>
+    </div>
+  )
+}
+
+function ValorVazioCard({ onCadastrar }: { onCadastrar: () => void }) {
+  return (
+    <button onClick={onCadastrar}
+      className="relative bg-card/50 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 min-h-[80px]
+        border border-dashed border-border hover:border-primary/40 hover:bg-accent/20
+        shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all duration-200 group">
+      <Plus className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+      <p className="text-[11px] text-muted-foreground group-hover:text-foreground transition-colors font-medium">Cadastrar Valor</p>
+    </button>
+  )
+}
+
 export default function InicioPage() {
   const { empresa } = useEmpresaStore()
   const [identidade, setIdentidade] = useState<any>(null)
@@ -155,11 +179,16 @@ export default function InicioPage() {
   const [mercadoItens, setMercadoItens] = useState<string[]>([])
   const [editando, setEditando] = useState<string | null>(null)
   const [verCampanha, setVerCampanha] = useState(false)
+
+  // Valores da empresa
+  const [valores, setValores] = useState<any[]>([])
+  const [modalValor, setModalValor] = useState<{ open: boolean; valor: any | null }>({ open: false, valor: null })
+  const [textoValor, setTextoValor] = useState('')
+  const [salvandoValor, setSalvandoValor] = useState(false)
+
   const [objetivos, setObjetivos] = useState<any[]>([])
   const [krs, setKrs] = useState<any[]>([])
   const [svs, setSvs] = useState<any[]>([])
-  const [humorHoje, setHumorHoje] = useState<number | null>(null)
-  const [mediaHumor, setMediaHumor] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [nomeUsuario, setNomeUsuario] = useState('')
   const [userId, setUserId] = useState('')
@@ -175,6 +204,13 @@ export default function InicioPage() {
     setDataHoje(agora.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }))
   }, [])
 
+  const fetchValores = useCallback(async () => {
+    if (!empresa) return
+    const supabase = createClient()
+    const { data } = await supabase.from('empresa_valores').select('*').eq('client_id', empresa.id).order('ordem')
+    setValores(data ?? [])
+  }, [empresa])
+
   const fetchData = useCallback(async () => {
     if (!empresa) return
     setLoading(true)
@@ -184,12 +220,10 @@ export default function InicioPage() {
 
     const [
       { data: identidadeData }, { data: objs }, { data: krsData }, { data: svsData },
-      { data: humorData }, { data: humorHojeData }, { data: funcData },
+      { data: funcData },
     ] = await Promise.all([
       supabase.from('empresa_identidade').select('*').eq('client_id', empresa.id).maybeSingle(),
       getObjetivos(empresa.id), getKrsByEmpresa(empresa.id), getSinaisVitais(empresa.id),
-      supabase.from('humor_registro').select('humor').eq('client_id', empresa.id).gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
-      supabase.from('humor_registro').select('humor').eq('client_id', empresa.id).eq('user_id', user?.id ?? '').gte('created_at', new Date().toISOString().split('T')[0]).limit(1),
       supabase.from('funcionarios').select('full_name').eq('user_id', user?.id ?? '').maybeSingle(),
     ])
 
@@ -205,12 +239,10 @@ export default function InicioPage() {
     }
     setObjetivos(objs ?? []); setKrs(krsData ?? []); setSvs(svsData ?? [])
     if (funcData) setNomeUsuario(funcData.full_name?.split(' ')[0] ?? '')
-    if (humorData && humorData.length > 0) setMediaHumor(Math.round(humorData.reduce((a: number, h: any) => a + h.humor, 0) / humorData.length))
-    if (humorHojeData && humorHojeData.length > 0) setHumorHoje(humorHojeData[0].humor)
     setLoading(false)
   }, [empresa])
 
-  useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => { fetchData(); fetchValores() }, [fetchData, fetchValores])
 
   const handleChange = useCallback((campo: string, valor: string) => { setFormIdentidade((prev) => ({ ...prev, [campo]: valor })) }, [])
   const handleEdit = useCallback((campo: string) => { setEditando(campo) }, [])
@@ -240,13 +272,32 @@ export default function InicioPage() {
     fetchData()
   }, [empresa, identidade, fetchData])
 
-  const handleHumor = useCallback(async (valor: number) => {
-    if (!empresa) return
+  async function handleSalvarValor(e: React.FormEvent) {
+    e.preventDefault()
+    if (!empresa || !textoValor.trim()) return
+    setSalvandoValor(true)
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    await supabase.from('humor_registro').insert({ client_id: empresa.id, user_id: user?.id, humor: valor })
-    setHumorHoje(valor); fetchData()
-  }, [empresa, fetchData])
+    if (modalValor.valor) {
+      await supabase.from('empresa_valores').update({ texto: textoValor.trim(), updated_at: new Date().toISOString() }).eq('id', modalValor.valor.id)
+    } else {
+      await supabase.from('empresa_valores').insert({ client_id: empresa.id, texto: textoValor.trim(), ordem: valores.length })
+    }
+    setSalvandoValor(false)
+    setModalValor({ open: false, valor: null })
+    setTextoValor('')
+    fetchValores()
+  }
+
+  async function handleExcluirValor(id: string) {
+    const supabase = createClient()
+    await supabase.from('empresa_valores').delete().eq('id', id)
+    fetchValores()
+  }
+
+  function handleAbrirModalValor(valor?: any) {
+    setModalValor({ open: true, valor: valor ?? null })
+    setTextoValor(valor?.texto ?? '')
+  }
 
   const objetivosComKrs = objetivos.map((obj) => ({
     ...obj,
@@ -276,6 +327,9 @@ export default function InicioPage() {
     if (prog >= 40) return { cor: 'bg-amber-500', borda: 'border-amber-200', texto: 'text-amber-600', label: 'Atenção', prog }
     return { cor: 'bg-red-500', borda: 'border-red-200', texto: 'text-red-600', label: 'Crítico', prog }
   }
+
+  // Preenche até 4 slots para os cards de valores
+  const valorSlots = Array.from({ length: 4 }, (_, i) => valores[i] ?? null)
 
   if (loading) {
     return (
@@ -382,11 +436,9 @@ export default function InicioPage() {
                   </div>
                 </div>
               </div>
-
               <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight leading-none mb-4">
                 {empresa?.company_name}
               </h1>
-
               <div className="group relative">
                 {editando === 'visao_futuro' ? (
                   <div className="space-y-2">
@@ -417,7 +469,7 @@ export default function InicioPage() {
           </div>
         )}
 
-        {/* IDENTIDADE — 2 cards (Mercado + Pulso) */}
+        {/* IDENTIDADE — Mercado + Valores */}
         <div className="grid grid-cols-2 gap-3 shrink-0">
 
           {/* Mercado */}
@@ -437,50 +489,35 @@ export default function InicioPage() {
             {empresa && <ComentariosBlock campo="mercado_posicionamento" clientId={empresa.id} userId={userId} nomeUsuario={nomeUsuario} />}
           </div>
 
-          {/* Pulso do time */}
-          <div className="bg-card border border-border rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-6 rounded-md bg-emerald-50 flex items-center justify-center border border-emerald-100">
-                <span className="text-xs">💚</span>
+          {/* Valores da Empresa — 4 slots */}
+          <div className="bg-card border border-border rounded-2xl p-4 flex flex-col">
+            <div className="flex items-center gap-2 mb-3 shrink-0">
+              <div className="w-6 h-6 rounded-md bg-violet-50 flex items-center justify-center border border-violet-100">
+                <span className="text-xs">✦</span>
               </div>
               <div>
-                <p className="text-xs font-semibold text-foreground">Pulso do time</p>
-                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Como você está?</p>
+                <p className="text-xs font-semibold text-foreground">Valores</p>
+                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Da empresa</p>
               </div>
             </div>
-            {humorHoje ? (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-2xl">{HUMOR_EMOJIS.find(h => h.valor === humorHoje)?.emoji}</span>
-                  <div>
-                    <p className="text-xs font-semibold text-foreground">{HUMOR_EMOJIS.find(h => h.valor === humorHoje)?.label}</p>
-                    <p className="text-[10px] text-muted-foreground">Registrado hoje</p>
-                  </div>
-                </div>
-                {mediaHumor && (
-                  <div className="pt-2 border-t border-border">
-                    <p className="text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">Média do time</p>
-                    <p className="text-xs font-medium text-foreground">{HUMOR_EMOJIS.find(h => h.valor === mediaHumor)?.emoji} {HUMOR_EMOJIS.find(h => h.valor === mediaHumor)?.label}</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div>
-                <p className="text-[10px] text-muted-foreground mb-2">Como está se sentindo hoje?</p>
-                <div className="flex gap-1">
-                  {HUMOR_EMOJIS.map((h) => (
-                    <button key={h.valor} onClick={() => handleHumor(h.valor)} className="flex-1 flex flex-col items-center py-1.5 rounded-lg hover:bg-accent transition-all hover:scale-105" title={h.label}>
-                      <span className="text-lg">{h.emoji}</span>
-                    </button>
-                  ))}
-                </div>
-                {mediaHumor && <p className="text-[10px] text-muted-foreground mt-2">Média: {HUMOR_EMOJIS.find(h => h.valor === mediaHumor)?.emoji}</p>}
-              </div>
-            )}
+            <div className="grid grid-cols-2 gap-2 flex-1">
+              {valorSlots.map((valor, idx) =>
+                valor ? (
+                  <ValorCard
+                    key={valor.id}
+                    valor={valor}
+                    onEditar={handleAbrirModalValor}
+                    onExcluir={handleExcluirValor}
+                  />
+                ) : (
+                  <ValorVazioCard key={`empty-${idx}`} onCadastrar={() => handleAbrirModalValor()} />
+                )
+              )}
+            </div>
           </div>
         </div>
 
-        {/* OKRs — GRÁFICO DE PERFORMANCE */}
+        {/* OKRs — GRÁFICO */}
         <div className="bg-card border border-border rounded-2xl p-6 flex-1 min-h-0 flex flex-col shadow-sm">
           <div className="flex items-center justify-between mb-8 shrink-0">
             <div className="flex items-center gap-3">
@@ -489,14 +526,11 @@ export default function InicioPage() {
               </div>
               <div>
                 <p className="text-sm font-bold text-foreground tracking-tight">Performance de OKRs</p>
-                <p className="text-[11px] text-muted-foreground font-medium">
-                  {objetivos.length} objetivos estratégicos ativos
-                </p>
+                <p className="text-[11px] text-muted-foreground font-medium">{objetivos.length} objetivos estratégicos ativos</p>
               </div>
             </div>
             <Link href="/okr" className="group flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-bold transition-all">
-              Painel Completo
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              Painel Completo <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
             </Link>
           </div>
 
@@ -532,21 +566,15 @@ export default function InicioPage() {
                     <div className="absolute -top-2 opacity-0 group-hover:opacity-100 group-hover:-top-6 transition-all duration-300 z-10 px-2 py-1 rounded-md bg-foreground text-background text-[10px] font-bold shadow-xl">
                       {formatPercent(progresso)}
                     </div>
-                    <span className={`text-[11px] font-black mb-3 transition-colors duration-300 ${config.text}`}>
-                      {formatPercent(progresso)}
-                    </span>
+                    <span className={`text-[11px] font-black mb-3 transition-colors duration-300 ${config.text}`}>{formatPercent(progresso)}</span>
                     <div className="w-full max-w-[36px] bg-muted/30 backdrop-blur-[2px] rounded-t-xl relative flex items-end overflow-hidden h-[160px] border border-foreground/[0.03] shadow-inner">
-                      <div
-                        className={`w-full bg-gradient-to-t ${config.bg} ${config.shadow} transition-all duration-1000 ease-out rounded-t-lg group-hover:brightness-110 shadow-lg`}
-                        style={{ height: `${Math.max(progresso, 6)}%` }}
-                      >
+                      <div className={`w-full bg-gradient-to-t ${config.bg} ${config.shadow} transition-all duration-1000 ease-out rounded-t-lg group-hover:brightness-110 shadow-lg`}
+                        style={{ height: `${Math.max(progresso, 6)}%` }}>
                         <div className="absolute inset-y-0 left-0 w-1/3 bg-white/20 skew-x-[-15deg] translate-x-[-50%]" />
                       </div>
                     </div>
                     <div className="mt-4 h-10 flex items-start justify-center">
-                      <p className="text-[10px] font-bold text-muted-foreground group-hover:text-foreground text-center leading-tight line-clamp-2 transition-colors">
-                        {obj.titulo}
-                      </p>
+                      <p className="text-[10px] font-bold text-muted-foreground group-hover:text-foreground text-center leading-tight line-clamp-2 transition-colors">{obj.titulo}</p>
                     </div>
                   </div>
                 )
@@ -611,6 +639,42 @@ export default function InicioPage() {
           </div>
         )}
       </div>
+
+      {/* Modal Cadastrar/Editar Valor */}
+      {modalValor.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => { setModalValor({ open: false, valor: null }); setTextoValor('') }} />
+          <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
+            <h2 className="text-sm font-semibold text-foreground mb-4">
+              {modalValor.valor ? 'Editar Valor' : 'Cadastrar Valor'}
+            </h2>
+            <form onSubmit={handleSalvarValor} className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-foreground">Valor da empresa</label>
+                <textarea
+                  value={textoValor}
+                  onChange={(e) => setTextoValor(e.target.value)}
+                  rows={3}
+                  placeholder="Ex: Foco no cliente, Integridade, Inovação..."
+                  required
+                  autoFocus
+                  className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button type="button" onClick={() => { setModalValor({ open: false, valor: null }); setTextoValor('') }}
+                  className="flex-1 py-2 px-4 border border-border rounded-xl text-sm text-muted-foreground hover:bg-accent transition-colors">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={salvandoValor || !textoValor.trim()}
+                  className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity">
+                  {salvandoValor ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

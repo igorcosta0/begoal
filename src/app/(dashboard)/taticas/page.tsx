@@ -280,7 +280,7 @@ export default function TaticasPage() {
     getSetoresByEmpresa(empresa.id).then(({ data }) => setSetores(data ?? []))
     getFuncionariosByEmpresa(empresa.id).then(({ data }) => setFuncionarios(data ?? []))
     supabase.from('krs').select('id, titulo, objetivo_id').eq('client_id', empresa.id)
-      .then(({ data }) => setKrs(data ?? []))
+      .then(({ data }: { data: any }) => setKrs(data ?? []))
   }, [empresa])
 
   async function handleCriar(e: React.FormEvent) {
