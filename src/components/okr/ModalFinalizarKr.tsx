@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { finalizarKr } from '@/lib/queries/okr'
+import { createClient } from '@/lib/supabase/client'
 
 interface ModalFinalizarKrProps {
   open: boolean
@@ -31,18 +31,38 @@ export default function ModalFinalizarKr({
     setLoading(true)
     setError(null)
 
-    const { error } = await finalizarKr(kr.id, parseFloat(resultado))
+    try {
+      const supabase = createClient()
+      const valor = parseFloat(resultado)
 
-    if (error) {
+      // Atualiza o KR como concluído e atualiza valor_atual
+      const { error: krError } = await supabase
+        .from('krs')
+        .update({
+          concluido: true,
+          valor_atual: valor,
+        })
+        .eq('id', kr.id)
+
+      if (krError) throw krError
+
+      // Registra o lançamento final
+      await supabase.from('kr_lancamentos').insert({
+        kr_id: kr.id,
+        valor,
+        data_lancamento: new Date().toISOString().split('T')[0],
+        is_final_result: true,
+        comentario: 'Resultado final',
+      })
+
+      setResultado('')
+      onSuccess()
+      onClose()
+    } catch (err) {
       setError('Erro ao finalizar KR. Tente novamente.')
+    } finally {
       setLoading(false)
-      return
     }
-
-    setResultado('')
-    onSuccess()
-    onClose()
-    setLoading(false)
   }
 
   if (!open || !kr) return null
@@ -82,12 +102,13 @@ export default function ModalFinalizarKr({
               onChange={(e) => setResultado(e.target.value)}
               required
               placeholder="0"
+              autoFocus
               className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
-          <p className="text-xs text-muted-foreground bg-yellow-50 border border-yellow-200 rounded-md px-3 py-2">
-            ⚠️ Esta ação é irreversível. O KR será marcado como finalizado.
+          <p className="text-xs text-muted-foreground bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
+            ℹ️ O KR será marcado como finalizado. Você pode reativá-lo a qualquer momento pelo menu de opções.
           </p>
 
           {error && <p className="text-xs text-destructive">{error}</p>}
@@ -102,7 +123,7 @@ export default function ModalFinalizarKr({
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !resultado}
               className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-md text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               {loading ? 'Finalizando...' : 'Finalizar KR'}
