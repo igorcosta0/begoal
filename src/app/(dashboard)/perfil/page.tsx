@@ -1,134 +1,178 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useEmpresaStore } from '@/store/useEmpresaStore'
 
-interface ModalFinalizarKrProps {
-  open: boolean
-  kr: {
-    id: string
-    titulo: string
-    meta?: number
-    tipo_valor?: string
-  } | null
-  onClose: () => void
-  onSuccess: () => void
-}
+export default function PerfilPage() {
+  const { empresa } = useEmpresaStore()
+  const [loading, setLoading] = useState(true)
+  const [salvando, setSalvando] = useState(false)
+  const [mensagem, setMensagem] = useState<{ tipo: 'sucesso' | 'erro'; texto: string } | null>(null)
 
-export default function ModalFinalizarKr({
-  open,
-  kr,
-  onClose,
-  onSuccess,
-}: ModalFinalizarKrProps) {
-  const [resultado, setResultado] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [form, setForm] = useState({
+    full_name: '',
+    email: '',
+  })
 
-  async function handleSubmit(e: React.FormEvent) {
+  const [senhaForm, setSenhaForm] = useState({
+    nova_senha: '',
+    confirmar_senha: '',
+  })
+
+  useEffect(() => {
+    async function fetchPerfil() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: func } = await supabase
+        .from('funcionarios')
+        .select('full_name, email')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (func) {
+        setForm({ full_name: func.full_name ?? '', email: func.email ?? user.email ?? '' })
+      } else {
+        setForm({ full_name: '', email: user.email ?? '' })
+      }
+      setLoading(false)
+    }
+    fetchPerfil()
+  }, [])
+
+  async function handleSalvarPerfil(e: React.FormEvent) {
     e.preventDefault()
-    if (!kr) return
-    setLoading(true)
-    setError(null)
-
+    setSalvando(true)
+    setMensagem(null)
     try {
       const supabase = createClient()
-      const valor = parseFloat(resultado)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Usuário não encontrado')
 
-      // Atualiza o KR como concluído e atualiza valor_atual
-      const { error: krError } = await supabase
-        .from('krs')
-        .update({
-          concluido: true,
-          valor_atual: valor,
-        })
-        .eq('id', kr.id)
+      await supabase
+        .from('funcionarios')
+        .update({ full_name: form.full_name })
+        .eq('user_id', user.id)
 
-      if (krError) throw krError
-
-      // Registra o lançamento final
-      await supabase.from('kr_lancamentos').insert({
-        kr_id: kr.id,
-        valor,
-        data_lancamento: new Date().toISOString().split('T')[0],
-        is_final_result: true,
-        comentario: 'Resultado final',
-      })
-
-      setResultado('')
-      onSuccess()
-      onClose()
-    } catch (err) {
-      setError('Erro ao finalizar KR. Tente novamente.')
+      setMensagem({ tipo: 'sucesso', texto: 'Perfil atualizado com sucesso!' })
+    } catch {
+      setMensagem({ tipo: 'erro', texto: 'Erro ao salvar perfil.' })
     } finally {
-      setLoading(false)
+      setSalvando(false)
     }
   }
 
-  if (!open || !kr) return null
+  async function handleSalvarSenha(e: React.FormEvent) {
+    e.preventDefault()
+    if (senhaForm.nova_senha !== senhaForm.confirmar_senha) {
+      setMensagem({ tipo: 'erro', texto: 'As senhas não coincidem.' })
+      return
+    }
+    setSalvando(true)
+    setMensagem(null)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.updateUser({ password: senhaForm.nova_senha })
+      if (error) throw error
+      setSenhaForm({ nova_senha: '', confirmar_senha: '' })
+      setMensagem({ tipo: 'sucesso', texto: 'Senha atualizada com sucesso!' })
+    } catch {
+      setMensagem({ tipo: 'erro', texto: 'Erro ao atualizar senha.' })
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className="h-8 w-48 rounded bg-secondary" />
+        <div className="h-40 rounded-lg bg-secondary" />
+      </div>
+    )
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-card border border-border rounded-lg shadow-lg w-full max-w-sm mx-4 p-6">
+    <div className="max-w-lg space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Perfil</h1>
+        <p className="text-sm text-muted-foreground mt-1">Gerencie suas informações pessoais</p>
+      </div>
 
-        <div className="text-center mb-4">
-          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-3">
-            <span className="text-xl">🏁</span>
-          </div>
-          <h2 className="text-base font-semibold text-foreground">
-            Finalizar Key Result
-          </h2>
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-            {kr.titulo}
-          </p>
+      {mensagem && (
+        <div className={`px-4 py-3 rounded-lg text-sm font-medium ${mensagem.tipo === 'sucesso' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+          {mensagem.texto}
         </div>
+      )}
 
-        <div className="bg-secondary rounded-md px-3 py-2 text-xs text-muted-foreground mb-4 text-center">
-          Meta: <span className="font-medium text-foreground">
-            {kr.meta ?? 0} {kr.tipo_valor}
-          </span>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-3">
+      {/* Dados pessoais */}
+      <div className="bg-card border border-border rounded-lg p-6">
+        <h2 className="text-sm font-semibold text-foreground mb-4">Dados pessoais</h2>
+        <form onSubmit={handleSalvarPerfil} className="space-y-4">
           <div>
-            <label className="text-xs font-medium text-foreground">
-              Resultado final {kr.tipo_valor ? `(${kr.tipo_valor})` : ''}
-            </label>
+            <label className="text-xs font-medium text-foreground">Nome completo</label>
             <input
-              type="number"
-              step="any"
-              value={resultado}
-              onChange={(e) => setResultado(e.target.value)}
-              required
-              placeholder="0"
-              autoFocus
-              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              type="text"
+              value={form.full_name}
+              onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
-
-          <p className="text-xs text-muted-foreground bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
-            ℹ️ O KR será marcado como finalizado. Você pode reativá-lo a qualquer momento pelo menu de opções.
-          </p>
-
-          {error && <p className="text-xs text-destructive">{error}</p>}
-
-          <div className="flex gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2 px-4 border border-border rounded-md text-sm text-muted-foreground hover:bg-accent transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={loading || !resultado}
-              className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-md text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
-              {loading ? 'Finalizando...' : 'Finalizar KR'}
-            </button>
+          <div>
+            <label className="text-xs font-medium text-foreground">E-mail</label>
+            <input
+              type="email"
+              value={form.email}
+              disabled
+              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-secondary text-muted-foreground cursor-not-allowed"
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">O e-mail não pode ser alterado aqui.</p>
           </div>
+          <button
+            type="submit"
+            disabled={salvando}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+          >
+            {salvando ? 'Salvando...' : 'Salvar alterações'}
+          </button>
+        </form>
+      </div>
+
+      {/* Senha */}
+      <div className="bg-card border border-border rounded-lg p-6">
+        <h2 className="text-sm font-semibold text-foreground mb-4">Alterar senha</h2>
+        <form onSubmit={handleSalvarSenha} className="space-y-4">
+          <div>
+            <label className="text-xs font-medium text-foreground">Nova senha</label>
+            <input
+              type="password"
+              value={senhaForm.nova_senha}
+              onChange={(e) => setSenhaForm({ ...senhaForm, nova_senha: e.target.value })}
+              required
+              minLength={6}
+              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-foreground">Confirmar nova senha</label>
+            <input
+              type="password"
+              value={senhaForm.confirmar_senha}
+              onChange={(e) => setSenhaForm({ ...senhaForm, confirmar_senha: e.target.value })}
+              required
+              minLength={6}
+              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={salvando}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+          >
+            {salvando ? 'Atualizando...' : 'Atualizar senha'}
+          </button>
         </form>
       </div>
     </div>
