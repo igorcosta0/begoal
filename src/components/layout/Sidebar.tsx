@@ -8,7 +8,7 @@ import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { cn } from '@/lib/utils'
 import {
   Target, Flag, Zap, Activity, Users, Settings,
-  User, LogOut, ChevronLeft, ChevronRight, Building2, Home, ArrowLeftRight,
+  User, LogOut, ChevronLeft, ChevronRight, Building2, Home, ArrowLeftRight, Upload,
 } from 'lucide-react'
 
 const navItems = [
@@ -107,7 +107,6 @@ export default function Sidebar({ permissionLevel }: SidebarProps) {
 
       {/* Footer */}
       <div className="p-2 border-t border-sidebar-border space-y-1">
-        {/* Mudar Empresa — apenas admins */}
         {permissionLevel === 'administrador' && (
           <button
             onClick={handleMudarEmpresa}
