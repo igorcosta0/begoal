@@ -18,7 +18,7 @@ const navItems = [
   { href: '/taticas', label: 'Táticas', icon: Zap },
   { href: '/sinais-vitais', label: 'Sinais Vitais', icon: Activity },
   { href: '/funcionarios', label: 'Funcionários', icon: Users },
-  { href: '/importar-lancamentos', label: 'Importar', icon: FileUp },
+  { href: '/importar-lancamentos', label: 'Importar', icon: Upload },
   { href: '/admin', label: 'Administração', icon: Settings },
 ]
 
