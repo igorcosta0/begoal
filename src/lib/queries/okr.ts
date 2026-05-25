@@ -6,7 +6,7 @@ export async function getObjetivos(clientId: string) {
   const supabase = createClient()
   return supabase
     .from('objetivos')
-    .select('id, titulo, descricao, start_date, end_date')
+    .select('id, titulo, descricao, start_date, end_date, concluido')
     .eq('client_id', clientId)
     .order('created_at', { ascending: false })
 }
