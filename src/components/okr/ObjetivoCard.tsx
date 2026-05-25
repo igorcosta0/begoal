@@ -1,170 +1,201 @@
-'use client'
+import { createClient } from '@/lib/supabase/client'
 
-import { useState } from 'react'
-import { cn, formatPercent, getProgressColor } from '@/lib/utils'
-import { ChevronDown, ChevronUp, MoreHorizontal, Target, Archive } from 'lucide-react'
-import KrCard from './KrCard'
+// ==================== OBJETIVOS ====================
 
-interface ObjetivoCardProps {
-  objetivo: {
-    id: string
-    titulo: string
-    progresso?: number
-    krs?: any[]
-  }
-  onCriarKr?: (objetivo: any) => void
-  onEditarObjetivo?: (objetivo: any) => void
-  onExcluirObjetivo?: (objetivo: any) => void
-  onFinalizarObjetivo?: (objetivo: any) => void
-  onLancarKr?: (kr: any) => void
-  onEditarKr?: (kr: any) => void
-  onFinalizarKr?: (kr: any) => void
-  onExcluirKr?: (kr: any) => void
-  onVerGraficoKr?: (kr: any) => void
-  onReativarKr?: (kr: any) => void
-  onVerTaticasKr?: (kr: any) => void
-  onEditarLancamentosKr?: (kr: any) => void
+export async function getObjetivos(clientId: string) {
+  const supabase = createClient()
+  return supabase
+    .from('objetivos')
+    .select('id, titulo, descricao, start_date, end_date, concluido')
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false })
 }
 
-export default function ObjetivoCard({
-  objetivo,
-  onCriarKr,
-  onEditarObjetivo,
-  onExcluirObjetivo,
-  onFinalizarObjetivo,
-  onLancarKr,
-  onEditarKr,
-  onFinalizarKr,
-  onExcluirKr,
-  onVerGraficoKr,
-  onReativarKr,
-  onVerTaticasKr,
-  onEditarLancamentosKr,
-}: ObjetivoCardProps) {
-  const [expanded, setExpanded] = useState(true)
-  const [menuOpen, setMenuOpen] = useState(false)
+export async function createObjetivo(payload: {
+  titulo: string
+  client_id: string
+  setor_ids?: string[]
+}) {
+  const supabase = createClient()
+  const { setor_ids, ...data } = payload
+  const { data: objetivo, error } = await supabase
+    .from('objetivos')
+    .insert(data)
+    .select()
+    .single()
+  if (error) return { data: null, error }
+  if (setor_ids && setor_ids.length > 0) {
+    await supabase.rpc('link_objective_sectors', {
+      p_objetivo_id: objetivo.id,
+      p_setor_ids: setor_ids,
+    })
+  }
+  return { data: objetivo, error: null }
+}
 
-  const progresso = objetivo.progresso ?? 0
-  const krs = objetivo.krs ?? []
-  const barColor = getProgressColor(progresso)
+export async function updateObjetivo(
+  id: string,
+  payload: { titulo?: string; setor_ids?: string[] }
+) {
+  const supabase = createClient()
+  const { setor_ids, ...data } = payload
+  if (Object.keys(data).length > 0) {
+    await supabase.from('objetivos').update(data).eq('id', id)
+  }
+  if (setor_ids) {
+    await supabase.rpc('link_objective_sectors', {
+      p_objetivo_id: id,
+      p_setor_ids: setor_ids,
+    })
+  }
+}
 
-  return (
-    <div className="bg-card border border-border rounded-lg overflow-hidden">
+export async function deleteObjetivo(id: string) {
+  const supabase = createClient()
+  return supabase.rpc('delete_objective_cascade', { p_objetivo_id: id })
+}
 
-      {/* Header do Objetivo */}
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 flex-1 min-w-0">
-            <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-              <Target className="w-4 h-4 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold text-foreground leading-snug">
-                {objetivo.titulo}
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {krs.length} Key Result{krs.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-          </div>
+// ==================== KRs ====================
 
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="relative">
-              <button
-                onClick={() => setMenuOpen(!menuOpen)}
-                className="p-1.5 rounded-md hover:bg-accent transition-colors text-muted-foreground"
-              >
-                <MoreHorizontal className="w-4 h-4" />
-              </button>
-              {menuOpen && (
-                <div className="absolute right-0 top-8 bg-popover border border-border rounded-md shadow-lg z-10 min-w-40 py-1">
-                  <button
-                    onClick={() => { onCriarKr?.(objetivo); setMenuOpen(false) }}
-                    className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-primary font-medium"
-                  >
-                    + Novo KR
-                  </button>
-                  <button
-                    onClick={() => { onEditarObjetivo?.(objetivo); setMenuOpen(false) }}
-                    className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors"
-                  >
-                    Editar objetivo
-                  </button>
-                  <div className="my-1 border-t border-border" />
-                  <button
-                    onClick={() => { onFinalizarObjetivo?.(objetivo); setMenuOpen(false) }}
-                    className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-amber-600 flex items-center gap-2"
-                  >
-                    <Archive className="w-3.5 h-3.5" />
-                    Finalizar objetivo
-                  </button>
-                  <button
-                    onClick={() => { onExcluirObjetivo?.(objetivo); setMenuOpen(false) }}
-                    className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-destructive"
-                  >
-                    Excluir objetivo
-                  </button>
-                </div>
-              )}
-            </div>
+export async function getKrsByEmpresa(clientId: string) {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('krs')
+    .select(`
+      id, titulo, valor_inicial, valor_atual, meta, tipo_valor,
+      concluido, objetivo_id, responsavel_id, setor_id, client_id,
+      funcionarios!responsavel_id(full_name),
+      setores!setor_id(name),
+      objetivos!objetivo_id(titulo)
+    `)
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false })
 
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="p-1.5 rounded-md hover:bg-accent transition-colors text-muted-foreground"
-            >
-              {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
-          </div>
-        </div>
+  if (error || !data) return { data: [], error }
 
-        {/* Barra de progresso */}
-        <div className="mt-3 space-y-1">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Progresso geral</span>
-            <span className="font-medium text-foreground">{formatPercent(progresso)}</span>
-          </div>
-          <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-            <div
-              className={cn('h-full rounded-full transition-all', barColor)}
-              style={{ width: `${Math.min(progresso, 100)}%` }}
-            />
-          </div>
-        </div>
-      </div>
+  const krIds = data.map((kr: any) => kr.id)
+  const { data: lancamentos } = await supabase
+    .from('kr_lancamentos')
+    .select('kr_id, data_lancamento')
+    .in('kr_id', krIds)
+    .order('data_lancamento', { ascending: false })
 
-      {/* KRs */}
-      {expanded && (
-        <div className="border-t border-border">
-          {krs.length === 0 ? (
-            <div className="p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-2">Nenhum KR cadastrado ainda.</p>
-              <button
-                onClick={() => onCriarKr?.(objetivo)}
-                className="text-xs px-3 py-1.5 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity"
-              >
-                + Criar primeiro KR
-              </button>
-            </div>
-          ) : (
-            <div className="p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {krs.map((kr) => (
-                <KrCard
-                  key={kr.id}
-                  kr={kr}
-                  onLancar={onLancarKr}
-                  onEditar={onEditarKr}
-                  onFinalizar={onFinalizarKr}
-                  onExcluir={onExcluirKr}
-                  onVerGrafico={onVerGraficoKr}
-                  onReativar={onReativarKr}
-                  onVerTaticas={onVerTaticasKr}
-                  onEditarLancamentos={onEditarLancamentosKr}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
+  const ultimoLancamento: Record<string, string> = {}
+  lancamentos?.forEach((l: any) => {
+    if (!ultimoLancamento[l.kr_id]) {
+      ultimoLancamento[l.kr_id] = l.data_lancamento
+    }
+  })
+
+  return {
+    data: data.map((kr: any) => ({
+      ...kr,
+      data_ultimo_lancamento: ultimoLancamento[kr.id] ?? null,
+    })),
+    error: null,
+  }
+}
+
+export async function createKr(payload: {
+  titulo: string
+  objetivo_id: string
+  responsavel_id: string
+  setor_id?: string
+  client_id: string
+  valor_inicial?: number
+  meta?: number
+  tipo_valor?: string
+}) {
+  const supabase = createClient()
+  return supabase.from('krs').insert(payload).select().single()
+}
+
+export async function updateKr(
+  id: string,
+  payload: {
+    titulo?: string
+    responsavel_id?: string
+    setor_id?: string
+    valor_inicial?: number
+    meta?: number
+    tipo_valor?: string
+  }
+) {
+  const supabase = createClient()
+  return supabase.from('krs').update(payload).eq('id', id).select().single()
+}
+
+export async function deleteKr(id: string) {
+  const supabase = createClient()
+  return supabase.from('krs').delete().eq('id', id)
+}
+
+export async function finalizarKr(krId: string, resultado: number) {
+  const supabase = createClient()
+  return supabase.rpc('finalize_kr_result', {
+    p_kr_id: krId,
+    p_resultado: resultado,
+  })
+}
+
+export async function reativarKr(id: string) {
+  const supabase = createClient()
+  return supabase
+    .from('krs')
+    .update({ concluido: false })
+    .eq('id', id)
+}
+
+export async function getKrChartData(krId: string) {
+  const supabase = createClient()
+  return supabase.rpc('get_kr_chart_data', { p_kr_id: krId })
+}
+
+// ==================== LANÇAMENTOS ====================
+
+export async function createKrLancamento(payload: {
+  kr_id: string
+  valor: number
+  data_lancamento: string
+}) {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('kr_lancamentos')
+    .insert(payload)
+    .select()
+    .single()
+
+  if (error) return { data: null, error }
+
+  await supabase
+    .from('krs')
+    .update({ valor_atual: payload.valor })
+    .eq('id', payload.kr_id)
+
+  return { data, error: null }
+}
+
+export async function deleteKrLancamento(id: string) {
+  const supabase = createClient()
+  return supabase.from('kr_lancamentos').delete().eq('id', id)
+}
+
+// ==================== AUXILIARES ====================
+
+export async function getSetoresByEmpresa(clientId: string) {
+  const supabase = createClient()
+  return supabase
+    .from('setores')
+    .select('id, name')
+    .eq('client_id', clientId)
+    .order('name')
+}
+
+export async function getFuncionariosByEmpresa(clientId: string) {
+  const supabase = createClient()
+  return supabase
+    .from('funcionarios')
+    .select('id, full_name')
+    .eq('client_id', clientId)
+    .order('full_name')
 }
