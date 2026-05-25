@@ -75,34 +75,37 @@ export default function ObjetivoCard({
                 <MoreHorizontal className="w-4 h-4" />
               </button>
               {menuOpen && (
-                <div className="absolute right-0 top-8 bg-popover border border-border rounded-md shadow-lg z-10 min-w-40 py-1">
-                  <button
-                    onClick={() => { onCriarKr?.(objetivo); setMenuOpen(false) }}
-                    className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-primary font-medium"
-                  >
-                    + Novo KR
-                  </button>
-                  <button
-                    onClick={() => { onEditarObjetivo?.(objetivo); setMenuOpen(false) }}
-                    className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors"
-                  >
-                    Editar objetivo
-                  </button>
-                  <div className="my-1 border-t border-border" />
-                  <button
-                    onClick={() => { onFinalizarObjetivo?.(objetivo); setMenuOpen(false) }}
-                    className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-amber-600 flex items-center gap-2"
-                  >
-                    <Archive className="w-3.5 h-3.5" />
-                    Finalizar objetivo
-                  </button>
-                  <button
-                    onClick={() => { onExcluirObjetivo?.(objetivo); setMenuOpen(false) }}
-                    className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-destructive"
-                  >
-                    Excluir objetivo
-                  </button>
-                </div>
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                  <div className="absolute right-0 top-8 bg-popover border border-border rounded-md shadow-lg z-20 min-w-40 py-1">
+                    <button
+                      onClick={() => { onCriarKr?.(objetivo); setMenuOpen(false) }}
+                      className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-primary font-medium"
+                    >
+                      + Novo KR
+                    </button>
+                    <button
+                      onClick={() => { onEditarObjetivo?.(objetivo); setMenuOpen(false) }}
+                      className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors"
+                    >
+                      Editar objetivo
+                    </button>
+                    <div className="my-1 border-t border-border" />
+                    <button
+                      onClick={() => { onFinalizarObjetivo?.(objetivo); setMenuOpen(false) }}
+                      className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-amber-600 flex items-center gap-2"
+                    >
+                      <Archive className="w-3.5 h-3.5" />
+                      Finalizar objetivo
+                    </button>
+                    <button
+                      onClick={() => { onExcluirObjetivo?.(objetivo); setMenuOpen(false) }}
+                      className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-destructive"
+                    >
+                      Excluir objetivo
+                    </button>
+                  </div>
+                </>
               )}
             </div>
 
