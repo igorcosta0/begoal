@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { cn, formatPercent, getProgressColor } from '@/lib/utils'
-import { ChevronDown, ChevronUp, MoreHorizontal, Target } from 'lucide-react'
+import { ChevronDown, ChevronUp, MoreHorizontal, Target, Archive } from 'lucide-react'
 import KrCard from './KrCard'
 
 interface ObjetivoCardProps {
@@ -15,6 +15,7 @@ interface ObjetivoCardProps {
   onCriarKr?: (objetivo: any) => void
   onEditarObjetivo?: (objetivo: any) => void
   onExcluirObjetivo?: (objetivo: any) => void
+  onFinalizarObjetivo?: (objetivo: any) => void
   onLancarKr?: (kr: any) => void
   onEditarKr?: (kr: any) => void
   onFinalizarKr?: (kr: any) => void
@@ -30,6 +31,7 @@ export default function ObjetivoCard({
   onCriarKr,
   onEditarObjetivo,
   onExcluirObjetivo,
+  onFinalizarObjetivo,
   onLancarKr,
   onEditarKr,
   onFinalizarKr,
@@ -75,7 +77,7 @@ export default function ObjetivoCard({
                 <MoreHorizontal className="w-4 h-4" />
               </button>
               {menuOpen && (
-                <div className="absolute right-0 top-8 bg-popover border border-border rounded-md shadow-lg z-10 min-w-36 py-1">
+                <div className="absolute right-0 top-8 bg-popover border border-border rounded-md shadow-lg z-10 min-w-40 py-1">
                   <button
                     onClick={() => { onCriarKr?.(objetivo); setMenuOpen(false) }}
                     className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-primary font-medium"
@@ -87,6 +89,14 @@ export default function ObjetivoCard({
                     className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors"
                   >
                     Editar objetivo
+                  </button>
+                  <div className="my-1 border-t border-border" />
+                  <button
+                    onClick={() => { onFinalizarObjetivo?.(objetivo); setMenuOpen(false) }}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-amber-600 flex items-center gap-2"
+                  >
+                    <Archive className="w-3.5 h-3.5" />
+                    Finalizar objetivo
                   </button>
                   <button
                     onClick={() => { onExcluirObjetivo?.(objetivo); setMenuOpen(false) }}
@@ -102,21 +112,16 @@ export default function ObjetivoCard({
               onClick={() => setExpanded(!expanded)}
               className="p-1.5 rounded-md hover:bg-accent transition-colors text-muted-foreground"
             >
-              {expanded
-                ? <ChevronUp className="w-4 h-4" />
-                : <ChevronDown className="w-4 h-4" />
-              }
+              {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
           </div>
         </div>
 
-        {/* Barra de progresso do objetivo */}
+        {/* Barra de progresso */}
         <div className="mt-3 space-y-1">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Progresso geral</span>
-            <span className="font-medium text-foreground">
-              {formatPercent(progresso)}
-            </span>
+            <span className="font-medium text-foreground">{formatPercent(progresso)}</span>
           </div>
           <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
             <div
@@ -132,9 +137,7 @@ export default function ObjetivoCard({
         <div className="border-t border-border">
           {krs.length === 0 ? (
             <div className="p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-2">
-                Nenhum KR cadastrado ainda.
-              </p>
+              <p className="text-xs text-muted-foreground mb-2">Nenhum KR cadastrado ainda.</p>
               <button
                 onClick={() => onCriarKr?.(objetivo)}
                 className="text-xs px-3 py-1.5 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity"

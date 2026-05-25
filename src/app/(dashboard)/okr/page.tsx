@@ -24,9 +24,8 @@ import ModalCriarObjetivo from '@/components/okr/ModalCriarObjetivo'
 import ModalEditarObjetivo from '@/components/okr/ModalEditarObjetivo'
 import ModalTaticasKr from '@/components/okr/ModalTaticasKr'
 import ModalEditarLancamentos from '@/components/okr/ModalEditarLancamentos'
-import { Archive, ArchiveRestore, MoreHorizontal, Target, ChevronDown, ChevronUp } from 'lucide-react'
-import { formatPercent } from '@/lib/utils'
-import { cn } from '@/lib/utils'
+import { Archive, ArchiveRestore, Target, ChevronDown, ChevronUp } from 'lucide-react'
+import { formatPercent, cn } from '@/lib/utils'
 
 export default function OkrPage() {
   const { empresa } = useEmpresaStore()
@@ -51,7 +50,6 @@ export default function OkrPage() {
   const [modalEditarLancamentos, setModalEditarLancamentos] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
   const [modalExcluirKr, setModalExcluirKr] = useState<{ open: boolean; kr: any | null; loading: boolean }>({ open: false, kr: null, loading: false })
   const [modalExcluirObjetivo, setModalExcluirObjetivo] = useState<{ open: boolean; objetivo: any | null; loading: boolean }>({ open: false, objetivo: null, loading: false })
-  const [menuObjetivoFinalizado, setMenuObjetivoFinalizado] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
     if (!empresa) return
@@ -92,7 +90,7 @@ export default function OkrPage() {
     }
   }
 
-  // Objetivos ATIVOS (não concluídos)
+  // Objetivos ATIVOS
   const objetivosAtivos = objetivos
     .filter((obj) => !obj.concluido)
     .filter((obj) => !filters.objetivoId || obj.id === filters.objetivoId)
@@ -128,11 +126,10 @@ export default function OkrPage() {
         : 0,
     }))
 
-  // KRs finalizados de objetivos ativos
-  const krsFinalizadosEmAtivos = objetivosAtivos.map((obj) => ({
-    ...obj,
-    krs: obj.krs.filter((kr: any) => kr.concluido),
-  })).filter((obj) => obj.krs.length > 0)
+  // KRs finalizados dentro de objetivos ativos
+  const krsFinalizadosEmAtivos = objetivosAtivos
+    .map((obj) => ({ ...obj, krs: obj.krs.filter((kr: any) => kr.concluido) }))
+    .filter((obj) => obj.krs.length > 0)
 
   async function handleExcluirKr() {
     if (!modalExcluirKr.kr) return
@@ -158,7 +155,6 @@ export default function OkrPage() {
   async function handleFinalizarObjetivo(obj: any) {
     const supabase = createClient()
     await supabase.from('objetivos').update({ concluido: true }).eq('id', obj.id)
-    setMenuObjetivoFinalizado(null)
     fetchData()
   }
 
@@ -169,12 +165,14 @@ export default function OkrPage() {
   }
 
   const temFiltros = filters.objetivoId || filters.responsavelId || filters.setorId
-  const totalFinalizados = objetivosFinalizados.length + krsFinalizadosEmAtivos.reduce((a, obj) => a + obj.krs.length, 0)
+  const totalFinalizados = objetivosFinalizados.length +
+    krsFinalizadosEmAtivos.reduce((a, obj) => a + obj.krs.length, 0)
 
   const propsModais = {
     onCriarKr: (obj: any) => setModalCriarKr({ open: true, objetivo: obj }),
     onEditarObjetivo: (obj: any) => setModalEditarObjetivo({ open: true, objetivo: obj }),
     onExcluirObjetivo: (obj: any) => setModalExcluirObjetivo({ open: true, objetivo: obj, loading: false }),
+    onFinalizarObjetivo: handleFinalizarObjetivo,
     onLancarKr: (kr: any) => setModalLancarKr({ open: true, kr }),
     onEditarKr: (kr: any) => setModalEditarKr({ open: true, kr }),
     onFinalizarKr: (kr: any) => setModalFinalizarKr({ open: true, kr }),
@@ -226,7 +224,6 @@ export default function OkrPage() {
       {/* VISÃO ATIVA */}
       {!verFinalizados && (
         <>
-          {/* Filtros */}
           <div className="flex flex-wrap gap-3 items-center">
             <select value={filters.objetivoId ?? ''} onChange={(e) => setFiltroObjetivo(e.target.value || null)}
               className="px-3 py-1.5 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
@@ -271,35 +268,11 @@ export default function OkrPage() {
           ) : (
             <div className="space-y-4">
               {objetivosAtivos.map((objetivo) => (
-                <div key={objetivo.id} className="relative group/obj">
-                  <ObjetivoCard
-                    objetivo={objetivo}
-                    {...propsModais}
-                  />
-                  {/* Botão Finalizar Objetivo */}
-                  <div className="absolute top-3 right-14 opacity-0 group-hover/obj:opacity-100 transition-opacity">
-                    <div className="relative">
-                      <button
-                        onClick={() => setMenuObjetivoFinalizado(menuObjetivoFinalizado === objetivo.id ? null : objetivo.id)}
-                        className="p-1.5 rounded-md hover:bg-accent transition-colors text-muted-foreground"
-                        title="Opções do objetivo"
-                      >
-                        <MoreHorizontal className="w-4 h-4" />
-                      </button>
-                      {menuObjetivoFinalizado === objetivo.id && (
-                        <div className="absolute right-0 top-8 bg-popover border border-border rounded-md shadow-lg z-20 min-w-44 py-1">
-                          <button
-                            onClick={() => handleFinalizarObjetivo(objetivo)}
-                            className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors flex items-center gap-2 text-amber-600"
-                          >
-                            <Archive className="w-3.5 h-3.5" />
-                            Finalizar objetivo
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <ObjetivoCard
+                  key={objetivo.id}
+                  objetivo={objetivo}
+                  {...propsModais}
+                />
               ))}
             </div>
           )}
@@ -332,7 +305,6 @@ export default function OkrPage() {
                   <div className="space-y-3">
                     {objetivosFinalizados.map((obj) => (
                       <div key={obj.id} className="bg-card border border-border rounded-xl overflow-hidden opacity-80">
-                        {/* Header do objetivo finalizado */}
                         <div className="flex items-center justify-between p-4">
                           <div className="flex items-center gap-3 flex-1 min-w-0">
                             <div className="w-7 h-7 rounded-md bg-secondary flex items-center justify-center shrink-0">
@@ -343,7 +315,9 @@ export default function OkrPage() {
                                 <h3 className="text-sm font-semibold text-foreground line-through truncate">{obj.titulo}</h3>
                                 <span className="text-[10px] px-2 py-0.5 bg-secondary text-muted-foreground rounded-full shrink-0">Finalizado</span>
                               </div>
-                              <p className="text-xs text-muted-foreground mt-0.5">{obj.krs.length} KR{obj.krs.length !== 1 ? 's' : ''} · {formatPercent(obj.progresso)}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {obj.krs.length} KR{obj.krs.length !== 1 ? 's' : ''} · {formatPercent(obj.progresso)}
+                              </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
@@ -366,7 +340,6 @@ export default function OkrPage() {
                           </div>
                         </div>
 
-                        {/* KRs do objetivo finalizado */}
                         {expandidosFinalizados[obj.id] && obj.krs.length > 0 && (
                           <div className="border-t border-border p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                             {obj.krs.map((kr: any) => (
@@ -374,10 +347,7 @@ export default function OkrPage() {
                                 <p className="text-xs font-medium text-muted-foreground line-through mb-1">{kr.titulo}</p>
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs text-muted-foreground">{formatPercent(kr.progresso)}</span>
-                                  <button
-                                    onClick={() => handleReativarKr(kr)}
-                                    className="text-[10px] text-primary hover:underline"
-                                  >
+                                  <button onClick={() => handleReativarKr(kr)} className="text-[10px] text-primary hover:underline">
                                     Reativar KR
                                   </button>
                                 </div>
@@ -391,7 +361,7 @@ export default function OkrPage() {
                 </div>
               )}
 
-              {/* KRs finalizados dentro de objetivos ativos */}
+              {/* KRs finalizados em objetivos ativos */}
               {krsFinalizadosEmAtivos.length > 0 && (
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">
@@ -410,10 +380,7 @@ export default function OkrPage() {
                               <p className="text-xs font-medium text-muted-foreground line-through mb-1">{kr.titulo}</p>
                               <div className="flex items-center justify-between">
                                 <span className="text-xs text-muted-foreground">{formatPercent(kr.progresso)}</span>
-                                <button
-                                  onClick={() => handleReativarKr(kr)}
-                                  className="text-[10px] text-primary hover:underline"
-                                >
+                                <button onClick={() => handleReativarKr(kr)} className="text-[10px] text-primary hover:underline">
                                   Reativar
                                 </button>
                               </div>
