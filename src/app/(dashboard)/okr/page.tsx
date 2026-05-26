@@ -105,6 +105,10 @@ export default function OkrPage() {
         })
         .map(mapearKr),
     }))
+    .filter((obj) => {
+      if (!filters.setorId && !filters.responsavelId) return true
+      return obj.krs.length > 0
+    })
     .map((obj) => ({
       ...obj,
       progresso: obj.krs.length > 0
