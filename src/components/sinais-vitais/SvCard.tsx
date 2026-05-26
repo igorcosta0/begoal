@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { cn, formatPercent, formatNumber, getProgressColor } from '@/lib/utils'
+import { cn, formatPercent, formatNumber, formatValor, getProgressColor } from '@/lib/utils'
 import { MoreHorizontal, TrendingUp, User, Building2, Target } from 'lucide-react'
 
 interface SvCardProps {
@@ -44,18 +44,7 @@ export default function SvCard({
   const setorNome = sv.setor?.nome ?? sv.setor?.name
 
   return (
-
     <div className="relative bg-card border border-border rounded-xl p-4 hover:shadow-md transition-shadow flex flex-col gap-3">
-
-      {/* Badge de Objetivo */}
-      {sv.objetivo && (
-        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 border border-primary/20 rounded-lg w-fit max-w-full">
-          <Target className="w-3 h-3 text-primary shrink-0" />
-          <span className="text-[11px] font-semibold text-primary truncate">
-            {sv.objetivo.titulo}
-          </span>
-        </div>
-      )}
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
@@ -114,19 +103,19 @@ export default function SvCard({
         <div className="bg-secondary/60 rounded-lg px-3 py-2 text-center">
           <p className="text-xs text-muted-foreground mb-0.5">Inicial</p>
           <p className="text-sm font-semibold text-foreground">
-            {formatNumber(sv.valor_inicial ?? 0)}
+            {formatValor(sv.valor_inicial ?? 0, sv.tipo_valor)}
           </p>
         </div>
         <div className="bg-secondary/60 rounded-lg px-3 py-2 text-center">
           <p className="text-xs text-muted-foreground mb-0.5">Atual</p>
           <p className="text-sm font-semibold text-foreground">
-            {formatNumber(sv.valor_atual ?? sv.valor_inicial ?? 0)}
+            {formatValor(sv.valor_atual ?? sv.valor_inicial ?? 0, sv.tipo_valor)}
           </p>
         </div>
         <div className="bg-secondary/60 rounded-lg px-3 py-2 text-center">
           <p className="text-xs text-muted-foreground mb-0.5">Meta</p>
           <p className="text-sm font-semibold text-foreground">
-            {formatNumber(sv.meta ?? 0)}
+            {formatValor(sv.meta ?? 0, sv.tipo_valor)}
           </p>
         </div>
       </div>

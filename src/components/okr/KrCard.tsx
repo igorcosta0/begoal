@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { cn, formatPercent, formatNumber, getProgressColor, getProgressStatus } from '@/lib/utils'
+import { cn, formatPercent, formatNumber, formatValor, getProgressColor, getProgressStatus } from '@/lib/utils'
 import { MoreHorizontal, TrendingUp, User, Building2, Calendar, Zap, ClipboardList } from 'lucide-react'
 
 interface KrCardProps {
@@ -149,13 +149,13 @@ export default function KrCard({
         <div className="bg-secondary/60 rounded-lg px-3 py-2 text-center">
           <p className="text-xs text-muted-foreground mb-0.5">Valor Inicial</p>
           <p className="text-sm font-semibold text-foreground">
-            {formatNumber(kr.valor_inicial ?? 0)}
+            {formatValor(kr.valor_inicial ?? 0, kr.tipo_valor)}
           </p>
         </div>
         <div className="bg-secondary/60 rounded-lg px-3 py-2 text-center">
           <p className="text-xs text-muted-foreground mb-0.5">Conquistado</p>
           <p className="text-sm font-semibold text-foreground">
-            {formatNumber(kr.valor_atual ?? kr.valor_inicial ?? 0)}
+            {formatValor(kr.valor_atual ?? kr.valor_inicial ?? 0, kr.tipo_valor)}
           </p>
           {dataUltimoLancamento && (
             <p className="text-[10px] text-muted-foreground mt-0.5">
@@ -166,7 +166,7 @@ export default function KrCard({
         <div className="bg-secondary/60 rounded-lg px-3 py-2 text-center">
           <p className="text-xs text-muted-foreground mb-0.5">Meta</p>
           <p className="text-sm font-semibold text-foreground">
-            {formatNumber(kr.meta ?? 0)}
+            {formatValor(kr.meta ?? 0, kr.tipo_valor)}
           </p>
         </div>
       </div>

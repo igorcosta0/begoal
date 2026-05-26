@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { getKrChartData } from '@/lib/queries/okr'
 import KrChart from './KrChart'
-import { formatPercent, getProgressColor, getProgressStatus, cn } from '@/lib/utils'
+import { formatPercent, getProgressColor, getProgressStatus, cn, formatValor } from '@/lib/utils'
 import { X, User, Building2, Target, BarChart2, List } from 'lucide-react'
 
 interface ModalDetalhesKrProps {
@@ -87,8 +87,8 @@ export default function ModalDetalhesKr({
             />
           </div>
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Atual: <span className="font-medium text-foreground">{kr.valor_atual ?? kr.valor_inicial ?? 0} {kr.tipo_valor}</span></span>
-            <span>Meta: <span className="font-medium text-foreground">{kr.meta ?? 0} {kr.tipo_valor}</span></span>
+            <span>Atual: <span className="font-medium text-foreground">{formatValor(kr.valor_atual ?? kr.valor_inicial ?? 0, kr.tipo_valor)}</span></span>
+            <span>Meta: <span className="font-medium text-foreground">{formatValor(kr.meta ?? 0, kr.tipo_valor)}</span></span>
           </div>
         </div>
 
@@ -174,7 +174,7 @@ export default function ModalDetalhesKr({
                       {item.texto_exibicao ?? item.data_real ?? '—'}
                     </span>
                     <span className="text-center font-semibold text-foreground">
-                      {Number(item.valor).toLocaleString('pt-BR')}
+                      {formatValor(Number(item.valor), kr.tipo_valor)}
                     </span>
                     <span className={`text-right font-bold ${cor}`}>
                       {formatPercent(porcentagem)}
