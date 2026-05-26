@@ -84,7 +84,7 @@ export default function OkrPage() {
     return {
       ...kr,
       responsavel: kr.funcionarios,
-      setor: kr.setores ? { nome: kr.setores.name } : null,
+      setor: setores.find((s: any) => s.id === kr.setor_id) ? { nome: setores.find((s: any) => s.id === kr.setor_id).name } : null,
       objetivo: kr.objetivos,
       progresso: calcularProgresso(kr),
     }
@@ -105,10 +105,6 @@ export default function OkrPage() {
         })
         .map(mapearKr),
     }))
-    .filter((obj) => {
-      if (!filters.setorId && !filters.responsavelId) return true
-      return obj.krs.length > 0
-    })
     .map((obj) => ({
       ...obj,
       progresso: obj.krs.length > 0
