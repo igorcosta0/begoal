@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { getSinaisVitais, deleteSinalVital } from '@/lib/queries/sinais-vitais'
+import { getSetoresByEmpresa } from '@/lib/queries/okr'
 import SvCard from '@/components/sinais-vitais/SvCard'
 import ModalCriarSv from '@/components/sinais-vitais/ModalCriarSv'
 import ModalEditarSv from '@/components/sinais-vitais/ModalEditarSv'
@@ -14,8 +15,10 @@ export default function SinaisVitaisPage() {
   const { empresa } = useEmpresaStore()
 
   const [svs, setSvs] = useState<any[]>([])
+  const [setores, setSetores] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState('')
+  const [setorId, setSetorId] = useState<string | null>(null)
 
   const [modalCriar, setModalCriar] = useState(false)
   const [modalEditar, setModalEditar] = useState<{ open: boolean; sv: any | null }>({ open: false, sv: null })
@@ -26,8 +29,12 @@ export default function SinaisVitaisPage() {
   const fetchData = useCallback(async () => {
     if (!empresa) return
     setLoading(true)
-    const { data } = await getSinaisVitais(empresa.id)
-    setSvs(data ?? [])
+    const [{ data: svData }, { data: setoresData }] = await Promise.all([
+      getSinaisVitais(empresa.id),
+      getSetoresByEmpresa(empresa.id),
+    ])
+    setSvs(svData ?? [])
+    setSetores(setoresData ?? [])
     setLoading(false)
   }, [empresa])
 
@@ -37,6 +44,7 @@ export default function SinaisVitaisPage() {
 
   const svsFiltrados = svs
     .filter((sv) => !busca || sv.titulo.toLowerCase().includes(busca.toLowerCase()))
+    .filter((sv) => !setorId || sv.setor_id === setorId)
     .map((sv) => ({
       ...sv,
       responsavel: sv.funcionarios,
@@ -51,6 +59,8 @@ export default function SinaisVitaisPage() {
     setModalExcluir({ open: false, sv: null, loading: false })
     fetchData()
   }
+
+  const temFiltros = busca || setorId
 
   return (
     <div className="space-y-6">
@@ -71,14 +81,34 @@ export default function SinaisVitaisPage() {
         </button>
       </div>
 
-      {/* Busca */}
-      <input
-        type="text"
-        value={busca}
-        onChange={(e) => setBusca(e.target.value)}
-        placeholder="Buscar sinal vital..."
-        className="w-full max-w-sm px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-      />
+      {/* Filtros */}
+      <div className="flex flex-wrap gap-3 items-center">
+        <input
+          type="text"
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Buscar sinal vital..."
+          className="w-full max-w-sm px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        <select
+          value={setorId ?? ''}
+          onChange={(e) => setSetorId(e.target.value || null)}
+          className="px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="">Todos os setores</option>
+          {setores.map((s) => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
+        {temFiltros && (
+          <button
+            onClick={() => { setBusca(''); setSetorId(null) }}
+            className="px-3 py-2 text-sm rounded-md border border-border text-muted-foreground hover:bg-accent transition-colors"
+          >
+            Limpar filtros
+          </button>
+        )}
+      </div>
 
       {/* Conteúdo */}
       {loading ? (
@@ -90,9 +120,9 @@ export default function SinaisVitaisPage() {
       ) : svsFiltrados.length === 0 ? (
         <div className="rounded-lg border border-border bg-card p-12 text-center">
           <p className="text-muted-foreground text-sm mb-3">
-            {busca ? 'Nenhum resultado para a busca.' : 'Nenhum sinal vital cadastrado ainda.'}
+            {temFiltros ? 'Nenhum sinal vital encontrado para este filtro.' : 'Nenhum sinal vital cadastrado ainda.'}
           </p>
-          {!busca && (
+          {!temFiltros && (
             <button
               onClick={() => setModalCriar(true)}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
