@@ -332,7 +332,12 @@ export default function ImportarLancamentosPage() {
               valor_inicial: 0,
               valor_atual: 0,
               meta: sv.meta ?? 0,
-              tipo_valor: sv.unidade || '%',
+              tipo_valor: (() => {
+                const u = (sv.unidade || '').toLowerCase()
+                if (u.includes('r$') || u.includes('moeda')) return 'Moeda'
+                if (u.includes('%') || u.includes('percent')) return 'Percentual'
+                return 'Numero'
+              })(),
               objetivo_id: objetivoId,
             })
             .select('id')
