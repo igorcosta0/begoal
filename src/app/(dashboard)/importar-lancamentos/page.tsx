@@ -72,11 +72,12 @@ function parseCTZ(buffer: ArrayBuffer, ano: number): BlocoOKR[] {
 
   const blocos: BlocoOKR[] = []
 
-  // Bloco inicial (antes do primeiro OKR declarado)
-  let blocoAtual: BlocoOKR = { titulo: '', items: [] }
+  // Bloco inicial: KRs e SVs antes do primeiro "OKR -" declarado
+  // Título inferido do conteúdo da planilha CTZ
+  let blocoAtual: BlocoOKR = { titulo: 'Sustentabilidade Financeira', items: [] }
   blocos.push(blocoAtual)
 
-  // Item em construção
+  // Item principal em construção (KR ou SV declarado em col B)
   let curTipo: TipoItem | null = null
   let curId = ''
   let curTitulo = ''
@@ -84,7 +85,34 @@ function parseCTZ(buffer: ArrayBuffer, ano: number): BlocoOKR[] {
   let monthAcc: (number | null)[] = Array(12).fill(null)
   let inLicao = false
 
+  // Sub-item em construção (col B vazia, col C preenchida — sub-categorias de um SV)
+  // Ex: "Faturamento de parcelas", "Terceiros (ambiental)", etc.
+  let curSubTitulo: string | null = null
+  let curSubUnidade: string | null = null
+  let subMonthAcc: (number | null)[] = Array(12).fill(null)
+
+  const flushSub = () => {
+    if (!curSubTitulo || !blocoAtual) return
+    // Sub-item sempre é SV, vinculado ao mesmo OKR do item pai
+    const lancamentos: LancamentoMes[] = []
+    for (let m = 0; m < 12; m++) {
+      const v = subMonthAcc[m]
+      if (v !== null && v !== 0) lancamentos.push({ mes: m + 1, valor: v })
+    }
+    blocoAtual.items.push({
+      tipo: 'SV',
+      identificador: 'Sinal vital',
+      titulo: curSubTitulo,
+      unidade: curSubUnidade,
+      okrTitulo: blocoAtual.titulo,
+      lancamentos,
+    })
+    curSubTitulo = null; curSubUnidade = null
+    subMonthAcc = Array(12).fill(null)
+  }
+
   const flush = () => {
+    flushSub() // garante que o último sub-item também é salvo
     if (!curTipo || !curId) return
     const lancamentos: LancamentoMes[] = []
     for (let m = 0; m < 12; m++) {
@@ -120,10 +148,10 @@ function parseCTZ(buffer: ArrayBuffer, ano: number): BlocoOKR[] {
       continue
     }
 
-    // B. Novo KR ou Sinal Vital
+    // B. Novo KR ou Sinal Vital principal (col B preenchida)
     const Bup = B.toUpperCase()
     if (B && Bup !== 'KR-SV' && (Bup === 'SINAL VITAL' || /^KR\s+\d+$/.test(Bup))) {
-      flush()
+      flush() // salva item anterior (incl. sub-itens pendentes)
       curTipo    = Bup === 'SINAL VITAL' ? 'SV' : 'KR'
       curId      = B
       curTitulo  = C || '(sem título)'
@@ -132,26 +160,58 @@ function parseCTZ(buffer: ArrayBuffer, ano: number): BlocoOKR[] {
       continue
     }
 
-    // C. Início de lição aprendida
+    // C. Sub-item: col B vazia, col C preenchida com nome, sem F relevante
+    //    Ex: "Faturamento de parcelas", "Terceiros (ambiental)", "Agrimensura"
+    //    Esses sub-itens são SVs independentes vinculados ao mesmo OKR
+    if (!B && C && (F === 'META (1T)' || F === 'META %' || F === '')) {
+      flushSub()
+      curSubTitulo  = C.replace(/\n/g, ' ').trim()
+      // Unidade pode estar na linha da META (col E) ou na linha PREV logo abaixo
+      curSubUnidade = E || null
+      subMonthAcc   = Array(12).fill(null)
+      continue
+    }
+
+    // C2. Unidade do sub-item pode aparecer na linha PREV (col E preenchida, col B/C vazias)
+    if (!B && !C && E && curSubTitulo && !curSubUnidade) {
+      curSubUnidade = E
+      continue
+    }
+
+    // D. Início de lição aprendida
     if (LICAO_E_RE.test(E) && F === 'Descrição') { inLicao = true; continue }
 
-    // D. Ignorar metadados e tipos derivados
+    // E. Ignorar metadados e tipos derivados
     if (F === 'Descrição' || F === 'Lição aprendida') continue
     if (IGNORAR_TYPES.has(F)) continue
 
-    // E. Capturar REAL
-    if (!LANCAMENTO_TYPES.has(F) || !curTipo) continue
+    // F. Capturar REAL
+    if (!LANCAMENTO_TYPES.has(F)) continue
 
     const vals = monthValues(row)
+
+    // F1. Se há sub-item ativo e col B/C vazias → lançamento do sub-item
+    if (curSubTitulo && !curTipo) {
+      for (let m = 0; m < 12; m++) {
+        const v = vals[m]
+        if (v !== null && subMonthAcc[m] === null) subMonthAcc[m] = v
+      }
+      continue
+    }
+
+    // F2. Lançamento do item principal
+    if (!curTipo) continue
+
+    // Inferir unidade por tipo de linha REAL se não declarada
+    if (!curUnidade && F === 'REAL %') curUnidade = '%'
+
     for (let m = 0; m < 12; m++) {
       const v = vals[m]
       if (v === null) continue
       if (inLicao) {
-        // Lição aprendida: cada "1" = 1 ocorrência → somar ao KR pai
         monthAcc[m] = (monthAcc[m] ?? 0) + v
       } else {
         if (monthAcc[m] === null) monthAcc[m] = v
-        // (segunda linha REAL do mesmo KR — manter a primeira)
       }
     }
   }

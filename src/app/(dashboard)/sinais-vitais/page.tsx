@@ -41,6 +41,7 @@ export default function SinaisVitaisPage() {
       ...sv,
       responsavel: sv.funcionarios,
       setor: sv.setores ? { name: sv.setores.name } : null,
+      objetivo: sv.objetivos ? { titulo: sv.objetivos.titulo } : null,
     }))
 
   async function handleExcluir() {

@@ -44,7 +44,18 @@ export default function SvCard({
   const setorNome = sv.setor?.nome ?? sv.setor?.name
 
   return (
+
     <div className="relative bg-card border border-border rounded-xl p-4 hover:shadow-md transition-shadow flex flex-col gap-3">
+
+      {/* Badge de Objetivo */}
+      {sv.objetivo && (
+        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 border border-primary/20 rounded-lg w-fit max-w-full">
+          <Target className="w-3 h-3 text-primary shrink-0" />
+          <span className="text-[11px] font-semibold text-primary truncate">
+            {sv.objetivo.titulo}
+          </span>
+        </div>
+      )}
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
