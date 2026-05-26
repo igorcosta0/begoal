@@ -48,6 +48,15 @@ const IGNORAR_TYPES   = new Set(['REAL + PREV', 'PREV', 'META (1T)', 'META %', '
                                   'Total h', 'Demanda nova h', 'Retrabalho h'])
 const LICAO_E_RE = /^#\d+(\.\d+)?$/
 
+// Mapeamento de unidade da planilha → enum do banco (kr_value_type)
+function unidadeParaTipoValor(unidade: string | null): 'Numero' | 'Percentual' | 'Moeda' {
+  if (!unidade) return 'Numero'
+  const u = unidade.trim()
+  if (u === 'R$') return 'Moeda'
+  if (u === '%') return 'Percentual'
+  return 'Numero' // "Qtd", "Horas", qualquer outro
+}
+
 // ─────────────────────────────────────────────────────────────
 // Parser CTZ — lê a planilha e retorna blocos OKR com seus itens
 // ─────────────────────────────────────────────────────────────
@@ -266,6 +275,21 @@ export default function ImportarLancamentosPage() {
     setProgresso(0)
 
     const supabase = createClient()
+
+    // Buscar primeiro funcionário da empresa para usar como responsável padrão
+    const { data: funcs } = await supabase
+      .from('funcionarios')
+      .select('id')
+      .eq('client_id', empresa.id)
+      .limit(1)
+    const responsavelPadraoId = funcs?.[0]?.id ?? null
+
+    if (!responsavelPadraoId) {
+      setItens(prev => prev.map(it => ({ ...it, status: 'erro', erro: 'Nenhum funcionário cadastrado na empresa' })))
+      setEtapa('concluido')
+      return
+    }
+
     // Cache de objetivos criados nesta sessão: título → id
     const objetivoCache: Record<string, string> = {}
 
@@ -327,8 +351,8 @@ export default function ImportarLancamentosPage() {
               titulo: item.titulo,
               objetivo_id: objetivoId,
               client_id: empresa.id,
-              responsavel_id: empresa.id, // placeholder — sem funcionário na planilha CTZ mapeado
-              tipo_valor: item.unidade ?? 'Qtd',
+              responsavel_id: responsavelPadraoId,
+              tipo_valor: unidadeParaTipoValor(item.unidade),
               valor_inicial: 0,
               meta: 0,
             })
@@ -397,7 +421,7 @@ export default function ImportarLancamentosPage() {
               titulo: item.titulo,
               client_id: empresa.id,
               objetivo_id: objetivoId,
-              tipo_valor: item.unidade ?? 'Qtd',
+              tipo_valor: unidadeParaTipoValor(item.unidade),
               valor_inicial: 0,
               meta: 0,
             })
