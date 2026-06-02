@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   try {
+    const apiKey = process.env.ANTHROPIC_API_KEY
+    
+    if (!apiKey) {
+      console.error('ANTHROPIC_API_KEY não encontrada')
+      return NextResponse.json({ error: 'Chave de API não configurada' }, { status: 500 })
+    }
+
     const { contexto } = await req.json()
 
     const prompt = `Você é um especialista em estratégia de negócios e definição de ICP (Ideal Customer Profile).
@@ -29,7 +36,7 @@ Responda APENAS com um JSON válido, sem texto adicional, sem markdown, sem expl
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY!,
+        'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
@@ -39,13 +46,15 @@ Responda APENAS com um JSON válido, sem texto adicional, sem markdown, sem expl
       }),
     })
 
+    const responseText = await response.text()
+    console.log('Anthropic status:', response.status)
+    console.log('Anthropic response:', responseText)
+
     if (!response.ok) {
-      const errBody = await response.text()
-      console.error('Anthropic error body:', errBody)
-      throw new Error(`Anthropic API error: ${response.status}`)
+      return NextResponse.json({ error: `Erro Anthropic: ${response.status} — ${responseText}` }, { status: 500 })
     }
 
-    const data = await response.json()
+    const data = JSON.parse(responseText)
     const texto = data.content?.[0]?.text ?? '{}'
     const clean = texto.replace(/```json|```/g, '').trim()
     const sugestao = JSON.parse(clean)
@@ -53,6 +62,6 @@ Responda APENAS com um JSON válido, sem texto adicional, sem markdown, sem expl
     return NextResponse.json(sugestao)
   } catch (err) {
     console.error('Erro sugerir-icp:', err)
-    return NextResponse.json({ error: 'Erro ao gerar sugestão' }, { status: 500 })
+    return NextResponse.json({ error: String(err) }, { status: 500 })
   }
 }
