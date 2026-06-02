@@ -8,7 +8,7 @@ import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { cn } from '@/lib/utils'
 import {
   Target, Flag, Zap, Activity, Users, Settings,
-  User, LogOut, ChevronLeft, ChevronRight, Building2, Home, ArrowLeftRight, Upload,
+  User, LogOut, ChevronLeft, ChevronRight, Building2, Home, ArrowLeftRight, Upload, Map,
 } from 'lucide-react'
 
 const navItems = [
@@ -17,6 +17,7 @@ const navItems = [
   { href: '/objetivo', label: 'Objetivos', icon: Flag },
   { href: '/taticas', label: 'Táticas', icon: Zap },
   { href: '/sinais-vitais', label: 'Sinais Vitais', icon: Activity },
+  { href: '/estrategia', label: 'Estratégia', icon: Map },
   { href: '/funcionarios', label: 'Funcionários', icon: Users },
   { href: '/importar-lancamentos', label: 'Importar', icon: Upload },
   { href: '/admin', label: 'Administração', icon: Settings },
