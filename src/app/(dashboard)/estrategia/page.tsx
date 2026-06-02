@@ -364,10 +364,14 @@ function MercadosPotenciais({ clientId }: { clientId: string }) {
   const [msg, setMsg] = useState('')
 
   const carregar = useCallback(async () => {
-    const [comps, qs] = await Promise.all([getCompetencias(clientId), getQuemSomos(clientId)])
+    const [comps, qs] = await Promise.all([
+      getCompetencias(clientId),
+      getQuemSomos(clientId),
+    ])
     setCompetencias(comps as Competencia[])
-    if (qs && (qs as QuemSomosData).anotacoes_mercados_potenciais) {
-      setAnotacoes((qs as QuemSomosData).anotacoes_mercados_potenciais as string)
+    if (qs) {
+      const quemSomosData = qs as Record<string, unknown>
+      setAnotacoes((quemSomosData.anotacoes_mercados_potenciais as string) ?? '')
     }
   }, [clientId])
 
@@ -385,13 +389,19 @@ function MercadosPotenciais({ clientId }: { clientId: string }) {
     <div className="flex flex-col gap-6">
       <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-4">
         <h3 className="font-semibold text-foreground">Competências Atuais</h3>
-        <p className="text-sm text-muted-foreground">Com base nas suas competências abaixo, pense: para quais mercados você poderia prestar serviço?</p>
+        <p className="text-sm text-muted-foreground">
+          Com base nas suas competências abaixo, pense: para quais mercados você poderia prestar serviço?
+        </p>
         {competencias.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic">Nenhuma competência cadastrada. Adicione na aba <strong>Quem Somos</strong>.</p>
+          <p className="text-sm text-muted-foreground italic">
+            Nenhuma competência cadastrada. Adicione na aba <strong>Quem Somos</strong>.
+          </p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {competencias.map(c => (
-              <span key={c.id} className="px-3 py-1 text-sm bg-secondary rounded-full">{c.descricao}</span>
+              <span key={c.id} className="px-3 py-1 text-sm bg-secondary rounded-full">
+                {c.descricao}
+              </span>
             ))}
           </div>
         )}
@@ -399,7 +409,9 @@ function MercadosPotenciais({ clientId }: { clientId: string }) {
 
       <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-4">
         <h3 className="font-semibold text-foreground">Anotações Estratégicas</h3>
-        <p className="text-sm text-muted-foreground">Quais mercados poderiam ser atendidos? Quais produtos/serviços esse perfil consumiria?</p>
+        <p className="text-sm text-muted-foreground">
+          Quais mercados poderiam ser atendidos? Quais produtos/serviços esse perfil consumiria?
+        </p>
         <textarea
           rows={6}
           value={anotacoes}
@@ -408,7 +420,11 @@ function MercadosPotenciais({ clientId }: { clientId: string }) {
           className="px-3 py-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-none"
         />
         <div className="flex items-center gap-3">
-          <button onClick={salvar} disabled={salvando} className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:opacity-90 disabled:opacity-50">
+          <button
+            onClick={salvar}
+            disabled={salvando}
+            className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:opacity-90 disabled:opacity-50"
+          >
             {salvando ? 'Salvando...' : 'Salvar'}
           </button>
           {msg && <span className="text-sm text-muted-foreground">{msg}</span>}

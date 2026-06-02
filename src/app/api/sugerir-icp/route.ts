@@ -33,19 +33,20 @@ Responda APENAS com um JSON válido, sem texto adicional, sem markdown, sem expl
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 500,
         messages: [{ role: 'user', content: prompt }],
       }),
     })
 
     if (!response.ok) {
+      const errBody = await response.text()
+      console.error('Anthropic error body:', errBody)
       throw new Error(`Anthropic API error: ${response.status}`)
     }
 
     const data = await response.json()
     const texto = data.content?.[0]?.text ?? '{}'
-
     const clean = texto.replace(/```json|```/g, '').trim()
     const sugestao = JSON.parse(clean)
 
