@@ -66,7 +66,7 @@ export async function updateAvaliacao(
   id: string,
   payload: {
     status?: string
-    vertical?: string
+    vertical?: string | null
     avaliador_id?: string
     evidencias_culturais?: string | null
     observacoes_gerais?: string | null
