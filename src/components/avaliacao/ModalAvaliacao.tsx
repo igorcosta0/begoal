@@ -231,7 +231,7 @@ interface Avaliacao {
   media_cultural_gestor: number | null
   media_tecnica_auto: number | null
   media_tecnica_gestor: number | null
-  funcionario?: { full_name: string; cargo?: string } | null
+  funcionario?: { full_name: string; cargo?: string | null } | null
   avaliador?: { full_name: string } | null
 }
 
