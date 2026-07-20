@@ -9,12 +9,13 @@ import {
   getMinhasAvaliacoes,
   createAvaliacao,
   updateCicloStatus,
+  deleteCicloAvaliacao,
 } from '@/lib/queries/avaliacao'
 import ModalCriarCiclo from '@/components/avaliacao/ModalCriarCiclo'
 import ModalAvaliacao from '@/components/avaliacao/ModalAvaliacao'
 import ModalNineBox from '@/components/avaliacao/ModalNineBox'
-import { cn } from '@/lib/utils'
-import { LayoutGrid, Plus, ChevronRight } from 'lucide-react'
+import { cn, isEmpresaCTZ } from '@/lib/utils'
+import { LayoutGrid, Plus, ChevronRight, Trash2 } from 'lucide-react'
 import { VERTICAIS_CTZ } from '@/components/avaliacao/ModalAvaliacao'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
@@ -99,6 +100,7 @@ export default function AvaliacaoPage() {
   const [minhasAvaliacoes, setMinhasAvaliacoes] = useState<MinhaAvaliacao[]>([])
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([])
   const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState('')
 
   const [modalCriarCiclo, setModalCriarCiclo] = useState(false)
   const [modalAvaliacao, setModalAvaliacao] = useState<{
@@ -181,16 +183,41 @@ export default function AvaliacaoPage() {
   }, [meuFuncionario, isAdmin, fetchMinhasAvaliacoes])
 
   async function handleAtivarCiclo(ciclo: Ciclo) {
-    await updateCicloStatus(ciclo.id, ciclo.status === 'rascunho' ? 'ativo' : 'encerrado')
+    setErro('')
+    const { error } = await updateCicloStatus(ciclo.id, ciclo.status === 'rascunho' ? 'ativo' : 'encerrado')
+    if (error) {
+      setErro(error.message)
+      return
+    }
+    fetchCiclos()
+  }
+
+  async function handleDeletarCiclo(ciclo: Ciclo) {
+    const confirmado = window.confirm(
+      `Excluir o ciclo "${ciclo.nome}"? Todas as avaliações desse ciclo serão apagadas junto. Essa ação não pode ser desfeita.`
+    )
+    if (!confirmado) return
+    setErro('')
+    const { error } = await deleteCicloAvaliacao(ciclo.id)
+    if (error) {
+      setErro(error.message)
+      return
+    }
+    if (cicloAtivo?.id === ciclo.id) setCicloAtivo(null)
     fetchCiclos()
   }
 
   async function handleIniciarAvaliacao(funcionario: Funcionario) {
     if (!cicloAtivo) return
-    const { data } = await createAvaliacao({
+    setErro('')
+    const { data, error } = await createAvaliacao({
       ciclo_id: cicloAtivo.id,
       funcionario_id: funcionario.id,
     })
+    if (error) {
+      setErro(error.message)
+      return
+    }
     if (data) {
       fetchAvaliacoes()
       const novaAvaliacao: Avaliacao = {
@@ -230,6 +257,15 @@ export default function AvaliacaoPage() {
         <div className="space-y-3">
           {[1, 2, 3].map((i) => <div key={i} className="h-20 rounded-lg bg-secondary animate-pulse" />)}
         </div>
+      </div>
+    )
+  }
+
+  // Módulo construído apenas para a CTZ (rubric de pilares/verticais é específico dela)
+  if (!isEmpresaCTZ(empresa?.company_name)) {
+    return (
+      <div className="rounded-lg border border-dashed border-border bg-card p-16 text-center">
+        <p className="text-muted-foreground text-sm">Este módulo ainda não está disponível para esta empresa.</p>
       </div>
     )
   }
@@ -329,6 +365,12 @@ export default function AvaliacaoPage() {
         </button>
       </div>
 
+      {erro && (
+        <p className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-md px-3 py-2">
+          {erro}
+        </p>
+      )}
+
       {/* Lista de ciclos */}
       {ciclos.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border bg-card p-16 text-center">
@@ -377,6 +419,13 @@ export default function AvaliacaoPage() {
                       {ciclo.status === 'rascunho' ? 'Ativar' : 'Encerrar'}
                     </button>
                   )}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDeletarCiclo(ciclo) }}
+                    title="Excluir ciclo"
+                    className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
 

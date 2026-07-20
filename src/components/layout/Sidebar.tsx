@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
-import { cn } from '@/lib/utils'
+import { cn, isEmpresaCTZ } from '@/lib/utils'
 import {
   Target, Flag, Zap, Activity, Users, Settings,
   User, LogOut, ChevronLeft, ChevronRight, Building2, Home, ArrowLeftRight, Upload, Map, ClipboardList,
@@ -85,6 +85,7 @@ export default function Sidebar({ permissionLevel }: SidebarProps) {
       <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           if (item.href === '/admin' && permissionLevel !== 'administrador') return null
+          if (item.href === '/avaliacao' && !isEmpresaCTZ(empresa?.company_name)) return null
           const isActive = pathname.startsWith(item.href)
           const Icon = item.icon
           return (

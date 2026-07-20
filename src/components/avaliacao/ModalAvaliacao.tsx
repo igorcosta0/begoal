@@ -263,6 +263,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
   const [showNewPdi, setShowNewPdi] = useState(false)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [erro, setErro] = useState('')
 
   useEffect(() => {
     if (open && avaliacao) {
@@ -270,6 +271,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
       setEvidencias(avaliacao.evidencias_culturais ?? '')
       setObservacoes(avaliacao.observacoes_gerais ?? '')
       setActiveTab('cultural')
+      setErro('')
       loadData(avaliacao.id)
     }
   }, [open, avaliacao?.id])
@@ -310,8 +312,9 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
   async function handleSave() {
     if (!avaliacao) return
     setSaving(true)
+    setErro('')
 
-    await Promise.all(
+    const resultadosC = await Promise.all(
       [1, 2, 3, 4].map((pilar) =>
         upsertAvaliacaoCultural(
           avaliacao.id,
@@ -321,10 +324,16 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
         )
       )
     )
+    const erroC = resultadosC.find((r) => r.error)?.error
+    if (erroC) {
+      setSaving(false)
+      setErro(erroC.message)
+      return
+    }
 
     const criterios = vertical ? (VERTICAIS_CTZ[vertical]?.criterios ?? []) : []
     if (criterios.length) {
-      await Promise.all(
+      const resultadosT = await Promise.all(
         criterios.map((c) =>
           upsertAvaliacaoTecnica(
             avaliacao.id,
@@ -335,6 +344,12 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
           )
         )
       )
+      const erroT = resultadosT.find((r) => r.error)?.error
+      if (erroT) {
+        setSaving(false)
+        setErro(erroT.message)
+        return
+      }
     }
 
     const cAuto = calcMedia([1, 2, 3, 4].map((p) => scoresC[String(p)]?.auto ?? null))
@@ -342,7 +357,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
     const tAuto = calcMedia(criterios.map((c) => scoresT[c.key]?.auto ?? null))
     const tGestor = calcMedia(criterios.map((c) => scoresT[c.key]?.gestor ?? null))
 
-    await updateAvaliacao(avaliacao.id, {
+    const { error: erroUpdate } = await updateAvaliacao(avaliacao.id, {
       vertical: vertical || null,
       evidencias_culturais: evidencias || null,
       observacoes_gerais: observacoes || null,
@@ -353,6 +368,10 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
     })
 
     setSaving(false)
+    if (erroUpdate) {
+      setErro(erroUpdate.message)
+      return
+    }
     onSave()
   }
 
@@ -365,27 +384,42 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
     }
     const next = proximo[avaliacao.status]
     if (!next) return
-    await updateAvaliacao(avaliacao.id, { status: next })
+    setErro('')
+    const { error } = await updateAvaliacao(avaliacao.id, { status: next })
+    if (error) {
+      setErro(error.message)
+      return
+    }
     onSave()
   }
 
   async function handleAddPdi(e: React.FormEvent) {
     e.preventDefault()
     if (!avaliacao || !newPdi.acao.trim()) return
-    const { data } = await createPdiItem({
+    setErro('')
+    const { data, error } = await createPdiItem({
       avaliacao_id: avaliacao.id,
       acao: newPdi.acao.trim(),
       indicador_sucesso: newPdi.indicador_sucesso || undefined,
       prazo: newPdi.prazo || undefined,
       suporte_necessario: newPdi.suporte_necessario || undefined,
     })
+    if (error) {
+      setErro(error.message)
+      return
+    }
     if (data) setPdiItems((prev) => [...prev, data as PdiItem])
     setNewPdi({ acao: '', indicador_sucesso: '', prazo: '', suporte_necessario: '' })
     setShowNewPdi(false)
   }
 
   async function handleDeletePdi(id: string) {
-    await deletePdiItem(id)
+    setErro('')
+    const { error } = await deletePdiItem(id)
+    if (error) {
+      setErro(error.message)
+      return
+    }
     setPdiItems((prev) => prev.filter((p) => p.id !== id))
   }
 
@@ -777,6 +811,12 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
             </>
           )}
         </div>
+
+        {erro && (
+          <p className="mx-5 mb-3 text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-md px-3 py-2 shrink-0">
+            {erro}
+          </p>
+        )}
 
         {/* Médias resumo */}
         {(avaliacao.media_cultural_gestor !== null || avaliacao.media_tecnica_gestor !== null) && (

@@ -17,6 +17,7 @@ export default function ModalCriarCiclo({ open, clientId, onClose, onSave }: Pro
   const [periodo, setPeriodo] = useState<1 | 2>(1)
   const [ano, setAno] = useState(ANO_ATUAL)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   if (!open) return null
 
@@ -24,15 +25,21 @@ export default function ModalCriarCiclo({ open, clientId, onClose, onSave }: Pro
     setNome('')
     setPeriodo(1)
     setAno(ANO_ATUAL)
+    setError('')
     onClose()
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
+    setError('')
     const nomeGerado = nome.trim() || `${periodo}º Semestre ${ano}`
-    await createCicloAvaliacao({ client_id: clientId, nome: nomeGerado, periodo, ano })
+    const { error: err } = await createCicloAvaliacao({ client_id: clientId, nome: nomeGerado, periodo, ano })
     setLoading(false)
+    if (err) {
+      setError(err.message)
+      return
+    }
     handleClose()
     onSave()
   }
@@ -81,6 +88,12 @@ export default function ModalCriarCiclo({ open, clientId, onClose, onSave }: Pro
               className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
+
+          {error && (
+            <p className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-md px-3 py-2">
+              {error}
+            </p>
+          )}
 
           <div className="flex gap-2 pt-1">
             <button

@@ -64,3 +64,9 @@ export function getProgressStatus(progress: number) {
   if (progress >= 40) return 'Em risco'
   return 'Atrasado'
 }
+
+// Módulo de Avaliação de Desempenho foi construído só com o rubric da CTZ
+// (pilares culturais e verticais em ModalAvaliacao.tsx), por isso fica restrito a ela.
+export function isEmpresaCTZ(companyName?: string | null): boolean {
+  return !!companyName && companyName.toLowerCase().includes('ctz')
+}

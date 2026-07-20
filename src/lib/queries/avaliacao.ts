@@ -25,6 +25,11 @@ export async function updateCicloStatus(id: string, status: string) {
   return supabase.from('ciclos_avaliacao').update({ status }).eq('id', id).select().single()
 }
 
+export async function deleteCicloAvaliacao(id: string) {
+  const supabase = createClient()
+  return supabase.from('ciclos_avaliacao').delete().eq('id', id)
+}
+
 export async function getAvaliacoesByCiclo(cicloId: string) {
   const supabase = createClient()
   return supabase
