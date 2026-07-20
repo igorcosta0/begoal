@@ -35,8 +35,9 @@ export async function getAvaliacoesByCiclo(cicloId: string) {
   return supabase
     .from('avaliacoes')
     .select(`
-      id, status, vertical, media_cultural_auto, media_cultural_gestor,
-      media_tecnica_auto, media_tecnica_gestor, evidencias_culturais, observacoes_gerais,
+      id, status, vertical, media_cultural_auto, media_cultural_gestor, media_cultural_calibragem,
+      media_tecnica_auto, media_tecnica_gestor, media_tecnica_calibragem,
+      evidencias_culturais, observacoes_gerais,
       funcionario:funcionarios!funcionario_id(id, full_name, cargo),
       avaliador:funcionarios!avaliador_id(id, full_name)
     `)
@@ -49,8 +50,8 @@ export async function getMinhasAvaliacoes(funcionarioId: string) {
   return supabase
     .from('avaliacoes')
     .select(`
-      id, status, vertical, media_cultural_auto, media_cultural_gestor,
-      media_tecnica_auto, media_tecnica_gestor,
+      id, status, vertical, media_cultural_auto, media_cultural_gestor, media_cultural_calibragem,
+      media_tecnica_auto, media_tecnica_gestor, media_tecnica_calibragem,
       ciclo:ciclos_avaliacao!ciclo_id(id, nome, periodo, ano, status)
     `)
     .eq('funcionario_id', funcionarioId)
@@ -77,8 +78,10 @@ export async function updateAvaliacao(
     observacoes_gerais?: string | null
     media_cultural_auto?: number | null
     media_cultural_gestor?: number | null
+    media_cultural_calibragem?: number | null
     media_tecnica_auto?: number | null
     media_tecnica_gestor?: number | null
+    media_tecnica_calibragem?: number | null
   }
 ) {
   const supabase = createClient()
@@ -94,7 +97,7 @@ export async function getAvaliacaoCultural(avaliacaoId: string) {
   const supabase = createClient()
   return supabase
     .from('avaliacoes_cultural')
-    .select('id, pilar, nota_auto, nota_gestor')
+    .select('id, pilar, nota_auto, nota_gestor, nota_calibragem')
     .eq('avaliacao_id', avaliacaoId)
 }
 
@@ -102,13 +105,14 @@ export async function upsertAvaliacaoCultural(
   avaliacaoId: string,
   pilar: number,
   notaAuto: number | null,
-  notaGestor: number | null
+  notaGestor: number | null,
+  notaCalibragem: number | null
 ) {
   const supabase = createClient()
   return supabase
     .from('avaliacoes_cultural')
     .upsert(
-      { avaliacao_id: avaliacaoId, pilar, nota_auto: notaAuto, nota_gestor: notaGestor },
+      { avaliacao_id: avaliacaoId, pilar, nota_auto: notaAuto, nota_gestor: notaGestor, nota_calibragem: notaCalibragem },
       { onConflict: 'avaliacao_id,pilar' }
     )
 }
@@ -117,7 +121,7 @@ export async function getAvaliacaoTecnica(avaliacaoId: string) {
   const supabase = createClient()
   return supabase
     .from('avaliacoes_tecnica')
-    .select('id, criterio_key, nota_auto, nota_gestor, observacoes')
+    .select('id, criterio_key, nota_auto, nota_gestor, nota_calibragem, observacoes')
     .eq('avaliacao_id', avaliacaoId)
 }
 
@@ -126,6 +130,7 @@ export async function upsertAvaliacaoTecnica(
   criterioKey: string,
   notaAuto: number | null,
   notaGestor: number | null,
+  notaCalibragem: number | null,
   observacoes?: string | null
 ) {
   const supabase = createClient()
@@ -137,6 +142,7 @@ export async function upsertAvaliacaoTecnica(
         criterio_key: criterioKey,
         nota_auto: notaAuto,
         nota_gestor: notaGestor,
+        nota_calibragem: notaCalibragem,
         observacoes: observacoes ?? null,
       },
       { onConflict: 'avaliacao_id,criterio_key' }

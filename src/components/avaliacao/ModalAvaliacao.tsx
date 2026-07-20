@@ -209,7 +209,7 @@ function ScoreButton({
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
-type ScoreEntry = { auto: number | null; gestor: number | null }
+type ScoreEntry = { auto: number | null; gestor: number | null; calibragem: number | null }
 type ScoresC = Record<string, ScoreEntry>
 type ScoresT = Record<string, ScoreEntry & { observacoes: string }>
 
@@ -229,8 +229,10 @@ interface Avaliacao {
   observacoes_gerais: string | null
   media_cultural_auto: number | null
   media_cultural_gestor: number | null
+  media_cultural_calibragem: number | null
   media_tecnica_auto: number | null
   media_tecnica_gestor: number | null
+  media_tecnica_calibragem: number | null
   funcionario?: { full_name: string; cargo?: string | null } | null
   avaliador?: { full_name: string } | null
 }
@@ -252,10 +254,10 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
   const [evidencias, setEvidencias] = useState('')
   const [observacoes, setObservacoes] = useState('')
   const [scoresC, setScoresC] = useState<ScoresC>({
-    '1': { auto: null, gestor: null },
-    '2': { auto: null, gestor: null },
-    '3': { auto: null, gestor: null },
-    '4': { auto: null, gestor: null },
+    '1': { auto: null, gestor: null, calibragem: null },
+    '2': { auto: null, gestor: null, calibragem: null },
+    '3': { auto: null, gestor: null, calibragem: null },
+    '4': { auto: null, gestor: null, calibragem: null },
   })
   const [scoresT, setScoresT] = useState<ScoresT>({})
   const [pdiItems, setPdiItems] = useState<PdiItem[]>([])
@@ -285,13 +287,13 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
     ])
 
     const newScoresC: ScoresC = {
-      '1': { auto: null, gestor: null },
-      '2': { auto: null, gestor: null },
-      '3': { auto: null, gestor: null },
-      '4': { auto: null, gestor: null },
+      '1': { auto: null, gestor: null, calibragem: null },
+      '2': { auto: null, gestor: null, calibragem: null },
+      '3': { auto: null, gestor: null, calibragem: null },
+      '4': { auto: null, gestor: null, calibragem: null },
     }
     cultural.data?.forEach((row) => {
-      newScoresC[String(row.pilar)] = { auto: row.nota_auto, gestor: row.nota_gestor }
+      newScoresC[String(row.pilar)] = { auto: row.nota_auto, gestor: row.nota_gestor, calibragem: row.nota_calibragem }
     })
     setScoresC(newScoresC)
 
@@ -300,6 +302,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
       newScoresT[row.criterio_key] = {
         auto: row.nota_auto,
         gestor: row.nota_gestor,
+        calibragem: row.nota_calibragem,
         observacoes: row.observacoes ?? '',
       }
     })
@@ -348,9 +351,21 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
       }
     }
 
-    if (pdiItems.length === 0) {
-      faltando.push('ao menos uma ação de PDI')
+    const emEtapaCalibragem = avaliacao ? ['calibragem', 'finalizada'].includes(avaliacao.status) : false
+    if (isAdmin && emEtapaCalibragem) {
+      const pilaresCalibragemFaltando = [1, 2, 3, 4].some((p) => scoresC[String(p)]?.calibragem == null)
+      if (pilaresCalibragemFaltando) {
+        faltando.push('nota de calibragem em todos os pilares culturais')
+      }
+      if (criteriosAtuais.length) {
+        const criteriosCalibragemFaltando = criteriosAtuais.some((c) => scoresT[c.key]?.calibragem == null)
+        if (criteriosCalibragemFaltando) {
+          faltando.push('nota de calibragem em todos os critérios técnicos')
+        }
+      }
     }
+
+    // PDI é opcional — só pode ser preenchido durante a etapa de Calibragem (ver gate na aba PDI)
 
     return faltando
   }
@@ -364,7 +379,8 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
           avaliacao.id,
           pilar,
           scoresC[String(pilar)]?.auto ?? null,
-          scoresC[String(pilar)]?.gestor ?? null
+          scoresC[String(pilar)]?.gestor ?? null,
+          scoresC[String(pilar)]?.calibragem ?? null
         )
       )
     )
@@ -383,6 +399,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
             c.key,
             scoresT[c.key]?.auto ?? null,
             scoresT[c.key]?.gestor ?? null,
+            scoresT[c.key]?.calibragem ?? null,
             scoresT[c.key]?.observacoes || null
           )
         )
@@ -396,8 +413,10 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
 
     const cAuto = calcMedia([1, 2, 3, 4].map((p) => scoresC[String(p)]?.auto ?? null))
     const cGestor = calcMedia([1, 2, 3, 4].map((p) => scoresC[String(p)]?.gestor ?? null))
+    const cCalibragem = calcMedia([1, 2, 3, 4].map((p) => scoresC[String(p)]?.calibragem ?? null))
     const tAuto = calcMedia(criterios.map((c) => scoresT[c.key]?.auto ?? null))
     const tGestor = calcMedia(criterios.map((c) => scoresT[c.key]?.gestor ?? null))
+    const tCalibragem = calcMedia(criterios.map((c) => scoresT[c.key]?.calibragem ?? null))
 
     const { error: erroUpdate } = await updateAvaliacao(avaliacao.id, {
       vertical: vertical || null,
@@ -405,8 +424,10 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
       observacoes_gerais: observacoes || null,
       media_cultural_auto: cAuto,
       media_cultural_gestor: cGestor,
+      media_cultural_calibragem: cCalibragem,
       media_tecnica_auto: tAuto,
       media_tecnica_gestor: tGestor,
+      media_tecnica_calibragem: tCalibragem,
       ...(statusExtra ? { status: statusExtra } : {}),
     })
 
@@ -438,7 +459,8 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
     const proximo: Record<string, string> = {
       pendente: 'auto_concluida',
       auto_concluida: 'gestor_concluida',
-      gestor_concluida: 'finalizada',
+      gestor_concluida: 'calibragem',
+      calibragem: 'finalizada',
     }
     const next = proximo[avaliacao.status]
     if (!next) return
@@ -486,17 +508,17 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
     setPdiItems((prev) => prev.filter((p) => p.id !== id))
   }
 
-  function setScoreC(pilar: number, tipo: 'auto' | 'gestor', valor: number) {
+  function setScoreC(pilar: number, tipo: 'auto' | 'gestor' | 'calibragem', valor: number) {
     setScoresC((prev) => ({
       ...prev,
       [String(pilar)]: { ...prev[String(pilar)], [tipo]: valor },
     }))
   }
 
-  function setScoreT(key: string, tipo: 'auto' | 'gestor', valor: number) {
+  function setScoreT(key: string, tipo: 'auto' | 'gestor' | 'calibragem', valor: number) {
     setScoresT((prev) => ({
       ...prev,
-      [key]: { ...(prev[key] ?? { auto: null, gestor: null, observacoes: '' }), [tipo]: valor },
+      [key]: { ...(prev[key] ?? { auto: null, gestor: null, calibragem: null, observacoes: '' }), [tipo]: valor },
     }))
   }
 
@@ -507,24 +529,29 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
     pendente: 'Pendente',
     auto_concluida: 'Autoavaliação Concluída',
     gestor_concluida: 'Avaliação do Gestor Concluída',
+    calibragem: 'Em Calibragem',
     finalizada: 'Finalizada',
   }
   const statusColor: Record<string, string> = {
     pendente: 'bg-yellow-100 text-yellow-700',
     auto_concluida: 'bg-blue-100 text-blue-700',
     gestor_concluida: 'bg-purple-100 text-purple-700',
+    calibragem: 'bg-orange-100 text-orange-700',
     finalizada: 'bg-green-100 text-green-700',
   }
 
   const proximoStatusLabel: Record<string, string> = {
     pendente: 'Concluir Autoavaliação',
     auto_concluida: 'Concluir Avaliação do Gestor',
-    gestor_concluida: 'Finalizar',
+    gestor_concluida: 'Iniciar Calibragem',
+    calibragem: 'Finalizar',
   }
 
   const podeAvancarStatus =
     (!isAdmin && avaliacao.status === 'pendente') ||
-    (isAdmin && ['auto_concluida', 'gestor_concluida'].includes(avaliacao.status))
+    (isAdmin && ['auto_concluida', 'gestor_concluida', 'calibragem'].includes(avaliacao.status))
+
+  const podeEditarPdi = ['calibragem', 'finalizada'].includes(avaliacao.status)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -629,6 +656,20 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                               ))}
                             </div>
                           </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1.5">Calibragem</p>
+                            <div className="flex gap-1">
+                              {([1, 2, 3, 4] as const).map((v) => (
+                                <ScoreButton
+                                  key={v}
+                                  value={v}
+                                  selected={score?.calibragem === v}
+                                  onClick={() => setScoreC(pilar.numero, 'calibragem', v)}
+                                  disabled={!isAdmin}
+                                />
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )
@@ -725,6 +766,20 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                               ))}
                             </div>
                           </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1.5">Calibragem</p>
+                            <div className="flex gap-1">
+                              {([1, 2, 3, 4] as const).map((v) => (
+                                <ScoreButton
+                                  key={v}
+                                  value={v}
+                                  selected={score?.calibragem === v}
+                                  onClick={() => setScoreT(criterio.key, 'calibragem', v)}
+                                  disabled={!isAdmin}
+                                />
+                              ))}
+                            </div>
+                          </div>
                         </div>
                         <div>
                           <label className="text-xs text-muted-foreground">Pontos de atenção / observações</label>
@@ -735,7 +790,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                               setScoresT((prev) => ({
                                 ...prev,
                                 [criterio.key]: {
-                                  ...(prev[criterio.key] ?? { auto: null, gestor: null, observacoes: '' }),
+                                  ...(prev[criterio.key] ?? { auto: null, gestor: null, calibragem: null, observacoes: '' }),
                                   observacoes: e.target.value,
                                 },
                               }))
@@ -754,10 +809,16 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
               {activeTab === 'pdi' && (
                 <div className="space-y-4">
                   <p className="text-xs text-muted-foreground">
-                    Plano de Desenvolvimento Individual — defina de 1 a 3 ações concretas para os próximos 6 meses.
+                    Plano de Desenvolvimento Individual (opcional) — defina até 3 ações concretas para os próximos 6 meses. Só pode ser preenchido na etapa de Calibragem.
                   </p>
 
-                  {pdiItems.length === 0 && !showNewPdi && (
+                  {!podeEditarPdi && pdiItems.length === 0 && (
+                    <div className="border border-dashed border-border rounded-lg p-8 text-center">
+                      <p className="text-sm text-muted-foreground">O PDI só pode ser preenchido durante a etapa de Calibragem.</p>
+                    </div>
+                  )}
+
+                  {podeEditarPdi && pdiItems.length === 0 && !showNewPdi && (
                     <div className="border border-dashed border-border rounded-lg p-8 text-center">
                       <p className="text-sm text-muted-foreground">Nenhuma ação de desenvolvimento cadastrada.</p>
                     </div>
@@ -787,17 +848,19 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                             </p>
                           )}
                         </div>
-                        <button
-                          onClick={() => handleDeletePdi(item.id)}
-                          className="p-1.5 rounded hover:bg-destructive/10 text-destructive transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {podeEditarPdi && (
+                          <button
+                            onClick={() => handleDeletePdi(item.id)}
+                            className="p-1.5 rounded hover:bg-destructive/10 text-destructive transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
 
-                  {showNewPdi && (
+                  {podeEditarPdi && showNewPdi && (
                     <form onSubmit={handleAddPdi} className="border border-primary/30 rounded-lg p-4 space-y-3 bg-primary/5">
                       <p className="text-xs font-medium text-foreground">Nova ação de desenvolvimento</p>
                       <div>
@@ -860,7 +923,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                     </form>
                   )}
 
-                  {!showNewPdi && pdiItems.length < 3 && (
+                  {podeEditarPdi && !showNewPdi && pdiItems.length < 3 && (
                     <button
                       onClick={() => setShowNewPdi(true)}
                       className="flex items-center gap-2 px-3 py-2 border border-dashed border-border rounded-md text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors w-full justify-center"
@@ -882,7 +945,10 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
         )}
 
         {/* Médias resumo */}
-        {(avaliacao.media_cultural_gestor !== null || avaliacao.media_tecnica_gestor !== null) && (
+        {(avaliacao.media_cultural_gestor !== null ||
+          avaliacao.media_tecnica_gestor !== null ||
+          avaliacao.media_cultural_calibragem !== null ||
+          avaliacao.media_tecnica_calibragem !== null) && (
           <div className="px-5 py-3 border-t border-border bg-muted/30 flex flex-wrap gap-4 shrink-0">
             {avaliacao.media_cultural_gestor !== null && (
               <span className="text-xs text-muted-foreground">
@@ -894,6 +960,18 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
               <span className="text-xs text-muted-foreground">
                 Média Técnica (Gestor):{' '}
                 <strong className="text-foreground">{avaliacao.media_tecnica_gestor.toFixed(1)}</strong>
+              </span>
+            )}
+            {avaliacao.media_cultural_calibragem !== null && (
+              <span className="text-xs text-muted-foreground">
+                Média Cultural (Calibragem):{' '}
+                <strong className="text-foreground">{avaliacao.media_cultural_calibragem.toFixed(1)}</strong>
+              </span>
+            )}
+            {avaliacao.media_tecnica_calibragem !== null && (
+              <span className="text-xs text-muted-foreground">
+                Média Técnica (Calibragem):{' '}
+                <strong className="text-foreground">{avaliacao.media_tecnica_calibragem.toFixed(1)}</strong>
               </span>
             )}
           </div>

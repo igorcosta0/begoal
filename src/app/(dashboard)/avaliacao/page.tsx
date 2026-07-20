@@ -34,8 +34,10 @@ interface Avaliacao {
   vertical: string | null
   media_cultural_auto: number | null
   media_cultural_gestor: number | null
+  media_cultural_calibragem: number | null
   media_tecnica_auto: number | null
   media_tecnica_gestor: number | null
+  media_tecnica_calibragem: number | null
   evidencias_culturais: string | null
   observacoes_gerais: string | null
   funcionario: { id: string; full_name: string; cargo: string | null } | null
@@ -48,8 +50,10 @@ interface MinhaAvaliacao {
   vertical: string | null
   media_cultural_auto: number | null
   media_cultural_gestor: number | null
+  media_cultural_calibragem: number | null
   media_tecnica_auto: number | null
   media_tecnica_gestor: number | null
+  media_tecnica_calibragem: number | null
   ciclo: { id: string; nome: string; periodo: number; ano: number; status: string } | null
 }
 
@@ -77,6 +81,7 @@ const avalStatusLabel: Record<string, string> = {
   pendente: 'Pendente',
   auto_concluida: 'Auto Concluída',
   gestor_concluida: 'Gestor Concluído',
+  calibragem: 'Em Calibragem',
   finalizada: 'Finalizada',
 }
 
@@ -84,6 +89,7 @@ const avalStatusColor: Record<string, string> = {
   pendente: 'bg-yellow-100 text-yellow-700',
   auto_concluida: 'bg-blue-100 text-blue-700',
   gestor_concluida: 'bg-purple-100 text-purple-700',
+  calibragem: 'bg-orange-100 text-orange-700',
   finalizada: 'bg-green-100 text-green-700',
 }
 
