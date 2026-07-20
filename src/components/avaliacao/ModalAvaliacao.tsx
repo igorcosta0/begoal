@@ -309,10 +309,54 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
     setLoading(false)
   }
 
-  async function handleSave() {
-    if (!avaliacao) return
-    setSaving(true)
-    setErro('')
+  function validarCampos(): string[] {
+    const faltando: string[] = []
+
+    const pilaresFaltando = [1, 2, 3, 4].some((p) =>
+      isAdmin ? scoresC[String(p)]?.gestor == null : scoresC[String(p)]?.auto == null
+    )
+    if (pilaresFaltando) {
+      faltando.push(
+        isAdmin
+          ? 'nota do gestor em todos os pilares culturais'
+          : 'nota de autoavaliação em todos os pilares culturais'
+      )
+    }
+
+    if (!isAdmin && !evidencias.trim()) {
+      faltando.push('evidências e exemplos práticos')
+    }
+    if (isAdmin && !observacoes.trim()) {
+      faltando.push('observações do gestor')
+    }
+
+    if (isAdmin && !vertical) {
+      faltando.push('vertical de atuação')
+    }
+
+    const criteriosAtuais = vertical ? (VERTICAIS_CTZ[vertical]?.criterios ?? []) : []
+    if (criteriosAtuais.length) {
+      const criteriosFaltando = criteriosAtuais.some((c) =>
+        isAdmin ? scoresT[c.key]?.gestor == null : scoresT[c.key]?.auto == null
+      )
+      if (criteriosFaltando) {
+        faltando.push(
+          isAdmin
+            ? 'nota do gestor em todos os critérios técnicos'
+            : 'nota de autoavaliação em todos os critérios técnicos'
+        )
+      }
+    }
+
+    if (pdiItems.length === 0) {
+      faltando.push('ao menos uma ação de PDI')
+    }
+
+    return faltando
+  }
+
+  async function persistirCampos(statusExtra?: string): Promise<boolean> {
+    if (!avaliacao) return false
 
     const resultadosC = await Promise.all(
       [1, 2, 3, 4].map((pilar) =>
@@ -326,9 +370,8 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
     )
     const erroC = resultadosC.find((r) => r.error)?.error
     if (erroC) {
-      setSaving(false)
       setErro(erroC.message)
-      return
+      return false
     }
 
     const criterios = vertical ? (VERTICAIS_CTZ[vertical]?.criterios ?? []) : []
@@ -346,9 +389,8 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
       )
       const erroT = resultadosT.find((r) => r.error)?.error
       if (erroT) {
-        setSaving(false)
         setErro(erroT.message)
-        return
+        return false
       }
     }
 
@@ -365,14 +407,30 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
       media_cultural_gestor: cGestor,
       media_tecnica_auto: tAuto,
       media_tecnica_gestor: tGestor,
+      ...(statusExtra ? { status: statusExtra } : {}),
     })
 
-    setSaving(false)
     if (erroUpdate) {
       setErro(erroUpdate.message)
+      return false
+    }
+    return true
+  }
+
+  async function handleSave() {
+    if (!avaliacao) return
+
+    const camposFaltando = validarCampos()
+    if (camposFaltando.length) {
+      setErro(`Preencha antes de salvar: ${camposFaltando.join('; ')}.`)
       return
     }
-    onSave()
+
+    setSaving(true)
+    setErro('')
+    const ok = await persistirCampos()
+    setSaving(false)
+    if (ok) onSave()
   }
 
   async function handleAvancarStatus() {
@@ -384,13 +442,18 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
     }
     const next = proximo[avaliacao.status]
     if (!next) return
-    setErro('')
-    const { error } = await updateAvaliacao(avaliacao.id, { status: next })
-    if (error) {
-      setErro(error.message)
+
+    const camposFaltando = validarCampos()
+    if (camposFaltando.length) {
+      setErro(`Preencha e salve antes de avançar de etapa: ${camposFaltando.join('; ')}.`)
       return
     }
-    onSave()
+
+    setSaving(true)
+    setErro('')
+    const ok = await persistirCampos(next)
+    setSaving(false)
+    if (ok) onSave()
   }
 
   async function handleAddPdi(e: React.FormEvent) {
@@ -573,7 +636,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
 
                   <div>
                     <label className="text-xs font-medium text-foreground">
-                      Evidências e Exemplos Práticos
+                      Evidências e Exemplos Práticos {!isAdmin && '*'}
                     </label>
                     <textarea
                       value={evidencias}
@@ -581,6 +644,20 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                       rows={3}
                       disabled={isAdmin}
                       placeholder="Descreva exemplos concretos que justifiquem as notas..."
+                      className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-foreground">
+                      Observações do Gestor {isAdmin && '*'}
+                    </label>
+                    <textarea
+                      value={observacoes}
+                      onChange={(e) => setObservacoes(e.target.value)}
+                      rows={3}
+                      disabled={!isAdmin}
+                      placeholder="Feedback geral sobre o alinhamento cultural..."
                       className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
                     />
                   </div>
@@ -670,20 +747,6 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                       </div>
                     )
                   })}
-
-                  {vertical && (
-                    <div>
-                      <label className="text-xs font-medium text-foreground">Observações gerais do gestor</label>
-                      <textarea
-                        value={observacoes}
-                        onChange={(e) => setObservacoes(e.target.value)}
-                        rows={3}
-                        disabled={!isAdmin}
-                        placeholder="Feedback geral sobre a performance técnica..."
-                        className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
-                      />
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -842,9 +905,10 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
             {podeAvancarStatus && (
               <button
                 onClick={handleAvancarStatus}
-                className="px-4 py-2 border border-primary text-primary rounded-md text-sm font-medium hover:bg-primary/10 transition-colors"
+                disabled={saving}
+                className="px-4 py-2 border border-primary text-primary rounded-md text-sm font-medium hover:bg-primary/10 transition-colors disabled:opacity-60"
               >
-                {proximoStatusLabel[avaliacao.status]}
+                {saving ? 'Salvando...' : proximoStatusLabel[avaliacao.status]}
               </button>
             )}
           </div>
