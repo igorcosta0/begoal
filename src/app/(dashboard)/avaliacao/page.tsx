@@ -190,12 +190,53 @@ export default function AvaliacaoPage() {
 
   async function handleAtivarCiclo(ciclo: Ciclo) {
     setErro('')
-    const { error } = await updateCicloStatus(ciclo.id, ciclo.status === 'rascunho' ? 'ativo' : 'encerrado')
+    const novoStatus = ciclo.status === 'rascunho' ? 'ativo' : 'encerrado'
+    const { error } = await updateCicloStatus(ciclo.id, novoStatus)
     if (error) {
       setErro(error.message)
       return
     }
+    if (novoStatus === 'ativo') {
+      const { error: erroIniciar } = await iniciarAvaliacoesParaTodos(ciclo.id)
+      if (erroIniciar) {
+        setErro(erroIniciar)
+        return
+      }
+    }
     fetchCiclos()
+    if (cicloAtivo?.id === ciclo.id) fetchAvaliacoes()
+  }
+
+  async function iniciarAvaliacoesParaTodos(cicloId: string): Promise<{ error: string | null }> {
+    if (!empresa) return { error: null }
+    const supabase = createClient()
+    const [{ data: todosFuncionarios, error: erroFunc }, { data: avaliacoesExistentes, error: erroAval }] =
+      await Promise.all([
+        supabase.from('funcionarios').select('id').eq('client_id', empresa.id).eq('status', 'Ativo'),
+        supabase.from('avaliacoes').select('funcionario_id').eq('ciclo_id', cicloId),
+      ])
+    if (erroFunc) return { error: erroFunc.message }
+    if (erroAval) return { error: erroAval.message }
+
+    const jaTem = new Set((avaliacoesExistentes ?? []).map((a) => a.funcionario_id))
+    const faltando = (todosFuncionarios ?? []).filter((f) => !jaTem.has(f.id))
+    if (!faltando.length) return { error: null }
+
+    const resultados = await Promise.all(
+      faltando.map((f) => createAvaliacao({ ciclo_id: cicloId, funcionario_id: f.id }))
+    )
+    const erro = resultados.find((r) => r.error)?.error
+    return { error: erro?.message ?? null }
+  }
+
+  async function handleSincronizarAvaliacoes(cicloId: string) {
+    setErro('')
+    const { error } = await iniciarAvaliacoesParaTodos(cicloId)
+    if (error) {
+      setErro(error)
+      return
+    }
+    fetchAvaliacoes()
   }
 
   async function handleDeletarCiclo(ciclo: Ciclo) {
@@ -444,13 +485,23 @@ export default function AvaliacaoPage() {
                       {avaliacoes.length} avaliação(ões) criada(s)
                       {funcionariosSemAvaliacao.length > 0 && ` · ${funcionariosSemAvaliacao.length} funcionário(s) sem avaliação`}
                     </p>
-                    <button
-                      onClick={() => setModalNineBox(true)}
-                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground"
-                    >
-                      <LayoutGrid className="w-3.5 h-3.5" />
-                      Nine Box
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {ciclo.status === 'ativo' && funcionariosSemAvaliacao.length > 0 && (
+                        <button
+                          onClick={() => handleSincronizarAvaliacoes(ciclo.id)}
+                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground"
+                        >
+                          Sincronizar Avaliações
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setModalNineBox(true)}
+                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground"
+                      >
+                        <LayoutGrid className="w-3.5 h-3.5" />
+                        Nine Box
+                      </button>
+                    </div>
                   </div>
 
                   {/* Avaliações existentes */}
