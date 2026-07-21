@@ -840,7 +840,11 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                         </div>
                         <div>
                           <label className="text-xs text-muted-foreground">Evidências e Exemplos Práticos</label>
-                          {!isAdmin && !colaboradorVeGestor ? (
+                          {isAdmin && !gestorVeAuto ? (
+                            <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-1.5">
+                              Oculto até a Calibragem.
+                            </p>
+                          ) : !isAdmin && !colaboradorVeGestor ? (
                             <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-1.5">
                               Oculto até a revelação da avaliação.
                             </p>
