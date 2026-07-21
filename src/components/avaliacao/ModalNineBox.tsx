@@ -38,8 +38,8 @@ const QUADRANTES = [
 
 function getQuadrante(mediaC: number | null, mediaT: number | null): [number, number] | null {
   if (mediaC === null || mediaT === null) return null
-  const row = mediaC >= 3 ? 0 : mediaC >= 2 ? 1 : 2
-  const col = mediaT >= 3 ? 2 : mediaT >= 2 ? 1 : 0
+  const row = mediaC >= 3.7 ? 0 : mediaC >= 2.3 ? 1 : 2
+  const col = mediaT >= 3.7 ? 2 : mediaT >= 2.3 ? 1 : 0
   return [row, col]
 }
 
@@ -82,15 +82,15 @@ export default function ModalNineBox({ open, avaliacoes, onClose }: Props) {
           <div className="flex gap-4 mb-4 text-xs text-muted-foreground">
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-full bg-muted-foreground/50" />
-              Baixo: &lt; 2.0
+              Baixo: &lt; 2.3
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-full bg-muted-foreground/70" />
-              Médio: 2.0 – 2.9
+              Médio: 2.3 – 3.6
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-full bg-muted-foreground/90" />
-              Alto: ≥ 3.0
+              Alto: ≥ 3.7
             </div>
           </div>
 

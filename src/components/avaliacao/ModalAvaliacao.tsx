@@ -160,9 +160,10 @@ function calcMedia(values: (number | null)[]): number | null {
 }
 
 function notaLabel(nota: number) {
-  if (nota === 1) return 'Precisa Melhorar'
-  if (nota === 2) return 'Regular'
-  if (nota === 3) return 'Bom'
+  if (nota === 1) return 'Insatisfatório'
+  if (nota === 2) return 'Precisa Melhorar'
+  if (nota === 3) return 'Regular'
+  if (nota === 4) return 'Bom'
   return 'Excelente'
 }
 
@@ -174,7 +175,7 @@ function ScoreButton({
   onClick,
   disabled,
 }: {
-  value: 1 | 2 | 3 | 4
+  value: 1 | 2 | 3 | 4 | 5
   selected: boolean
   onClick: () => void
   disabled?: boolean
@@ -188,11 +189,14 @@ function ScoreButton({
       ? 'bg-orange-500 text-white border-orange-500'
       : 'bg-background text-orange-600 border-orange-200 hover:bg-orange-50',
     3: selected
+      ? 'bg-yellow-500 text-white border-yellow-500'
+      : 'bg-background text-yellow-700 border-yellow-200 hover:bg-yellow-50',
+    4: selected
+      ? 'bg-lime-600 text-white border-lime-600'
+      : 'bg-background text-lime-700 border-lime-200 hover:bg-lime-50',
+    5: selected
       ? 'bg-green-600 text-white border-green-600'
       : 'bg-background text-green-700 border-green-200 hover:bg-green-50',
-    4: selected
-      ? 'bg-blue-600 text-white border-blue-600'
-      : 'bg-background text-blue-700 border-blue-200 hover:bg-blue-50',
   }
   return (
     <button
@@ -225,6 +229,7 @@ interface Avaliacao {
   id: string
   status: string
   vertical: string | null
+  revelado?: boolean
   evidencias_culturais: string | null
   observacoes_gerais: string | null
   media_cultural_auto: number | null
@@ -253,6 +258,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
   const [vertical, setVertical] = useState('')
   const [evidencias, setEvidencias] = useState('')
   const [observacoes, setObservacoes] = useState('')
+  const [revelado, setRevelado] = useState(false)
   const [scoresC, setScoresC] = useState<ScoresC>({
     '1': { auto: null, gestor: null, calibragem: null },
     '2': { auto: null, gestor: null, calibragem: null },
@@ -272,6 +278,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
       setVertical(avaliacao.vertical ?? '')
       setEvidencias(avaliacao.evidencias_culturais ?? '')
       setObservacoes(avaliacao.observacoes_gerais ?? '')
+      setRevelado(avaliacao.revelado ?? false)
       setActiveTab('cultural')
       setErro('')
       loadData(avaliacao.id)
@@ -420,6 +427,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
 
     const { error: erroUpdate } = await updateAvaliacao(avaliacao.id, {
       vertical: vertical || null,
+      revelado,
       evidencias_culturais: evidencias || null,
       observacoes_gerais: observacoes || null,
       media_cultural_auto: cAuto,
@@ -553,6 +561,20 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
 
   const podeEditarPdi = ['calibragem', 'finalizada'].includes(avaliacao.status)
 
+  // Gestor só vê a autoavaliação do colaborador a partir da Calibragem (antes disso avalia às cegas).
+  const gestorVeAuto = isAdmin && ['calibragem', 'finalizada'].includes(avaliacao.status)
+  // Colaborador só vê a nota do gestor/calibragem e o resultado final depois que o gestor marcar "revelar".
+  const colaboradorVeGestor = !isAdmin && revelado
+  const podeRevelar = isAdmin && ['calibragem', 'finalizada'].includes(avaliacao.status)
+  const podeVerMedias = isAdmin || revelado
+
+  const notaFinalCultural = avaliacao.media_cultural_calibragem ?? avaliacao.media_cultural_gestor
+  const notaFinalTecnica = avaliacao.media_tecnica_calibragem ?? avaliacao.media_tecnica_gestor
+  const percentualFinal =
+    notaFinalCultural !== null && notaFinalTecnica !== null
+      ? Math.round(((notaFinalCultural + notaFinalTecnica) / 2 / 5) * 100)
+      : null
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
@@ -610,7 +632,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
               {activeTab === 'cultural' && (
                 <div className="space-y-4">
                   <p className="text-xs text-muted-foreground">
-                    Avalie os 4 pilares fundamentais da cultura. Use a escala: 1 — Precisa Melhorar · 2 — Regular · 3 — Bom · 4 — Excelente
+                    Avalie os 4 pilares fundamentais da cultura. Use a escala: 1 — Insatisfatório · 2 — Precisa Melhorar · 3 — Regular · 4 — Bom · 5 — Excelente
                   </p>
                   {PILARES_CULTURAIS.map((pilar) => {
                     const score = scoresC[String(pilar.numero)]
@@ -630,45 +652,57 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                         <div className="flex items-center gap-6">
                           <div>
                             <p className="text-xs text-muted-foreground mb-1.5">Auto</p>
-                            <div className="flex gap-1">
-                              {([1, 2, 3, 4] as const).map((v) => (
-                                <ScoreButton
-                                  key={v}
-                                  value={v}
-                                  selected={score?.auto === v}
-                                  onClick={() => setScoreC(pilar.numero, 'auto', v)}
-                                  disabled={isAdmin}
-                                />
-                              ))}
-                            </div>
+                            {isAdmin && !gestorVeAuto ? (
+                              <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a Calibragem</p>
+                            ) : (
+                              <div className="flex gap-1">
+                                {([1, 2, 3, 4, 5] as const).map((v) => (
+                                  <ScoreButton
+                                    key={v}
+                                    value={v}
+                                    selected={score?.auto === v}
+                                    onClick={() => setScoreC(pilar.numero, 'auto', v)}
+                                    disabled={isAdmin}
+                                  />
+                                ))}
+                              </div>
+                            )}
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground mb-1.5">Gestor</p>
-                            <div className="flex gap-1">
-                              {([1, 2, 3, 4] as const).map((v) => (
-                                <ScoreButton
-                                  key={v}
-                                  value={v}
-                                  selected={score?.gestor === v}
-                                  onClick={() => setScoreC(pilar.numero, 'gestor', v)}
-                                  disabled={!isAdmin}
-                                />
-                              ))}
-                            </div>
+                            {!isAdmin && !colaboradorVeGestor ? (
+                              <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a revelação</p>
+                            ) : (
+                              <div className="flex gap-1">
+                                {([1, 2, 3, 4, 5] as const).map((v) => (
+                                  <ScoreButton
+                                    key={v}
+                                    value={v}
+                                    selected={score?.gestor === v}
+                                    onClick={() => setScoreC(pilar.numero, 'gestor', v)}
+                                    disabled={!isAdmin}
+                                  />
+                                ))}
+                              </div>
+                            )}
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground mb-1.5">Calibragem</p>
-                            <div className="flex gap-1">
-                              {([1, 2, 3, 4] as const).map((v) => (
-                                <ScoreButton
-                                  key={v}
-                                  value={v}
-                                  selected={score?.calibragem === v}
-                                  onClick={() => setScoreC(pilar.numero, 'calibragem', v)}
-                                  disabled={!isAdmin}
-                                />
-                              ))}
-                            </div>
+                            {!isAdmin && !colaboradorVeGestor ? (
+                              <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a revelação</p>
+                            ) : (
+                              <div className="flex gap-1">
+                                {([1, 2, 3, 4, 5] as const).map((v) => (
+                                  <ScoreButton
+                                    key={v}
+                                    value={v}
+                                    selected={score?.calibragem === v}
+                                    onClick={() => setScoreC(pilar.numero, 'calibragem', v)}
+                                    disabled={!isAdmin}
+                                  />
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -679,28 +713,40 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                     <label className="text-xs font-medium text-foreground">
                       Evidências e Exemplos Práticos {!isAdmin && '*'}
                     </label>
-                    <textarea
-                      value={evidencias}
-                      onChange={(e) => setEvidencias(e.target.value)}
-                      rows={3}
-                      disabled={isAdmin}
-                      placeholder="Descreva exemplos concretos que justifiquem as notas..."
-                      className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
-                    />
+                    {isAdmin && !gestorVeAuto ? (
+                      <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-2">
+                        Oculto até a etapa de Calibragem.
+                      </p>
+                    ) : (
+                      <textarea
+                        value={evidencias}
+                        onChange={(e) => setEvidencias(e.target.value)}
+                        rows={3}
+                        disabled={isAdmin}
+                        placeholder="Descreva exemplos concretos que justifiquem as notas..."
+                        className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
+                      />
+                    )}
                   </div>
 
                   <div>
                     <label className="text-xs font-medium text-foreground">
                       Observações do Gestor {isAdmin && '*'}
                     </label>
-                    <textarea
-                      value={observacoes}
-                      onChange={(e) => setObservacoes(e.target.value)}
-                      rows={3}
-                      disabled={!isAdmin}
-                      placeholder="Feedback geral sobre o alinhamento cultural..."
-                      className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
-                    />
+                    {!isAdmin && !colaboradorVeGestor ? (
+                      <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-2">
+                        Oculto até a revelação da avaliação.
+                      </p>
+                    ) : (
+                      <textarea
+                        value={observacoes}
+                        onChange={(e) => setObservacoes(e.target.value)}
+                        rows={3}
+                        disabled={!isAdmin}
+                        placeholder="Feedback geral sobre o alinhamento cultural..."
+                        className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
+                      />
+                    )}
                   </div>
                 </div>
               )}
@@ -739,64 +785,82 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                         <div className="flex items-center gap-6">
                           <div>
                             <p className="text-xs text-muted-foreground mb-1.5">Auto</p>
-                            <div className="flex gap-1">
-                              {([1, 2, 3, 4] as const).map((v) => (
-                                <ScoreButton
-                                  key={v}
-                                  value={v}
-                                  selected={score?.auto === v}
-                                  onClick={() => setScoreT(criterio.key, 'auto', v)}
-                                  disabled={isAdmin}
-                                />
-                              ))}
-                            </div>
+                            {isAdmin && !gestorVeAuto ? (
+                              <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a Calibragem</p>
+                            ) : (
+                              <div className="flex gap-1">
+                                {([1, 2, 3, 4, 5] as const).map((v) => (
+                                  <ScoreButton
+                                    key={v}
+                                    value={v}
+                                    selected={score?.auto === v}
+                                    onClick={() => setScoreT(criterio.key, 'auto', v)}
+                                    disabled={isAdmin}
+                                  />
+                                ))}
+                              </div>
+                            )}
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground mb-1.5">Gestor</p>
-                            <div className="flex gap-1">
-                              {([1, 2, 3, 4] as const).map((v) => (
-                                <ScoreButton
-                                  key={v}
-                                  value={v}
-                                  selected={score?.gestor === v}
-                                  onClick={() => setScoreT(criterio.key, 'gestor', v)}
-                                  disabled={!isAdmin}
-                                />
-                              ))}
-                            </div>
+                            {!isAdmin && !colaboradorVeGestor ? (
+                              <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a revelação</p>
+                            ) : (
+                              <div className="flex gap-1">
+                                {([1, 2, 3, 4, 5] as const).map((v) => (
+                                  <ScoreButton
+                                    key={v}
+                                    value={v}
+                                    selected={score?.gestor === v}
+                                    onClick={() => setScoreT(criterio.key, 'gestor', v)}
+                                    disabled={!isAdmin}
+                                  />
+                                ))}
+                              </div>
+                            )}
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground mb-1.5">Calibragem</p>
-                            <div className="flex gap-1">
-                              {([1, 2, 3, 4] as const).map((v) => (
-                                <ScoreButton
-                                  key={v}
-                                  value={v}
-                                  selected={score?.calibragem === v}
-                                  onClick={() => setScoreT(criterio.key, 'calibragem', v)}
-                                  disabled={!isAdmin}
-                                />
-                              ))}
-                            </div>
+                            {!isAdmin && !colaboradorVeGestor ? (
+                              <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a revelação</p>
+                            ) : (
+                              <div className="flex gap-1">
+                                {([1, 2, 3, 4, 5] as const).map((v) => (
+                                  <ScoreButton
+                                    key={v}
+                                    value={v}
+                                    selected={score?.calibragem === v}
+                                    onClick={() => setScoreT(criterio.key, 'calibragem', v)}
+                                    disabled={!isAdmin}
+                                  />
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div>
-                          <label className="text-xs text-muted-foreground">Pontos de atenção / observações</label>
-                          <input
-                            type="text"
-                            value={score?.observacoes ?? ''}
-                            onChange={(e) =>
-                              setScoresT((prev) => ({
-                                ...prev,
-                                [criterio.key]: {
-                                  ...(prev[criterio.key] ?? { auto: null, gestor: null, calibragem: null, observacoes: '' }),
-                                  observacoes: e.target.value,
-                                },
-                              }))
-                            }
-                            placeholder="Observações..."
-                            className="mt-1 w-full px-3 py-1.5 text-xs rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                          />
+                          <label className="text-xs text-muted-foreground">Evidências e Exemplos Práticos</label>
+                          {!isAdmin && !colaboradorVeGestor ? (
+                            <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-1.5">
+                              Oculto até a revelação da avaliação.
+                            </p>
+                          ) : (
+                            <input
+                              type="text"
+                              value={score?.observacoes ?? ''}
+                              onChange={(e) =>
+                                setScoresT((prev) => ({
+                                  ...prev,
+                                  [criterio.key]: {
+                                    ...(prev[criterio.key] ?? { auto: null, gestor: null, calibragem: null, observacoes: '' }),
+                                    observacoes: e.target.value,
+                                  },
+                                }))
+                              }
+                              placeholder="Observações..."
+                              className="mt-1 w-full px-3 py-1.5 text-xs rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                            />
+                          )}
                         </div>
                       </div>
                     )
@@ -943,38 +1007,58 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
           </p>
         )}
 
-        {/* Médias resumo */}
-        {(avaliacao.media_cultural_gestor !== null ||
-          avaliacao.media_tecnica_gestor !== null ||
-          avaliacao.media_cultural_calibragem !== null ||
-          avaliacao.media_tecnica_calibragem !== null) && (
-          <div className="px-5 py-3 border-t border-border bg-muted/30 flex flex-wrap gap-4 shrink-0">
-            {avaliacao.media_cultural_gestor !== null && (
-              <span className="text-xs text-muted-foreground">
-                Média Cultural (Gestor):{' '}
-                <strong className="text-foreground">{avaliacao.media_cultural_gestor.toFixed(1)}</strong>
-              </span>
-            )}
-            {avaliacao.media_tecnica_gestor !== null && (
-              <span className="text-xs text-muted-foreground">
-                Média Técnica (Gestor):{' '}
-                <strong className="text-foreground">{avaliacao.media_tecnica_gestor.toFixed(1)}</strong>
-              </span>
-            )}
-            {avaliacao.media_cultural_calibragem !== null && (
-              <span className="text-xs text-muted-foreground">
-                Média Cultural (Calibragem):{' '}
-                <strong className="text-foreground">{avaliacao.media_cultural_calibragem.toFixed(1)}</strong>
-              </span>
-            )}
-            {avaliacao.media_tecnica_calibragem !== null && (
-              <span className="text-xs text-muted-foreground">
-                Média Técnica (Calibragem):{' '}
-                <strong className="text-foreground">{avaliacao.media_tecnica_calibragem.toFixed(1)}</strong>
-              </span>
-            )}
-          </div>
+        {/* Revelar avaliação ao colaborador */}
+        {podeRevelar && (
+          <label className="flex items-center gap-2 px-5 pt-3 text-xs text-muted-foreground shrink-0">
+            <input
+              type="checkbox"
+              checked={revelado}
+              onChange={(e) => setRevelado(e.target.checked)}
+              className="rounded border-input"
+            />
+            Revelar avaliação ao colaborador
+          </label>
         )}
+
+        {/* Médias resumo */}
+        {podeVerMedias &&
+          (avaliacao.media_cultural_gestor !== null ||
+            avaliacao.media_tecnica_gestor !== null ||
+            avaliacao.media_cultural_calibragem !== null ||
+            avaliacao.media_tecnica_calibragem !== null) && (
+            <div className="px-5 py-3 border-t border-border bg-muted/30 flex flex-wrap gap-4 shrink-0">
+              {avaliacao.media_cultural_gestor !== null && (
+                <span className="text-xs text-muted-foreground">
+                  Média Cultural (Gestor):{' '}
+                  <strong className="text-foreground">{avaliacao.media_cultural_gestor.toFixed(1)}</strong>
+                </span>
+              )}
+              {avaliacao.media_tecnica_gestor !== null && (
+                <span className="text-xs text-muted-foreground">
+                  Média Técnica (Gestor):{' '}
+                  <strong className="text-foreground">{avaliacao.media_tecnica_gestor.toFixed(1)}</strong>
+                </span>
+              )}
+              {avaliacao.media_cultural_calibragem !== null && (
+                <span className="text-xs text-muted-foreground">
+                  Média Cultural (Calibragem):{' '}
+                  <strong className="text-foreground">{avaliacao.media_cultural_calibragem.toFixed(1)}</strong>
+                </span>
+              )}
+              {avaliacao.media_tecnica_calibragem !== null && (
+                <span className="text-xs text-muted-foreground">
+                  Média Técnica (Calibragem):{' '}
+                  <strong className="text-foreground">{avaliacao.media_tecnica_calibragem.toFixed(1)}</strong>
+                </span>
+              )}
+              {percentualFinal !== null && (
+                <span className="text-xs text-muted-foreground">
+                  Resultado Final:{' '}
+                  <strong className="text-foreground">{percentualFinal}%</strong>
+                </span>
+              )}
+            </div>
+          )}
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-2 p-5 border-t border-border shrink-0">

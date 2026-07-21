@@ -32,6 +32,7 @@ interface Avaliacao {
   id: string
   status: string
   vertical: string | null
+  revelado: boolean
   media_cultural_auto: number | null
   media_cultural_gestor: number | null
   media_cultural_calibragem: number | null
@@ -48,6 +49,7 @@ interface MinhaAvaliacao {
   id: string
   status: string
   vertical: string | null
+  revelado: boolean
   media_cultural_auto: number | null
   media_cultural_gestor: number | null
   media_cultural_calibragem: number | null
@@ -83,6 +85,13 @@ const avalStatusLabel: Record<string, string> = {
   gestor_concluida: 'Gestor Concluído',
   calibragem: 'Em Calibragem',
   finalizada: 'Finalizada',
+}
+
+function resultadoFinal(av: { media_cultural_gestor: number | null; media_cultural_calibragem: number | null; media_tecnica_gestor: number | null; media_tecnica_calibragem: number | null }) {
+  const cultural = av.media_cultural_calibragem ?? av.media_cultural_gestor
+  const tecnica = av.media_tecnica_calibragem ?? av.media_tecnica_gestor
+  const percentual = cultural !== null && tecnica !== null ? Math.round(((cultural + tecnica) / 2 / 5) * 100) : null
+  return { cultural, tecnica, percentual }
 }
 
 const avalStatusColor: Record<string, string> = {
@@ -169,7 +178,10 @@ export default function AvaliacaoPage() {
           .single(),
       ])
 
-      const admin = roleRes.data?.permission_level === 'administrador'
+      // 'administrador' e 'gestor' têm as mesmas permissões dentro do módulo de Avaliação
+      // (atuam como gestor de todos os funcionários); só 'administrador' vê o painel /admin.
+      const permission = roleRes.data?.permission_level
+      const admin = permission === 'administrador' || permission === 'gestor'
       setIsAdmin(admin)
       if (funcRes.data) setMeuFuncionario(funcRes.data as Funcionario)
 
@@ -371,6 +383,28 @@ export default function AvaliacaoPage() {
                       )}
                     </div>
                   )}
+                  {av.revelado && (() => {
+                    const { cultural, tecnica, percentual } = resultadoFinal(av)
+                    return (
+                      <div className="flex gap-4 mt-2">
+                        {cultural !== null && (
+                          <span className="text-xs text-muted-foreground">
+                            Cultural (final): <strong className="text-foreground">{cultural.toFixed(1)}</strong>
+                          </span>
+                        )}
+                        {tecnica !== null && (
+                          <span className="text-xs text-muted-foreground">
+                            Técnica (final): <strong className="text-foreground">{tecnica.toFixed(1)}</strong>
+                          </span>
+                        )}
+                        {percentual !== null && (
+                          <span className="text-xs text-muted-foreground">
+                            Resultado: <strong className="text-foreground">{percentual}%</strong>
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
                 <button
                   onClick={() => abrirMinhaAvaliacao(av)}
