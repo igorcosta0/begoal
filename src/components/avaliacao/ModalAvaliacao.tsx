@@ -568,6 +568,11 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
   const podeRevelar = isAdmin && ['calibragem', 'finalizada'].includes(avaliacao.status)
   const podeVerMedias = isAdmin || revelado
 
+  // Calibragem é uma etapa própria: só fica visível/editável depois de "Iniciar Calibragem"
+  // (status === 'calibragem'); antes disso o gestor não pode preenchê-la junto com a própria nota.
+  const calibragemLiberada = ['calibragem', 'finalizada'].includes(avaliacao.status)
+  const podeEditarCalibragem = isAdmin && avaliacao.status === 'calibragem'
+
   const notaFinalCultural = avaliacao.media_cultural_calibragem ?? avaliacao.media_cultural_gestor
   const notaFinalTecnica = avaliacao.media_tecnica_calibragem ?? avaliacao.media_tecnica_gestor
   const percentualFinal =
@@ -688,7 +693,9 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground mb-1.5">Calibragem</p>
-                            {!isAdmin && !colaboradorVeGestor ? (
+                            {isAdmin && !calibragemLiberada ? (
+                              <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Disponível na etapa de Calibragem</p>
+                            ) : !isAdmin && !colaboradorVeGestor ? (
                               <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a revelação</p>
                             ) : (
                               <div className="flex gap-1">
@@ -698,7 +705,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                                     value={v}
                                     selected={score?.calibragem === v}
                                     onClick={() => setScoreC(pilar.numero, 'calibragem', v)}
-                                    disabled={!isAdmin}
+                                    disabled={!podeEditarCalibragem}
                                   />
                                 ))}
                               </div>
@@ -821,7 +828,9 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground mb-1.5">Calibragem</p>
-                            {!isAdmin && !colaboradorVeGestor ? (
+                            {isAdmin && !calibragemLiberada ? (
+                              <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Disponível na etapa de Calibragem</p>
+                            ) : !isAdmin && !colaboradorVeGestor ? (
                               <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a revelação</p>
                             ) : (
                               <div className="flex gap-1">
@@ -831,7 +840,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                                     value={v}
                                     selected={score?.calibragem === v}
                                     onClick={() => setScoreT(criterio.key, 'calibragem', v)}
-                                    disabled={!isAdmin}
+                                    disabled={!podeEditarCalibragem}
                                   />
                                 ))}
                               </div>
