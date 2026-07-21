@@ -333,7 +333,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
       faltando.push('observações do gestor')
     }
 
-    if (isAdmin && !vertical) {
+    if (!vertical) {
       faltando.push('vertical de atuação')
     }
 
@@ -713,7 +713,6 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                     <select
                       value={vertical}
                       onChange={(e) => setVertical(e.target.value)}
-                      disabled={!isAdmin}
                       className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
                     >
                       <option value="">Selecione a vertical...</option>
@@ -725,7 +724,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
 
                   {!vertical && (
                     <p className="text-sm text-muted-foreground text-center py-8">
-                      {isAdmin ? 'Selecione a vertical para habilitar os critérios.' : 'Aguardando o gestor definir a vertical.'}
+                      Selecione a vertical para habilitar os critérios.
                     </p>
                   )}
 
