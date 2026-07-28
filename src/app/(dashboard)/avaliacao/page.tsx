@@ -166,7 +166,7 @@ export default function AvaliacaoPage() {
       const [roleRes, funcRes] = await Promise.all([
         supabase
           .from('user_company_roles')
-          .select('permission_level')
+          .select('permission_level, is_calibrador')
           .eq('user_id', user.id)
           .eq('client_id', empresa!.id)
           .single(),
@@ -178,10 +178,10 @@ export default function AvaliacaoPage() {
           .single(),
       ])
 
-      // 'administrador' e 'gestor' têm as mesmas permissões dentro do módulo de Avaliação
-      // (atuam como gestor de todos os funcionários); só 'administrador' vê o painel /admin.
+      // 'administrador', 'gestor' e calibradores avulsos (is_calibrador) têm as mesmas
+      // permissões dentro do módulo de Avaliação; só 'administrador' vê o painel /admin.
       const permission = roleRes.data?.permission_level
-      const admin = permission === 'administrador' || permission === 'gestor'
+      const admin = permission === 'administrador' || permission === 'gestor' || roleRes.data?.is_calibrador === true
       setIsAdmin(admin)
       if (funcRes.data) setMeuFuncionario(funcRes.data as Funcionario)
 
