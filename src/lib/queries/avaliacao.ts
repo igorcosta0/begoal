@@ -37,7 +37,7 @@ export async function getAvaliacoesByCiclo(cicloId: string) {
     .select(`
       id, status, vertical, revelado, media_cultural_auto, media_cultural_gestor, media_cultural_calibragem,
       media_tecnica_auto, media_tecnica_gestor, media_tecnica_calibragem,
-      evidencias_culturais, observacoes_gerais,
+      evidencias_culturais, evidencias_tecnicas, observacoes_gerais,
       funcionario:funcionarios!funcionario_id(id, full_name, cargo),
       avaliador:funcionarios!avaliador_id(id, full_name)
     `)
@@ -76,6 +76,7 @@ export async function updateAvaliacao(
     avaliador_id?: string
     revelado?: boolean
     evidencias_culturais?: string | null
+    evidencias_tecnicas?: string | null
     observacoes_gerais?: string | null
     media_cultural_auto?: number | null
     media_cultural_gestor?: number | null

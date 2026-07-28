@@ -40,6 +40,7 @@ interface Avaliacao {
   media_tecnica_gestor: number | null
   media_tecnica_calibragem: number | null
   evidencias_culturais: string | null
+  evidencias_tecnicas: string | null
   observacoes_gerais: string | null
   funcionario: { id: string; full_name: string; cargo: string | null } | null
   avaliador: { id: string; full_name: string } | null
@@ -325,6 +326,7 @@ export default function AvaliacaoPage() {
         funcionario: meuFuncionario ? { id: meuFuncionario.id, full_name: meuFuncionario.full_name, cargo: meuFuncionario.cargo } : null,
         avaliador: null,
         evidencias_culturais: null,
+        evidencias_tecnicas: null,
         observacoes_gerais: null,
       } as Avaliacao,
       cicloNome: avaliacao.ciclo?.nome ?? '',

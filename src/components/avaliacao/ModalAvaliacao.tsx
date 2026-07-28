@@ -231,6 +231,7 @@ interface Avaliacao {
   vertical: string | null
   revelado?: boolean
   evidencias_culturais: string | null
+  evidencias_tecnicas?: string | null
   observacoes_gerais: string | null
   media_cultural_auto: number | null
   media_cultural_gestor: number | null
@@ -257,6 +258,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
   const [activeTab, setActiveTab] = useState<'cultural' | 'tecnica' | 'pdi'>('cultural')
   const [vertical, setVertical] = useState('')
   const [evidencias, setEvidencias] = useState('')
+  const [evidenciasTecnicas, setEvidenciasTecnicas] = useState('')
   const [observacoes, setObservacoes] = useState('')
   const [revelado, setRevelado] = useState(false)
   const [scoresC, setScoresC] = useState<ScoresC>({
@@ -277,6 +279,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
     if (open && avaliacao) {
       setVertical(avaliacao.vertical ?? '')
       setEvidencias(avaliacao.evidencias_culturais ?? '')
+      setEvidenciasTecnicas(avaliacao.evidencias_tecnicas ?? '')
       setObservacoes(avaliacao.observacoes_gerais ?? '')
       setRevelado(avaliacao.revelado ?? false)
       setActiveTab('cultural')
@@ -429,6 +432,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
       vertical: vertical || null,
       revelado,
       evidencias_culturais: evidencias || null,
+      evidencias_tecnicas: evidenciasTecnicas || null,
       observacoes_gerais: observacoes || null,
       media_cultural_auto: cAuto,
       media_cultural_gestor: cGestor,
@@ -586,15 +590,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
       <div className="relative bg-card border border-border rounded-lg shadow-lg w-full max-w-3xl mx-4 max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="flex items-start justify-between p-5 border-b border-border shrink-0">
-          <div>
-            <p className="text-xs text-muted-foreground">{cicloNome}</p>
-            <h2 className="text-base font-semibold text-foreground mt-0.5">
-              {avaliacao.funcionario?.full_name ?? 'Colaborador'}
-            </h2>
-            {avaliacao.funcionario?.cargo && (
-              <p className="text-xs text-muted-foreground">{avaliacao.funcionario.cargo}</p>
-            )}
-          </div>
+          <p className="text-xs text-muted-foreground">{cicloNome}</p>
           <div className="flex items-center gap-2">
             <span className={cn('text-xs px-2 py-1 rounded-full font-medium', statusColor[avaliacao.status] ?? 'bg-muted text-muted-foreground')}>
               {statusLabel[avaliacao.status] ?? avaliacao.status}
@@ -602,6 +598,21 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
             <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none ml-1">
               ×
             </button>
+          </div>
+        </div>
+
+        {/* Detalhamento do colaborador */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-border shrink-0">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary font-semibold text-sm">
+            {(avaliacao.funcionario?.full_name ?? '?').charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">
+              {avaliacao.funcionario?.full_name ?? 'Colaborador'}
+            </p>
+            {avaliacao.funcionario?.cargo && (
+              <p className="text-xs text-muted-foreground">{avaliacao.funcionario.cargo}</p>
+            )}
           </div>
         </div>
 
@@ -878,6 +889,24 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                       </div>
                     )
                   })}
+
+                  <div>
+                    <label className="text-xs font-medium text-foreground">Evidências e Exemplos Práticos</label>
+                    {isAdmin && !gestorVeAuto ? (
+                      <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-2">
+                        Oculto até a etapa de Calibragem.
+                      </p>
+                    ) : (
+                      <textarea
+                        value={evidenciasTecnicas}
+                        onChange={(e) => setEvidenciasTecnicas(e.target.value)}
+                        rows={3}
+                        disabled={isAdmin}
+                        placeholder="Descreva exemplos concretos que justifiquem as notas técnicas..."
+                        className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
+                      />
+                    )}
+                  </div>
                 </div>
               )}
 
