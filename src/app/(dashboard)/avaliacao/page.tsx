@@ -63,9 +63,25 @@ interface Funcionario {
   id: string
   full_name: string
   cargo: string | null
+  setor?: { name: string } | null
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+// Mapeia o setor cadastrado do funcionário para a chave de vertical usada na
+// Avaliação Técnica (VERTICAIS_CTZ), pra pré-preencher em vez de deixar em branco.
+const SETOR_PARA_VERTICAL: Record<string, string> = {
+  'Concretize': 'concretize',
+  'CSC': 'csc_financeiro',
+  'Novos negocios': 'novos_negocios',
+  'Loteamentos': 'loteadora',
+  'Investimento': 'investimentos',
+}
+
+function verticalDoFuncionario(setorName: string | undefined | null): string | undefined {
+  if (!setorName) return undefined
+  return SETOR_PARA_VERTICAL[setorName]
+}
 
 const cicloStatusLabel: Record<string, string> = {
   rascunho: 'Rascunho',
@@ -148,11 +164,11 @@ export default function AvaliacaoPage() {
     const supabase = createClient()
     const { data } = await supabase
       .from('funcionarios')
-      .select('id, full_name, cargo')
+      .select('id, full_name, cargo, setor:setores!setor_id(name)')
       .eq('client_id', empresa.id)
       .eq('status', 'Ativo')
       .order('full_name')
-    setFuncionarios((data ?? []) as Funcionario[])
+    setFuncionarios((data ?? []) as unknown as Funcionario[])
   }, [empresa])
 
   useEffect(() => {
@@ -224,18 +240,26 @@ export default function AvaliacaoPage() {
     const supabase = createClient()
     const [{ data: todosFuncionarios, error: erroFunc }, { data: avaliacoesExistentes, error: erroAval }] =
       await Promise.all([
-        supabase.from('funcionarios').select('id').eq('client_id', empresa.id).eq('status', 'Ativo'),
+        supabase
+          .from('funcionarios')
+          .select('id, setor:setores!setor_id(name)')
+          .eq('client_id', empresa.id)
+          .eq('status', 'Ativo'),
         supabase.from('avaliacoes').select('funcionario_id').eq('ciclo_id', cicloId),
       ])
     if (erroFunc) return { error: erroFunc.message }
     if (erroAval) return { error: erroAval.message }
 
     const jaTem = new Set((avaliacoesExistentes ?? []).map((a) => a.funcionario_id))
-    const faltando = (todosFuncionarios ?? []).filter((f) => !jaTem.has(f.id))
+    const faltando = ((todosFuncionarios ?? []) as unknown as (Funcionario & { id: string })[]).filter(
+      (f) => !jaTem.has(f.id)
+    )
     if (!faltando.length) return { error: null }
 
     const resultados = await Promise.all(
-      faltando.map((f) => createAvaliacao({ ciclo_id: cicloId, funcionario_id: f.id }))
+      faltando.map((f) =>
+        createAvaliacao({ ciclo_id: cicloId, funcionario_id: f.id, vertical: verticalDoFuncionario(f.setor?.name) })
+      )
     )
     const erro = resultados.find((r) => r.error)?.error
     return { error: erro?.message ?? null }
@@ -272,6 +296,7 @@ export default function AvaliacaoPage() {
     const { data, error } = await createAvaliacao({
       ciclo_id: cicloAtivo.id,
       funcionario_id: funcionario.id,
+      vertical: verticalDoFuncionario(funcionario.setor?.name),
     })
     if (error) {
       setErro(error.message)
