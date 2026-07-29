@@ -771,7 +771,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                         onChange={(e) => setObservacoes(e.target.value)}
                         rows={3}
                         disabled={!isAdmin}
-                        placeholder="Feedback geral sobre o alinhamento cultural..."
+                        placeholder="Feedback geral sobre a avaliação..."
                         className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
                       />
                     )}
@@ -903,6 +903,26 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                       </div>
                     )
                   })}
+
+                  <div>
+                    <label className="text-xs font-medium text-foreground">
+                      Observações do Gestor {isAdmin && '*'}
+                    </label>
+                    {!isAdmin && !colaboradorVeGestor ? (
+                      <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-2">
+                        Oculto até a revelação da avaliação.
+                      </p>
+                    ) : (
+                      <textarea
+                        value={observacoes}
+                        onChange={(e) => setObservacoes(e.target.value)}
+                        rows={3}
+                        disabled={!isAdmin}
+                        placeholder="Feedback geral sobre a avaliação..."
+                        className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
+                      />
+                    )}
+                  </div>
                 </div>
               )}
 
