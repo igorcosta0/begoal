@@ -650,82 +650,6 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                   <p className="text-xs text-muted-foreground">
                     Avalie os 4 pilares fundamentais da cultura. Use a escala: 1 — Insatisfatório · 2 — Precisa Melhorar · 3 — Regular · 4 — Bom · 5 — Excelente
                   </p>
-                  {PILARES_CULTURAIS.map((pilar) => {
-                    const score = scoresC[String(pilar.numero)]
-                    return (
-                      <div key={pilar.numero} className="border border-border rounded-lg p-4 space-y-3">
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">
-                            {pilar.numero}. {pilar.titulo}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            <span className="font-medium text-green-600">Como se vive:</span> {pilar.como_se_vive}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            <span className="font-medium text-red-500">Como não se vive:</span> {pilar.como_nao_se_vive}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-6">
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1.5">Auto</p>
-                            {isAdmin && !gestorVeAuto ? (
-                              <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a Calibragem</p>
-                            ) : (
-                              <div className="flex gap-1">
-                                {([1, 2, 3, 4, 5] as const).map((v) => (
-                                  <ScoreButton
-                                    key={v}
-                                    value={v}
-                                    selected={score?.auto === v}
-                                    onClick={() => setScoreC(pilar.numero, 'auto', v)}
-                                    disabled={isAdmin}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1.5">Gestor</p>
-                            {!isAdmin && !colaboradorVeGestor ? (
-                              <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a revelação</p>
-                            ) : (
-                              <div className="flex gap-1">
-                                {([1, 2, 3, 4, 5] as const).map((v) => (
-                                  <ScoreButton
-                                    key={v}
-                                    value={v}
-                                    selected={score?.gestor === v}
-                                    onClick={() => setScoreC(pilar.numero, 'gestor', v)}
-                                    disabled={!isAdmin}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1.5">Calibragem</p>
-                            {isAdmin && !calibragemLiberada ? (
-                              <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Disponível na etapa de Calibragem</p>
-                            ) : !isAdmin && !colaboradorVeGestor ? (
-                              <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a revelação</p>
-                            ) : (
-                              <div className="flex gap-1">
-                                {([1, 2, 3, 4, 5] as const).map((v) => (
-                                  <ScoreButton
-                                    key={v}
-                                    value={v}
-                                    selected={score?.calibragem === v}
-                                    onClick={() => setScoreC(pilar.numero, 'calibragem', v)}
-                                    disabled={!podeEditarCalibragem}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
 
                   <div>
                     <label className="text-xs font-medium text-foreground">
@@ -746,6 +670,85 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                       />
                     )}
                   </div>
+
+                  {PILARES_CULTURAIS.map((pilar) => {
+                    const score = scoresC[String(pilar.numero)]
+                    return (
+                      <div key={pilar.numero} className="space-y-3">
+                        <div className="border border-border rounded-lg p-4">
+                          <p className="text-sm font-semibold text-foreground">
+                            {pilar.numero}. {pilar.titulo}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            <span className="font-medium text-green-600">Como se vive:</span> {pilar.como_se_vive}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            <span className="font-medium text-red-500">Como não se vive:</span> {pilar.como_nao_se_vive}
+                          </p>
+                        </div>
+                        <div className="border border-border rounded-lg p-4">
+                          <div className="flex items-center gap-6">
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1.5">Auto</p>
+                              {isAdmin && !gestorVeAuto ? (
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a Calibragem</p>
+                              ) : (
+                                <div className="flex gap-1">
+                                  {([1, 2, 3, 4, 5] as const).map((v) => (
+                                    <ScoreButton
+                                      key={v}
+                                      value={v}
+                                      selected={score?.auto === v}
+                                      onClick={() => setScoreC(pilar.numero, 'auto', v)}
+                                      disabled={isAdmin}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1.5">Gestor</p>
+                              {!isAdmin && !colaboradorVeGestor ? (
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a revelação</p>
+                              ) : (
+                                <div className="flex gap-1">
+                                  {([1, 2, 3, 4, 5] as const).map((v) => (
+                                    <ScoreButton
+                                      key={v}
+                                      value={v}
+                                      selected={score?.gestor === v}
+                                      onClick={() => setScoreC(pilar.numero, 'gestor', v)}
+                                      disabled={!isAdmin}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1.5">Calibragem</p>
+                              {isAdmin && !calibragemLiberada ? (
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Disponível na etapa de Calibragem</p>
+                              ) : !isAdmin && !colaboradorVeGestor ? (
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a revelação</p>
+                              ) : (
+                                <div className="flex gap-1">
+                                  {([1, 2, 3, 4, 5] as const).map((v) => (
+                                    <ScoreButton
+                                      key={v}
+                                      value={v}
+                                      selected={score?.calibragem === v}
+                                      onClick={() => setScoreC(pilar.numero, 'calibragem', v)}
+                                      disabled={!podeEditarCalibragem}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
 
                   <div>
                     <label className="text-xs font-medium text-foreground">
@@ -795,96 +798,100 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                   {criterios.map((criterio) => {
                     const score = scoresT[criterio.key]
                     return (
-                      <div key={criterio.key} className="border border-border rounded-lg p-4 space-y-3">
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">{criterio.label}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{criterio.descricao}</p>
-                        </div>
-                        <div className="flex items-center gap-6">
+                      <div key={criterio.key} className="space-y-3">
+                        <div className="border border-border rounded-lg p-4 space-y-3">
                           <div>
-                            <p className="text-xs text-muted-foreground mb-1.5">Auto</p>
+                            <p className="text-sm font-semibold text-foreground">{criterio.label}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{criterio.descricao}</p>
+                          </div>
+                          <div>
+                            <label className="text-xs text-muted-foreground">Evidências e Exemplos Práticos</label>
                             {isAdmin && !gestorVeAuto ? (
-                              <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a Calibragem</p>
-                            ) : (
-                              <div className="flex gap-1">
-                                {([1, 2, 3, 4, 5] as const).map((v) => (
-                                  <ScoreButton
-                                    key={v}
-                                    value={v}
-                                    selected={score?.auto === v}
-                                    onClick={() => setScoreT(criterio.key, 'auto', v)}
-                                    disabled={isAdmin}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1.5">Gestor</p>
-                            {!isAdmin && !colaboradorVeGestor ? (
-                              <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a revelação</p>
-                            ) : (
-                              <div className="flex gap-1">
-                                {([1, 2, 3, 4, 5] as const).map((v) => (
-                                  <ScoreButton
-                                    key={v}
-                                    value={v}
-                                    selected={score?.gestor === v}
-                                    onClick={() => setScoreT(criterio.key, 'gestor', v)}
-                                    disabled={!isAdmin}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1.5">Calibragem</p>
-                            {isAdmin && !calibragemLiberada ? (
-                              <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Disponível na etapa de Calibragem</p>
+                              <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-1.5">
+                                Oculto até a Calibragem.
+                              </p>
                             ) : !isAdmin && !colaboradorVeGestor ? (
-                              <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a revelação</p>
+                              <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-1.5">
+                                Oculto até a revelação da avaliação.
+                              </p>
                             ) : (
-                              <div className="flex gap-1">
-                                {([1, 2, 3, 4, 5] as const).map((v) => (
-                                  <ScoreButton
-                                    key={v}
-                                    value={v}
-                                    selected={score?.calibragem === v}
-                                    onClick={() => setScoreT(criterio.key, 'calibragem', v)}
-                                    disabled={!podeEditarCalibragem}
-                                  />
-                                ))}
-                              </div>
+                              <input
+                                type="text"
+                                value={score?.observacoes ?? ''}
+                                onChange={(e) =>
+                                  setScoresT((prev) => ({
+                                    ...prev,
+                                    [criterio.key]: {
+                                      ...(prev[criterio.key] ?? { auto: null, gestor: null, calibragem: null, observacoes: '' }),
+                                      observacoes: e.target.value,
+                                    },
+                                  }))
+                                }
+                                placeholder="Observações..."
+                                className="mt-1 w-full px-3 py-1.5 text-xs rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                              />
                             )}
                           </div>
                         </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground">Evidências e Exemplos Práticos</label>
-                          {isAdmin && !gestorVeAuto ? (
-                            <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-1.5">
-                              Oculto até a Calibragem.
-                            </p>
-                          ) : !isAdmin && !colaboradorVeGestor ? (
-                            <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-1.5">
-                              Oculto até a revelação da avaliação.
-                            </p>
-                          ) : (
-                            <input
-                              type="text"
-                              value={score?.observacoes ?? ''}
-                              onChange={(e) =>
-                                setScoresT((prev) => ({
-                                  ...prev,
-                                  [criterio.key]: {
-                                    ...(prev[criterio.key] ?? { auto: null, gestor: null, calibragem: null, observacoes: '' }),
-                                    observacoes: e.target.value,
-                                  },
-                                }))
-                              }
-                              placeholder="Observações..."
-                              className="mt-1 w-full px-3 py-1.5 text-xs rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                            />
-                          )}
+                        <div className="border border-border rounded-lg p-4">
+                          <div className="flex items-center gap-6">
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1.5">Auto</p>
+                              {isAdmin && !gestorVeAuto ? (
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a Calibragem</p>
+                              ) : (
+                                <div className="flex gap-1">
+                                  {([1, 2, 3, 4, 5] as const).map((v) => (
+                                    <ScoreButton
+                                      key={v}
+                                      value={v}
+                                      selected={score?.auto === v}
+                                      onClick={() => setScoreT(criterio.key, 'auto', v)}
+                                      disabled={isAdmin}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1.5">Gestor</p>
+                              {!isAdmin && !colaboradorVeGestor ? (
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a revelação</p>
+                              ) : (
+                                <div className="flex gap-1">
+                                  {([1, 2, 3, 4, 5] as const).map((v) => (
+                                    <ScoreButton
+                                      key={v}
+                                      value={v}
+                                      selected={score?.gestor === v}
+                                      onClick={() => setScoreT(criterio.key, 'gestor', v)}
+                                      disabled={!isAdmin}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1.5">Calibragem</p>
+                              {isAdmin && !calibragemLiberada ? (
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Disponível na etapa de Calibragem</p>
+                              ) : !isAdmin && !colaboradorVeGestor ? (
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a revelação</p>
+                              ) : (
+                                <div className="flex gap-1">
+                                  {([1, 2, 3, 4, 5] as const).map((v) => (
+                                    <ScoreButton
+                                      key={v}
+                                      value={v}
+                                      selected={score?.calibragem === v}
+                                      onClick={() => setScoreT(criterio.key, 'calibragem', v)}
+                                      disabled={!podeEditarCalibragem}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )
