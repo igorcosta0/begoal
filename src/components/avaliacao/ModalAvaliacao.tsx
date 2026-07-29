@@ -257,6 +257,12 @@ function ScoreButton({
 function LegendaNotas() {
   return (
     <div className="border border-border rounded-lg p-3">
+      <p className="text-xs text-muted-foreground mb-3">
+        A Avaliação de Desempenho é um ritual de gestão do Grupo CTZ. A nota final é calculada de forma
+        equilibrada, com peso de 50% para a aderência aos nossos pilares culturais e 50% para a entrega das
+        metas e OKRs específicos de cada vertical. Use a régua a seguir para pontuar as competências e
+        resultados:
+      </p>
       <p className="text-xs font-medium text-foreground mb-2">O que significa cada nota</p>
       <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
         {NOTAS_LEGENDA.map((n) => (
