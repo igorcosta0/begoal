@@ -160,12 +160,53 @@ function calcMedia(values: (number | null)[]): number | null {
 }
 
 function notaLabel(nota: number) {
-  if (nota === 1) return 'Insatisfatório'
-  if (nota === 2) return 'Precisa Melhorar'
-  if (nota === 3) return 'Regular'
-  if (nota === 4) return 'Bom'
-  return 'Excelente'
+  if (nota === 1) return 'Precisa Melhorar'
+  if (nota === 2) return 'Regular'
+  if (nota === 3) return 'Bom'
+  if (nota === 4) return 'Excelente'
+  return 'Excepcional'
 }
+
+// Régua oficial de avaliação da CTZ (Manual do Avaliador): notas 1 a 4 usam a
+// definição literal do documento; a nota 5 foi criada como extensão do nível
+// 4 (Excelente/Referência), para um patamar acima do combinado nos dois eixos.
+const NOTAS_LEGENDA = [
+  {
+    valor: 1,
+    label: 'Precisa Melhorar',
+    cor: 'bg-red-50 border-red-200 text-red-700',
+    descricao:
+      'Fica frequentemente abaixo do esperado nos comportamentos culturais, ou atinge menos de 70% das metas técnicas combinadas.',
+  },
+  {
+    valor: 2,
+    label: 'Regular',
+    cor: 'bg-orange-50 border-orange-200 text-orange-700',
+    descricao:
+      'Vive os valores de forma oscilante e requer supervisão frequente; entrega entre 70% e 89% das metas técnicas.',
+  },
+  {
+    valor: 3,
+    label: 'Bom',
+    cor: 'bg-yellow-50 border-yellow-200 text-yellow-700',
+    descricao:
+      "Pratica o \"como se vive\" com consistência no dia a dia e atinge entre 90% e 100% das metas técnicas — é o alvo esperado.",
+  },
+  {
+    valor: 4,
+    label: 'Excelente',
+    cor: 'bg-lime-50 border-lime-200 text-lime-700',
+    descricao:
+      'É exemplo público das atitudes culturais desejadas e supera em mais de 100% as metas técnicas estipuladas.',
+  },
+  {
+    valor: 5,
+    label: 'Excepcional',
+    cor: 'bg-green-50 border-green-200 text-green-700',
+    descricao:
+      'Vai além da referência: multiplica a cultura ao desenvolver outras pessoas e sustenta uma entrega muito acima da meta ao longo de todo o ciclo.',
+  },
+]
 
 // ── ScoreButton ──────────────────────────────────────────────────────────────
 
@@ -208,6 +249,26 @@ function ScoreButton({
     >
       {value}
     </button>
+  )
+}
+
+// ── LegendaNotas ─────────────────────────────────────────────────────────────
+
+function LegendaNotas() {
+  return (
+    <div className="border border-border rounded-lg p-3">
+      <p className="text-xs font-medium text-foreground mb-2">O que significa cada nota</p>
+      <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+        {NOTAS_LEGENDA.map((n) => (
+          <div key={n.valor} className={cn('rounded-md border p-2', n.cor)}>
+            <p className="text-xs font-semibold">
+              {n.valor} · {n.label}
+            </p>
+            <p className="text-[11px] mt-0.5 opacity-90">{n.descricao}</p>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -642,11 +703,13 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
             </div>
           ) : (
             <>
+              {activeTab !== 'pdi' && <div className="mb-4"><LegendaNotas /></div>}
+
               {/* Tab Cultural */}
               {activeTab === 'cultural' && (
                 <div className="space-y-4">
                   <p className="text-xs text-muted-foreground">
-                    Avalie os 4 pilares fundamentais da cultura. Use a escala: 1 — Insatisfatório · 2 — Precisa Melhorar · 3 — Regular · 4 — Bom · 5 — Excelente
+                    Avalie os 4 pilares fundamentais da cultura, usando a régua de notas acima.
                   </p>
 
                   {PILARES_CULTURAIS.map((pilar) => {
