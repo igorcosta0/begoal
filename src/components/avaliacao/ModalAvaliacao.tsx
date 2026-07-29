@@ -214,7 +214,7 @@ function ScoreButton({
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
 type ScoreEntry = { auto: number | null; gestor: number | null; calibragem: number | null }
-type ScoresC = Record<string, ScoreEntry>
+type ScoresC = Record<string, ScoreEntry & { observacoes: string }>
 type ScoresT = Record<string, ScoreEntry & { observacoes: string }>
 
 interface PdiItem {
@@ -230,8 +230,6 @@ interface Avaliacao {
   status: string
   vertical: string | null
   revelado?: boolean
-  evidencias_culturais: string | null
-  evidencias_tecnicas?: string | null
   observacoes_gerais: string | null
   media_cultural_auto: number | null
   media_cultural_gestor: number | null
@@ -257,15 +255,13 @@ interface Props {
 export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, onClose, onSave }: Props) {
   const [activeTab, setActiveTab] = useState<'cultural' | 'tecnica' | 'pdi'>('cultural')
   const [vertical, setVertical] = useState('')
-  const [evidencias, setEvidencias] = useState('')
-  const [evidenciasTecnicas, setEvidenciasTecnicas] = useState('')
   const [observacoes, setObservacoes] = useState('')
   const [revelado, setRevelado] = useState(false)
   const [scoresC, setScoresC] = useState<ScoresC>({
-    '1': { auto: null, gestor: null, calibragem: null },
-    '2': { auto: null, gestor: null, calibragem: null },
-    '3': { auto: null, gestor: null, calibragem: null },
-    '4': { auto: null, gestor: null, calibragem: null },
+    '1': { auto: null, gestor: null, calibragem: null, observacoes: '' },
+    '2': { auto: null, gestor: null, calibragem: null, observacoes: '' },
+    '3': { auto: null, gestor: null, calibragem: null, observacoes: '' },
+    '4': { auto: null, gestor: null, calibragem: null, observacoes: '' },
   })
   const [scoresT, setScoresT] = useState<ScoresT>({})
   const [pdiItems, setPdiItems] = useState<PdiItem[]>([])
@@ -278,8 +274,6 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
   useEffect(() => {
     if (open && avaliacao) {
       setVertical(avaliacao.vertical ?? '')
-      setEvidencias(avaliacao.evidencias_culturais ?? '')
-      setEvidenciasTecnicas(avaliacao.evidencias_tecnicas ?? '')
       setObservacoes(avaliacao.observacoes_gerais ?? '')
       setRevelado(avaliacao.revelado ?? false)
       setActiveTab('cultural')
@@ -297,13 +291,18 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
     ])
 
     const newScoresC: ScoresC = {
-      '1': { auto: null, gestor: null, calibragem: null },
-      '2': { auto: null, gestor: null, calibragem: null },
-      '3': { auto: null, gestor: null, calibragem: null },
-      '4': { auto: null, gestor: null, calibragem: null },
+      '1': { auto: null, gestor: null, calibragem: null, observacoes: '' },
+      '2': { auto: null, gestor: null, calibragem: null, observacoes: '' },
+      '3': { auto: null, gestor: null, calibragem: null, observacoes: '' },
+      '4': { auto: null, gestor: null, calibragem: null, observacoes: '' },
     }
     cultural.data?.forEach((row) => {
-      newScoresC[String(row.pilar)] = { auto: row.nota_auto, gestor: row.nota_gestor, calibragem: row.nota_calibragem }
+      newScoresC[String(row.pilar)] = {
+        auto: row.nota_auto,
+        gestor: row.nota_gestor,
+        calibragem: row.nota_calibragem,
+        observacoes: row.observacoes ?? '',
+      }
     })
     setScoresC(newScoresC)
 
@@ -336,8 +335,8 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
       )
     }
 
-    if (!isAdmin && !evidencias.trim()) {
-      faltando.push('evidências e exemplos práticos')
+    if (!isAdmin && [1, 2, 3, 4].some((p) => !scoresC[String(p)]?.observacoes?.trim())) {
+      faltando.push('evidências e exemplos práticos em todos os pilares culturais')
     }
     if (isAdmin && !observacoes.trim()) {
       faltando.push('observações do gestor')
@@ -390,7 +389,8 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
           pilar,
           scoresC[String(pilar)]?.auto ?? null,
           scoresC[String(pilar)]?.gestor ?? null,
-          scoresC[String(pilar)]?.calibragem ?? null
+          scoresC[String(pilar)]?.calibragem ?? null,
+          scoresC[String(pilar)]?.observacoes || null
         )
       )
     )
@@ -431,8 +431,6 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
     const { error: erroUpdate } = await updateAvaliacao(avaliacao.id, {
       vertical: vertical || null,
       revelado,
-      evidencias_culturais: evidencias || null,
-      evidencias_tecnicas: evidenciasTecnicas || null,
       observacoes_gerais: observacoes || null,
       media_cultural_auto: cAuto,
       media_cultural_gestor: cGestor,
@@ -651,40 +649,49 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                     Avalie os 4 pilares fundamentais da cultura. Use a escala: 1 — Insatisfatório · 2 — Precisa Melhorar · 3 — Regular · 4 — Bom · 5 — Excelente
                   </p>
 
-                  <div>
-                    <label className="text-xs font-medium text-foreground">
-                      Evidências e Exemplos Práticos {!isAdmin && '*'}
-                    </label>
-                    {isAdmin && !gestorVeAuto ? (
-                      <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-2">
-                        Oculto até a etapa de Calibragem.
-                      </p>
-                    ) : (
-                      <textarea
-                        value={evidencias}
-                        onChange={(e) => setEvidencias(e.target.value)}
-                        rows={3}
-                        disabled={isAdmin}
-                        placeholder="Descreva exemplos concretos que justifiquem as notas..."
-                        className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
-                      />
-                    )}
-                  </div>
-
                   {PILARES_CULTURAIS.map((pilar) => {
                     const score = scoresC[String(pilar.numero)]
                     return (
                       <div key={pilar.numero} className="space-y-3">
-                        <div className="border border-border rounded-lg p-4">
-                          <p className="text-sm font-semibold text-foreground">
-                            {pilar.numero}. {pilar.titulo}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            <span className="font-medium text-green-600">Como se vive:</span> {pilar.como_se_vive}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            <span className="font-medium text-red-500">Como não se vive:</span> {pilar.como_nao_se_vive}
-                          </p>
+                        <div className="border border-border rounded-lg p-4 space-y-3">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">
+                              {pilar.numero}. {pilar.titulo}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              <span className="font-medium text-green-600">Como se vive:</span> {pilar.como_se_vive}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              <span className="font-medium text-red-500">Como não se vive:</span> {pilar.como_nao_se_vive}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-xs text-muted-foreground">
+                              Evidências e Exemplos Práticos {!isAdmin && '*'}
+                            </label>
+                            {isAdmin && !gestorVeAuto ? (
+                              <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-1.5">
+                                Oculto até a Calibragem.
+                              </p>
+                            ) : (
+                              <textarea
+                                value={score?.observacoes ?? ''}
+                                onChange={(e) =>
+                                  setScoresC((prev) => ({
+                                    ...prev,
+                                    [String(pilar.numero)]: {
+                                      ...(prev[String(pilar.numero)] ?? { auto: null, gestor: null, calibragem: null, observacoes: '' }),
+                                      observacoes: e.target.value,
+                                    },
+                                  }))
+                                }
+                                rows={2}
+                                disabled={isAdmin}
+                                placeholder="Descreva exemplos concretos que justifiquem as notas..."
+                                className="mt-1 w-full px-3 py-1.5 text-xs rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
+                              />
+                            )}
+                          </div>
                         </div>
                         <div className="border border-border rounded-lg p-4">
                           <div className="flex items-center gap-6">
@@ -815,8 +822,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                                 Oculto até a revelação da avaliação.
                               </p>
                             ) : (
-                              <input
-                                type="text"
+                              <textarea
                                 value={score?.observacoes ?? ''}
                                 onChange={(e) =>
                                   setScoresT((prev) => ({
@@ -827,8 +833,9 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                                     },
                                   }))
                                 }
-                                placeholder="Observações..."
-                                className="mt-1 w-full px-3 py-1.5 text-xs rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                rows={2}
+                                placeholder="Descreva exemplos concretos que justifiquem as notas..."
+                                className="mt-1 w-full px-3 py-1.5 text-xs rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                               />
                             )}
                           </div>
@@ -896,24 +903,6 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                       </div>
                     )
                   })}
-
-                  <div>
-                    <label className="text-xs font-medium text-foreground">Evidências e Exemplos Práticos</label>
-                    {isAdmin && !gestorVeAuto ? (
-                      <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-2">
-                        Oculto até a etapa de Calibragem.
-                      </p>
-                    ) : (
-                      <textarea
-                        value={evidenciasTecnicas}
-                        onChange={(e) => setEvidenciasTecnicas(e.target.value)}
-                        rows={3}
-                        disabled={isAdmin}
-                        placeholder="Descreva exemplos concretos que justifiquem as notas técnicas..."
-                        className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
-                      />
-                    )}
-                  </div>
                 </div>
               )}
 

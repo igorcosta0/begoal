@@ -99,7 +99,7 @@ export async function getAvaliacaoCultural(avaliacaoId: string) {
   const supabase = createClient()
   return supabase
     .from('avaliacoes_cultural')
-    .select('id, pilar, nota_auto, nota_gestor, nota_calibragem')
+    .select('id, pilar, nota_auto, nota_gestor, nota_calibragem, observacoes')
     .eq('avaliacao_id', avaliacaoId)
 }
 
@@ -108,13 +108,21 @@ export async function upsertAvaliacaoCultural(
   pilar: number,
   notaAuto: number | null,
   notaGestor: number | null,
-  notaCalibragem: number | null
+  notaCalibragem: number | null,
+  observacoes?: string | null
 ) {
   const supabase = createClient()
   return supabase
     .from('avaliacoes_cultural')
     .upsert(
-      { avaliacao_id: avaliacaoId, pilar, nota_auto: notaAuto, nota_gestor: notaGestor, nota_calibragem: notaCalibragem },
+      {
+        avaliacao_id: avaliacaoId,
+        pilar,
+        nota_auto: notaAuto,
+        nota_gestor: notaGestor,
+        nota_calibragem: notaCalibragem,
+        observacoes: observacoes ?? null,
+      },
       { onConflict: 'avaliacao_id,pilar' }
     )
 }
