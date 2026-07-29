@@ -675,6 +675,11 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
           </div>
         </div>
 
+        {/* Legenda das notas */}
+        <div className="px-5 pt-4 shrink-0">
+          <LegendaNotas />
+        </div>
+
         {/* Tabs */}
         <div className="flex border-b border-border shrink-0 px-5">
           {(['cultural', 'tecnica', 'pdi'] as const).map((tab) => (
@@ -703,8 +708,6 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
             </div>
           ) : (
             <>
-              {activeTab !== 'pdi' && <div className="mb-4"><LegendaNotas /></div>}
-
               {/* Tab Cultural */}
               {activeTab === 'cultural' && (
                 <div className="space-y-4">
