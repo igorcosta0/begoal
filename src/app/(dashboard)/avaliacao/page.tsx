@@ -125,8 +125,10 @@ export default function AvaliacaoPage() {
   const { empresa } = useEmpresaStore()
 
   const [isAdmin, setIsAdmin] = useState(false)
-  // Só administrador gerencia ciclos (criar/ativar/encerrar/excluir) — regra espelha a RLS.
+  // Ativar/encerrar/excluir ciclo continua exclusivo de administrador — regra espelha a RLS.
   const [souAdministrador, setSouAdministrador] = useState(false)
+  // Criar ciclo é liberado pra administrador e gestor comum também.
+  const [podeCriarCiclo, setPodeCriarCiclo] = useState(false)
   // Administrador e calibrador enxergam todos os funcionários da empresa; gestor comum
   // vê somente seus próprios liderados (definidos pelo campo "gestor_id" de cada funcionário).
   const [veTodaEmpresa, setVeTodaEmpresa] = useState(false)
@@ -217,12 +219,20 @@ export default function AvaliacaoPage() {
       const todaEmpresa = administrador || calibrador
       setIsAdmin(admin)
       setSouAdministrador(administrador)
+      setPodeCriarCiclo(administrador || souGestor)
       setVeTodaEmpresa(todaEmpresa)
       const meuFunc = funcRes.data as Funcionario | null
       if (meuFunc) setMeuFuncionario(meuFunc)
 
       await fetchCiclos()
-      if (admin) await fetchFuncionarios(todaEmpresa ? undefined : meuFunc?.id)
+      // Gestor comum só busca a lista se tivermos o próprio funcionario.id pra escopar
+      // por gestor_id — sem isso, cair pra "buscar sem filtro" mostraria a empresa
+      // inteira (falha aberta). Nesse caso preferimos não listar ninguém.
+      if (todaEmpresa) {
+        await fetchFuncionarios()
+      } else if (admin && meuFunc?.id) {
+        await fetchFuncionarios(meuFunc.id)
+      }
       setLoading(false)
     }
     init()
@@ -483,7 +493,7 @@ export default function AvaliacaoPage() {
           <h1 className="text-2xl font-bold text-foreground">Avaliação de Desempenho</h1>
           <p className="text-sm text-muted-foreground mt-1">{empresa?.company_name}</p>
         </div>
-        {souAdministrador && (
+        {podeCriarCiclo && (
           <button
             onClick={() => setModalCriarCiclo(true)}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
@@ -504,9 +514,9 @@ export default function AvaliacaoPage() {
       {ciclos.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border bg-card p-16 text-center">
           <p className="text-muted-foreground text-sm mb-3">
-            {souAdministrador ? 'Nenhum ciclo de avaliação criado.' : 'Nenhum ciclo de avaliação disponível ainda.'}
+            {podeCriarCiclo ? 'Nenhum ciclo de avaliação criado.' : 'Nenhum ciclo de avaliação disponível ainda.'}
           </p>
-          {souAdministrador && (
+          {podeCriarCiclo && (
             <button
               onClick={() => setModalCriarCiclo(true)}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
