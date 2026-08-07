@@ -681,11 +681,6 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
           </div>
         </div>
 
-        {/* Legenda das notas */}
-        <div className="px-5 pt-4 shrink-0">
-          <LegendaNotas />
-        </div>
-
         {/* Tabs */}
         <div className="flex border-b border-border shrink-0 px-5">
           {(['cultural', 'tecnica', 'pdi'] as const).map((tab) => (
@@ -708,6 +703,11 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
 
         {/* Conteúdo */}
         <div className="flex-1 overflow-y-auto p-5">
+          {/* Legenda das notas */}
+          <div className="mb-4">
+            <LegendaNotas />
+          </div>
+
           {loading ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => <div key={i} className="h-20 rounded-lg bg-secondary animate-pulse" />)}
