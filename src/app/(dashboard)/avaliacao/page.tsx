@@ -125,6 +125,11 @@ export default function AvaliacaoPage() {
   const { empresa } = useEmpresaStore()
 
   const [isAdmin, setIsAdmin] = useState(false)
+  // Só administrador gerencia ciclos (criar/ativar/encerrar/excluir) — regra espelha a RLS.
+  const [souAdministrador, setSouAdministrador] = useState(false)
+  // Administrador e calibrador enxergam todos os funcionários da empresa; gestor comum
+  // vê somente seus próprios liderados (definidos pelo campo "gestor_id" de cada funcionário).
+  const [veTodaEmpresa, setVeTodaEmpresa] = useState(false)
   const [meuFuncionario, setMeuFuncionario] = useState<Funcionario | null>(null)
   const [ciclos, setCiclos] = useState<Ciclo[]>([])
   const [cicloAtivo, setCicloAtivo] = useState<Ciclo | null>(null)
@@ -160,15 +165,20 @@ export default function AvaliacaoPage() {
     setMinhasAvaliacoes((data ?? []) as unknown as MinhaAvaliacao[])
   }, [meuFuncionario])
 
-  const fetchFuncionarios = useCallback(async () => {
+  // Se gestorId for informado, restringe a lista aos liderados desse gestor
+  // (funcionarios.gestor_id = gestorId). Sem gestorId, traz todo mundo da empresa —
+  // uso reservado a administrador/calibrador.
+  const fetchFuncionarios = useCallback(async (gestorId?: string) => {
     if (!empresa) return
     const supabase = createClient()
-    const { data } = await supabase
+    let query = supabase
       .from('funcionarios')
       .select('id, full_name, cargo, setor:setores!setor_id(name)')
       .eq('client_id', empresa.id)
       .eq('status', 'Ativo')
       .order('full_name')
+    if (gestorId) query = query.eq('gestor_id', gestorId)
+    const { data } = await query
     setFuncionarios((data ?? []) as unknown as Funcionario[])
   }, [empresa])
 
@@ -195,15 +205,24 @@ export default function AvaliacaoPage() {
           .single(),
       ])
 
-      // 'administrador', 'gestor' e calibradores avulsos (is_calibrador) têm as mesmas
-      // permissões dentro do módulo de Avaliação; só 'administrador' vê o painel /admin.
+      // 'administrador', 'gestor' e calibradores avulsos (is_calibrador) têm acesso ao
+      // fluxo de avaliação (em vez da tela "Minhas Avaliações" de um funcionário comum),
+      // mas só administrador/calibrador enxergam TODOS os funcionários da empresa — um
+      // gestor comum só pode ver e avaliar seus próprios liderados.
       const permission = roleRes.data?.permission_level
-      const admin = permission === 'administrador' || permission === 'gestor' || roleRes.data?.is_calibrador === true
+      const administrador = permission === 'administrador'
+      const calibrador = roleRes.data?.is_calibrador === true
+      const souGestor = permission === 'gestor'
+      const admin = administrador || souGestor || calibrador
+      const todaEmpresa = administrador || calibrador
       setIsAdmin(admin)
-      if (funcRes.data) setMeuFuncionario(funcRes.data as Funcionario)
+      setSouAdministrador(administrador)
+      setVeTodaEmpresa(todaEmpresa)
+      const meuFunc = funcRes.data as Funcionario | null
+      if (meuFunc) setMeuFuncionario(meuFunc)
 
       await fetchCiclos()
-      if (admin) await fetchFuncionarios()
+      if (admin) await fetchFuncionarios(todaEmpresa ? undefined : meuFunc?.id)
       setLoading(false)
     }
     init()
@@ -464,13 +483,15 @@ export default function AvaliacaoPage() {
           <h1 className="text-2xl font-bold text-foreground">Avaliação de Desempenho</h1>
           <p className="text-sm text-muted-foreground mt-1">{empresa?.company_name}</p>
         </div>
-        <button
-          onClick={() => setModalCriarCiclo(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
-        >
-          <Plus className="w-4 h-4" />
-          Novo Ciclo
-        </button>
+        {souAdministrador && (
+          <button
+            onClick={() => setModalCriarCiclo(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-4 h-4" />
+            Novo Ciclo
+          </button>
+        )}
       </div>
 
       {erro && (
@@ -482,13 +503,17 @@ export default function AvaliacaoPage() {
       {/* Lista de ciclos */}
       {ciclos.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border bg-card p-16 text-center">
-          <p className="text-muted-foreground text-sm mb-3">Nenhum ciclo de avaliação criado.</p>
-          <button
-            onClick={() => setModalCriarCiclo(true)}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
-          >
-            Criar primeiro ciclo
-          </button>
+          <p className="text-muted-foreground text-sm mb-3">
+            {souAdministrador ? 'Nenhum ciclo de avaliação criado.' : 'Nenhum ciclo de avaliação disponível ainda.'}
+          </p>
+          {souAdministrador && (
+            <button
+              onClick={() => setModalCriarCiclo(true)}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              Criar primeiro ciclo
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-2">
@@ -519,7 +544,7 @@ export default function AvaliacaoPage() {
                   <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', cicloStatusColor[ciclo.status])}>
                     {cicloStatusLabel[ciclo.status]}
                   </span>
-                  {ciclo.status !== 'encerrado' && (
+                  {souAdministrador && ciclo.status !== 'encerrado' && (
                     <button
                       onClick={(e) => { e.stopPropagation(); handleAtivarCiclo(ciclo) }}
                       className="text-xs px-3 py-1 border border-border rounded-md hover:bg-accent transition-colors text-muted-foreground"
@@ -527,13 +552,15 @@ export default function AvaliacaoPage() {
                       {ciclo.status === 'rascunho' ? 'Ativar' : 'Encerrar'}
                     </button>
                   )}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDeletarCiclo(ciclo) }}
-                    title="Excluir ciclo"
-                    className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {souAdministrador && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDeletarCiclo(ciclo) }}
+                      title="Excluir ciclo"
+                      className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -547,7 +574,7 @@ export default function AvaliacaoPage() {
                       {funcionariosSemAvaliacao.length > 0 && ` · ${funcionariosSemAvaliacao.length} funcionário(s) sem avaliação`}
                     </p>
                     <div className="flex items-center gap-2">
-                      {ciclo.status === 'ativo' && funcionariosSemAvaliacao.length > 0 && (
+                      {veTodaEmpresa && ciclo.status === 'ativo' && funcionariosSemAvaliacao.length > 0 && (
                         <button
                           onClick={() => handleSincronizarAvaliacoes(ciclo.id)}
                           className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground"
