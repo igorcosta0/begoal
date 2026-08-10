@@ -5,6 +5,7 @@ import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { getObjetivos, createObjetivo, updateObjetivo, deleteObjetivo } from '@/lib/queries/okr'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
 import { Target, MoreHorizontal, Plus } from 'lucide-react'
+import { mensagemErroExclusao } from '@/lib/utils'
 
 export default function ObjetivoPage() {
   const { empresa } = useEmpresaStore()
@@ -14,7 +15,7 @@ export default function ObjetivoPage() {
 
   const [modalCriar, setModalCriar] = useState(false)
   const [modalEditar, setModalEditar] = useState<{ open: boolean; objetivo: any | null }>({ open: false, objetivo: null })
-  const [modalExcluir, setModalExcluir] = useState<{ open: boolean; objetivo: any | null; loading: boolean }>({ open: false, objetivo: null, loading: false })
+  const [modalExcluir, setModalExcluir] = useState<{ open: boolean; objetivo: any | null; loading: boolean; erro: string | null }>({ open: false, objetivo: null, loading: false, erro: null })
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
 
   const [formCriar, setFormCriar] = useState({ titulo: '', descricao: '' })
@@ -64,9 +65,13 @@ export default function ObjetivoPage() {
 
   async function handleExcluir() {
     if (!modalExcluir.objetivo) return
-    setModalExcluir((prev) => ({ ...prev, loading: true }))
-    await deleteObjetivo(modalExcluir.objetivo.id)
-    setModalExcluir({ open: false, objetivo: null, loading: false })
+    setModalExcluir((prev) => ({ ...prev, loading: true, erro: null }))
+    const { error } = await deleteObjetivo(modalExcluir.objetivo.id)
+    if (error) {
+      setModalExcluir((prev) => ({ ...prev, loading: false, erro: mensagemErroExclusao(error, 'KRs ou táticas') }))
+      return
+    }
+    setModalExcluir({ open: false, objetivo: null, loading: false, erro: null })
     fetchData()
   }
 
@@ -161,7 +166,7 @@ export default function ObjetivoPage() {
                       Editar
                     </button>
                     <button
-                      onClick={() => { setModalExcluir({ open: true, objetivo, loading: false }); setMenuOpen(null) }}
+                      onClick={() => { setModalExcluir({ open: true, objetivo, loading: false, erro: null }); setMenuOpen(null) }}
                       className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-destructive"
                     >
                       Excluir
@@ -273,8 +278,9 @@ export default function ObjetivoPage() {
         titulo="Excluir Objetivo"
         descricao="Todos os KRs e táticas vinculados também serão excluídos."
         loading={modalExcluir.loading}
+        erro={modalExcluir.erro}
         onConfirmar={handleExcluir}
-        onClose={() => setModalExcluir({ open: false, objetivo: null, loading: false })}
+        onClose={() => setModalExcluir({ open: false, objetivo: null, loading: false, erro: null })}
       />
     </div>
   )

@@ -8,6 +8,7 @@ interface ModalConfirmarExclusaoProps {
   titulo: string
   descricao?: string
   loading?: boolean
+  erro?: string | null
   onConfirmar: () => void
   onClose: () => void
 }
@@ -17,6 +18,7 @@ export default function ModalConfirmarExclusao({
   titulo,
   descricao,
   loading,
+  erro,
   onConfirmar,
   onClose,
 }: ModalConfirmarExclusaoProps) {
@@ -44,6 +46,12 @@ export default function ModalConfirmarExclusao({
         <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-4 text-center">
           <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" /> Esta ação não pode ser desfeita.
         </p>
+
+        {erro && (
+          <p className="flex items-start gap-1.5 text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-xl px-3 py-2 mb-4">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-px" /> {erro}
+          </p>
+        )}
 
         <div className="flex gap-2">
           <button

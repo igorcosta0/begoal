@@ -65,6 +65,20 @@ export function getProgressStatus(progress: number) {
   return 'Atrasado'
 }
 
+// Traduz um erro de exclusão do Supabase/Postgres pra uma mensagem que a pessoa
+// consegue agir em cima — em especial o caso mais comum aqui: violação de chave
+// estrangeira (código 23503) porque outro registro ainda referencia este.
+export function mensagemErroExclusao(
+  error: { code?: string; message?: string } | null | undefined,
+  vinculos: string
+): string {
+  if (!error) return ''
+  if (error.code === '23503') {
+    return `Não foi possível excluir: ainda há ${vinculos} vinculados a este registro. Remova ou reatribua esses vínculos primeiro.`
+  }
+  return error.message || 'Erro ao excluir. Tente novamente.'
+}
+
 export function formatBytes(bytes?: number | null): string {
   if (!bytes || bytes <= 0) return '—'
   const unidades = ['B', 'KB', 'MB', 'GB']

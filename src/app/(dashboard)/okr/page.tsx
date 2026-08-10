@@ -25,7 +25,7 @@ import ModalEditarObjetivo from '@/components/okr/ModalEditarObjetivo'
 import ModalTaticasKr from '@/components/okr/ModalTaticasKr'
 import ModalEditarLancamentos from '@/components/okr/ModalEditarLancamentos'
 import { Archive, ArchiveRestore, Target, ChevronDown, ChevronUp, Plus } from 'lucide-react'
-import { formatPercent, cn } from '@/lib/utils'
+import { formatPercent, cn, mensagemErroExclusao } from '@/lib/utils'
 
 export default function OkrPage() {
   const { empresa } = useEmpresaStore()
@@ -48,8 +48,8 @@ export default function OkrPage() {
   const [modalDetalhesKr, setModalDetalhesKr] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
   const [modalTaticasKr, setModalTaticasKr] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
   const [modalEditarLancamentos, setModalEditarLancamentos] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
-  const [modalExcluirKr, setModalExcluirKr] = useState<{ open: boolean; kr: any | null; loading: boolean }>({ open: false, kr: null, loading: false })
-  const [modalExcluirObjetivo, setModalExcluirObjetivo] = useState<{ open: boolean; objetivo: any | null; loading: boolean }>({ open: false, objetivo: null, loading: false })
+  const [modalExcluirKr, setModalExcluirKr] = useState<{ open: boolean; kr: any | null; loading: boolean; erro: string | null }>({ open: false, kr: null, loading: false, erro: null })
+  const [modalExcluirObjetivo, setModalExcluirObjetivo] = useState<{ open: boolean; objetivo: any | null; loading: boolean; erro: string | null }>({ open: false, objetivo: null, loading: false, erro: null })
 
   const fetchData = useCallback(async () => {
     if (!empresa) return
@@ -137,17 +137,25 @@ export default function OkrPage() {
 
   async function handleExcluirKr() {
     if (!modalExcluirKr.kr) return
-    setModalExcluirKr((prev) => ({ ...prev, loading: true }))
-    await deleteKr(modalExcluirKr.kr.id)
-    setModalExcluirKr({ open: false, kr: null, loading: false })
+    setModalExcluirKr((prev) => ({ ...prev, loading: true, erro: null }))
+    const { error } = await deleteKr(modalExcluirKr.kr.id)
+    if (error) {
+      setModalExcluirKr((prev) => ({ ...prev, loading: false, erro: mensagemErroExclusao(error, 'táticas ou lançamentos') }))
+      return
+    }
+    setModalExcluirKr({ open: false, kr: null, loading: false, erro: null })
     fetchData()
   }
 
   async function handleExcluirObjetivo() {
     if (!modalExcluirObjetivo.objetivo) return
-    setModalExcluirObjetivo((prev) => ({ ...prev, loading: true }))
-    await deleteObjetivo(modalExcluirObjetivo.objetivo.id)
-    setModalExcluirObjetivo({ open: false, objetivo: null, loading: false })
+    setModalExcluirObjetivo((prev) => ({ ...prev, loading: true, erro: null }))
+    const { error } = await deleteObjetivo(modalExcluirObjetivo.objetivo.id)
+    if (error) {
+      setModalExcluirObjetivo((prev) => ({ ...prev, loading: false, erro: mensagemErroExclusao(error, 'KRs ou táticas') }))
+      return
+    }
+    setModalExcluirObjetivo({ open: false, objetivo: null, loading: false, erro: null })
     fetchData()
   }
 
@@ -175,12 +183,12 @@ export default function OkrPage() {
   const propsModais = {
     onCriarKr: (obj: any) => setModalCriarKr({ open: true, objetivo: obj }),
     onEditarObjetivo: (obj: any) => setModalEditarObjetivo({ open: true, objetivo: obj }),
-    onExcluirObjetivo: (obj: any) => setModalExcluirObjetivo({ open: true, objetivo: obj, loading: false }),
+    onExcluirObjetivo: (obj: any) => setModalExcluirObjetivo({ open: true, objetivo: obj, loading: false, erro: null }),
     onFinalizarObjetivo: handleFinalizarObjetivo,
     onLancarKr: (kr: any) => setModalLancarKr({ open: true, kr }),
     onEditarKr: (kr: any) => setModalEditarKr({ open: true, kr }),
     onFinalizarKr: (kr: any) => setModalFinalizarKr({ open: true, kr }),
-    onExcluirKr: (kr: any) => setModalExcluirKr({ open: true, kr, loading: false }),
+    onExcluirKr: (kr: any) => setModalExcluirKr({ open: true, kr, loading: false, erro: null }),
     onVerGraficoKr: (kr: any) => setModalDetalhesKr({ open: true, kr }),
     onReativarKr: handleReativarKr,
     onVerTaticasKr: (kr: any) => setModalTaticasKr({ open: true, kr }),
@@ -419,8 +427,8 @@ export default function OkrPage() {
       <ModalDetalhesKr open={modalDetalhesKr.open} kr={modalDetalhesKr.kr} onClose={() => setModalDetalhesKr({ open: false, kr: null })} onLancar={(kr) => setModalLancarKr({ open: true, kr })} />
       <ModalTaticasKr open={modalTaticasKr.open} kr={modalTaticasKr.kr} onClose={() => setModalTaticasKr({ open: false, kr: null })} />
       <ModalEditarLancamentos open={modalEditarLancamentos.open} kr={modalEditarLancamentos.kr} onClose={() => setModalEditarLancamentos({ open: false, kr: null })} onSuccess={fetchData} />
-      <ModalConfirmarExclusao open={modalExcluirKr.open} titulo="Excluir Key Result" descricao="Todos os lançamentos deste KR também serão excluídos." loading={modalExcluirKr.loading} onConfirmar={handleExcluirKr} onClose={() => setModalExcluirKr({ open: false, kr: null, loading: false })} />
-      <ModalConfirmarExclusao open={modalExcluirObjetivo.open} titulo="Excluir Objetivo" descricao="Todos os KRs e táticas vinculados também serão excluídos." loading={modalExcluirObjetivo.loading} onConfirmar={handleExcluirObjetivo} onClose={() => setModalExcluirObjetivo({ open: false, objetivo: null, loading: false })} />
+      <ModalConfirmarExclusao open={modalExcluirKr.open} titulo="Excluir Key Result" descricao="Todos os lançamentos deste KR também serão excluídos." loading={modalExcluirKr.loading} erro={modalExcluirKr.erro} onConfirmar={handleExcluirKr} onClose={() => setModalExcluirKr({ open: false, kr: null, loading: false, erro: null })} />
+      <ModalConfirmarExclusao open={modalExcluirObjetivo.open} titulo="Excluir Objetivo" descricao="Todos os KRs e táticas vinculados também serão excluídos." loading={modalExcluirObjetivo.loading} erro={modalExcluirObjetivo.erro} onConfirmar={handleExcluirObjetivo} onClose={() => setModalExcluirObjetivo({ open: false, objetivo: null, loading: false, erro: null })} />
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getSetoresByEmpresa } from '@/lib/queries/okr'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
 import { User, Building2, Briefcase, MoreHorizontal, Users, Plus } from 'lucide-react'
+import { mensagemErroExclusao } from '@/lib/utils'
 
 const STATUS_OPTIONS = ['Ativo', 'Férias', 'Afastado', 'Desligado']
 const PROFILE_OPTIONS = [
@@ -194,7 +195,7 @@ export default function FuncionariosPage() {
 
   const [modalCriar, setModalCriar] = useState(false)
   const [modalEditar, setModalEditar] = useState<{ open: boolean; funcionario: any | null }>({ open: false, funcionario: null })
-  const [modalExcluir, setModalExcluir] = useState<{ open: boolean; funcionario: any | null; loading: boolean }>({ open: false, funcionario: null, loading: false })
+  const [modalExcluir, setModalExcluir] = useState<{ open: boolean; funcionario: any | null; loading: boolean; erro: string | null }>({ open: false, funcionario: null, loading: false, erro: null })
   const [form, setForm] = useState<FormFuncionario>(FORM_INICIAL)
 
   const fetchData = useCallback(async () => {
@@ -272,10 +273,17 @@ export default function FuncionariosPage() {
 
   async function handleExcluir() {
     if (!modalExcluir.funcionario) return
-    setModalExcluir((prev) => ({ ...prev, loading: true }))
+    setModalExcluir((prev) => ({ ...prev, loading: true, erro: null }))
     const supabase = createClient()
-    await supabase.from('funcionarios').delete().eq('id', modalExcluir.funcionario.id)
-    setModalExcluir({ open: false, funcionario: null, loading: false })
+    const { error } = await supabase.from('funcionarios').delete().eq('id', modalExcluir.funcionario.id)
+    if (error) {
+      const msg = error.code === '23503'
+        ? 'Não foi possível excluir: este funcionário está vinculado a KRs, táticas, sinais vitais ou avaliações. Em vez de excluir, marque o status como "Desligado" — assim o histórico continua íntegro.'
+        : mensagemErroExclusao(error, 'registros')
+      setModalExcluir((prev) => ({ ...prev, loading: false, erro: msg }))
+      return
+    }
+    setModalExcluir({ open: false, funcionario: null, loading: false, erro: null })
     fetchData()
   }
 
@@ -418,7 +426,7 @@ export default function FuncionariosPage() {
                         Editar
                       </button>
                       <button
-                        onClick={() => { setModalExcluir({ open: true, funcionario: f, loading: false }); setMenuOpen(null) }}
+                        onClick={() => { setModalExcluir({ open: true, funcionario: f, loading: false, erro: null }); setMenuOpen(null) }}
                         className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-destructive"
                       >
                         Excluir
@@ -459,8 +467,9 @@ export default function FuncionariosPage() {
         titulo="Excluir Funcionário"
         descricao="Esta ação não pode ser desfeita."
         loading={modalExcluir.loading}
+        erro={modalExcluir.erro}
         onConfirmar={handleExcluir}
-        onClose={() => setModalExcluir({ open: false, funcionario: null, loading: false })}
+        onClose={() => setModalExcluir({ open: false, funcionario: null, loading: false, erro: null })}
       />
     </div>
   )

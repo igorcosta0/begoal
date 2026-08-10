@@ -11,6 +11,7 @@ import ModalLancarSv from '@/components/sinais-vitais/ModalLancarSv'
 import ModalHistoricoSv from '@/components/sinais-vitais/ModalHistoricoSv'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
 import { Activity, Plus } from 'lucide-react'
+import { mensagemErroExclusao } from '@/lib/utils'
 
 export default function SinaisVitaisPage() {
   const { empresa } = useEmpresaStore()
@@ -25,7 +26,7 @@ export default function SinaisVitaisPage() {
   const [modalEditar, setModalEditar] = useState<{ open: boolean; sv: any | null }>({ open: false, sv: null })
   const [modalLancar, setModalLancar] = useState<{ open: boolean; sv: any | null }>({ open: false, sv: null })
   const [modalHistorico, setModalHistorico] = useState<{ open: boolean; sv: any | null }>({ open: false, sv: null })
-  const [modalExcluir, setModalExcluir] = useState<{ open: boolean; sv: any | null; loading: boolean }>({ open: false, sv: null, loading: false })
+  const [modalExcluir, setModalExcluir] = useState<{ open: boolean; sv: any | null; loading: boolean; erro: string | null }>({ open: false, sv: null, loading: false, erro: null })
 
   const fetchData = useCallback(async () => {
     if (!empresa) return
@@ -55,9 +56,13 @@ export default function SinaisVitaisPage() {
 
   async function handleExcluir() {
     if (!modalExcluir.sv) return
-    setModalExcluir((prev) => ({ ...prev, loading: true }))
-    await deleteSinalVital(modalExcluir.sv.id)
-    setModalExcluir({ open: false, sv: null, loading: false })
+    setModalExcluir((prev) => ({ ...prev, loading: true, erro: null }))
+    const { error } = await deleteSinalVital(modalExcluir.sv.id)
+    if (error) {
+      setModalExcluir((prev) => ({ ...prev, loading: false, erro: mensagemErroExclusao(error, 'lançamentos') }))
+      return
+    }
+    setModalExcluir({ open: false, sv: null, loading: false, erro: null })
     fetchData()
   }
 
@@ -148,7 +153,7 @@ export default function SinaisVitaisPage() {
               sv={sv}
               onLancar={(sv) => setModalLancar({ open: true, sv })}
               onEditar={(sv) => setModalEditar({ open: true, sv })}
-              onExcluir={(sv) => setModalExcluir({ open: true, sv, loading: false })}
+              onExcluir={(sv) => setModalExcluir({ open: true, sv, loading: false, erro: null })}
               onVerHistorico={(sv) => setModalHistorico({ open: true, sv })}
             />
           ))}
@@ -184,8 +189,9 @@ export default function SinaisVitaisPage() {
         titulo="Excluir Sinal Vital"
         descricao="Todos os lançamentos deste sinal vital também serão excluídos."
         loading={modalExcluir.loading}
+        erro={modalExcluir.erro}
         onConfirmar={handleExcluir}
-        onClose={() => setModalExcluir({ open: false, sv: null, loading: false })}
+        onClose={() => setModalExcluir({ open: false, sv: null, loading: false, erro: null })}
       />
     </div>
   )

@@ -8,7 +8,7 @@ import {
   CATEGORIAS_BIBLIOTECA, type BibliotecaDocumento,
 } from '@/lib/queries/biblioteca'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
-import { formatDate, formatBytes } from '@/lib/utils'
+import { formatDate, formatBytes, mensagemErroExclusao } from '@/lib/utils'
 import { Library, Plus, Download, X, UploadCloud, Check, BookOpen, Trash2 } from 'lucide-react'
 
 // ── Estante: paleta e variação por documento ──────────────────────────────
@@ -270,7 +270,7 @@ export default function BibliotecaPage() {
   const [docEmFoco, setDocEmFoco] = useState<BibliotecaDocumento | null>(null)
 
   const [modalEnviar, setModalEnviar] = useState(false)
-  const [modalExcluir, setModalExcluir] = useState<{ open: boolean; doc: BibliotecaDocumento | null; loading: boolean }>({ open: false, doc: null, loading: false })
+  const [modalExcluir, setModalExcluir] = useState<{ open: boolean; doc: BibliotecaDocumento | null; loading: boolean; erro: string | null }>({ open: false, doc: null, loading: false, erro: null })
 
   const fetchData = useCallback(async () => {
     if (!empresa) return
@@ -309,9 +309,13 @@ export default function BibliotecaPage() {
 
   async function handleExcluir() {
     if (!modalExcluir.doc) return
-    setModalExcluir((prev) => ({ ...prev, loading: true }))
-    await deleteDocumento(modalExcluir.doc.id, modalExcluir.doc.storage_path)
-    setModalExcluir({ open: false, doc: null, loading: false })
+    setModalExcluir((prev) => ({ ...prev, loading: true, erro: null }))
+    const { error } = await deleteDocumento(modalExcluir.doc.id, modalExcluir.doc.storage_path)
+    if (error) {
+      setModalExcluir((prev) => ({ ...prev, loading: false, erro: mensagemErroExclusao(error, 'registros') }))
+      return
+    }
+    setModalExcluir({ open: false, doc: null, loading: false, erro: null })
     fetchData()
   }
 
@@ -424,7 +428,7 @@ export default function BibliotecaPage() {
                   </button>
                   {podeGerenciar && (
                     <button
-                      onClick={() => setModalExcluir({ open: true, doc: docEmFoco, loading: false })}
+                      onClick={() => setModalExcluir({ open: true, doc: docEmFoco, loading: false, erro: null })}
                       className="p-1.5 rounded-xl border border-border text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                       title={`Excluir ${docEmFoco.nome}`}
                     >
@@ -449,7 +453,7 @@ export default function BibliotecaPage() {
                 podeGerenciar={podeGerenciar}
                 baixando={baixando}
                 onBaixar={handleBaixar}
-                onExcluir={(doc) => setModalExcluir({ open: true, doc, loading: false })}
+                onExcluir={(doc) => setModalExcluir({ open: true, doc, loading: false, erro: null })}
                 onFoco={setDocEmFoco}
                 onDesfoco={handleDesfoco}
               />
@@ -473,8 +477,9 @@ export default function BibliotecaPage() {
         titulo="Excluir documento"
         descricao="Esta ação não pode ser desfeita."
         loading={modalExcluir.loading}
+        erro={modalExcluir.erro}
         onConfirmar={handleExcluir}
-        onClose={() => setModalExcluir({ open: false, doc: null, loading: false })}
+        onClose={() => setModalExcluir({ open: false, doc: null, loading: false, erro: null })}
       />
     </div>
   )

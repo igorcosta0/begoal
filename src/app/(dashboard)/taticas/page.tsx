@@ -6,9 +6,8 @@ import { useAuthStore } from '@/store/useAuthStore'
 import { createClient } from '@/lib/supabase/client'
 import { getObjetivos, getSetoresByEmpresa, getFuncionariosByEmpresa } from '@/lib/queries/okr'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
-import { formatDate } from '@/lib/utils'
 import { User, Building2, Calendar, CheckCircle2, Circle, MessageSquare, Send, Trash2, ChevronDown, ChevronUp, Zap, Plus, X, GripVertical } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, formatDate, mensagemErroExclusao } from '@/lib/utils'
 
 const STATUS_OPTIONS = ['Não Iniciado', 'Em Andamento', 'Concluído']
 
@@ -249,7 +248,7 @@ export default function TaticasPage() {
   const [colunaSobre, setColunaSobre] = useState<string | null>(null)
 
   const [modalCriar, setModalCriar] = useState(false)
-  const [modalExcluir, setModalExcluir] = useState<{ open: boolean; tatica: any | null; loading: boolean }>({ open: false, tatica: null, loading: false })
+  const [modalExcluir, setModalExcluir] = useState<{ open: boolean; tatica: any | null; loading: boolean; erro: string | null }>({ open: false, tatica: null, loading: false, erro: null })
   const [form, setForm] = useState<FormTatica>(FORM_INICIAL)
 
   const fetchData = useCallback(async () => {
@@ -354,10 +353,14 @@ export default function TaticasPage() {
 
   async function handleExcluir() {
     if (!modalExcluir.tatica) return
-    setModalExcluir((prev) => ({ ...prev, loading: true }))
+    setModalExcluir((prev) => ({ ...prev, loading: true, erro: null }))
     const supabase = createClient()
-    await supabase.from('taticas').delete().eq('id', modalExcluir.tatica.id)
-    setModalExcluir({ open: false, tatica: null, loading: false })
+    const { error } = await supabase.from('taticas').delete().eq('id', modalExcluir.tatica.id)
+    if (error) {
+      setModalExcluir((prev) => ({ ...prev, loading: false, erro: mensagemErroExclusao(error, 'registros') }))
+      return
+    }
+    setModalExcluir({ open: false, tatica: null, loading: false, erro: null })
     fetchData()
   }
 
@@ -542,7 +545,7 @@ export default function TaticasPage() {
 
                       <div className="flex justify-end mt-1">
                         <button
-                          onClick={() => setModalExcluir({ open: true, tatica, loading: false })}
+                          onClick={() => setModalExcluir({ open: true, tatica, loading: false, erro: null })}
                           className="p-1 rounded-md text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
                         >
                           <X className="w-3 h-3" />
@@ -575,8 +578,9 @@ export default function TaticasPage() {
         titulo="Excluir Tática"
         descricao="Esta ação não pode ser desfeita."
         loading={modalExcluir.loading}
+        erro={modalExcluir.erro}
         onConfirmar={handleExcluir}
-        onClose={() => setModalExcluir({ open: false, tatica: null, loading: false })}
+        onClose={() => setModalExcluir({ open: false, tatica: null, loading: false, erro: null })}
       />
     </div>
   )

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
 import { Building2, MoreHorizontal, Plus } from 'lucide-react'
+import { mensagemErroExclusao } from '@/lib/utils'
 
 interface FormEmpresa {
   company_name: string
@@ -156,8 +157,8 @@ export default function AdminPage() {
 
   const [modalCriarEmpresa, setModalCriarEmpresa] = useState(false)
   const [modalEditarEmpresa, setModalEditarEmpresa] = useState<{ open: boolean; empresa: any | null }>({ open: false, empresa: null })
-  const [modalExcluirEmpresa, setModalExcluirEmpresa] = useState<{ open: boolean; empresa: any | null; loading: boolean }>({ open: false, empresa: null, loading: false })
-  const [modalExcluirSetor, setModalExcluirSetor] = useState<{ open: boolean; setor: any | null; loading: boolean }>({ open: false, setor: null, loading: false })
+  const [modalExcluirEmpresa, setModalExcluirEmpresa] = useState<{ open: boolean; empresa: any | null; loading: boolean; erro: string | null }>({ open: false, empresa: null, loading: false, erro: null })
+  const [modalExcluirSetor, setModalExcluirSetor] = useState<{ open: boolean; setor: any | null; loading: boolean; erro: string | null }>({ open: false, setor: null, loading: false, erro: null })
   const [modalCriarSetor, setModalCriarSetor] = useState(false)
   const [novoSetor, setNovoSetor] = useState('')
   const [editarSetor, setEditarSetor] = useState<{ open: boolean; setor: any | null; nome: string }>({ open: false, setor: null, nome: '' })
@@ -241,10 +242,14 @@ export default function AdminPage() {
 
   async function handleExcluirEmpresa() {
     if (!modalExcluirEmpresa.empresa) return
-    setModalExcluirEmpresa((prev) => ({ ...prev, loading: true }))
+    setModalExcluirEmpresa((prev) => ({ ...prev, loading: true, erro: null }))
     const supabase = createClient()
-    await supabase.from('clients').delete().eq('id', modalExcluirEmpresa.empresa.id)
-    setModalExcluirEmpresa({ open: false, empresa: null, loading: false })
+    const { error } = await supabase.from('clients').delete().eq('id', modalExcluirEmpresa.empresa.id)
+    if (error) {
+      setModalExcluirEmpresa((prev) => ({ ...prev, loading: false, erro: mensagemErroExclusao(error, 'dados') }))
+      return
+    }
+    setModalExcluirEmpresa({ open: false, empresa: null, loading: false, erro: null })
     fetchEmpresas()
   }
 
@@ -272,10 +277,14 @@ export default function AdminPage() {
 
   async function handleExcluirSetor() {
     if (!modalExcluirSetor.setor) return
-    setModalExcluirSetor((prev) => ({ ...prev, loading: true }))
+    setModalExcluirSetor((prev) => ({ ...prev, loading: true, erro: null }))
     const supabase = createClient()
-    await supabase.from('setores').delete().eq('id', modalExcluirSetor.setor.id)
-    setModalExcluirSetor({ open: false, setor: null, loading: false })
+    const { error } = await supabase.from('setores').delete().eq('id', modalExcluirSetor.setor.id)
+    if (error) {
+      setModalExcluirSetor((prev) => ({ ...prev, loading: false, erro: mensagemErroExclusao(error, 'funcionários ou outros registros') }))
+      return
+    }
+    setModalExcluirSetor({ open: false, setor: null, loading: false, erro: null })
     fetchSetores()
   }
 
@@ -396,7 +405,7 @@ export default function AdminPage() {
                             Editar
                           </button>
                           <button
-                            onClick={() => { setModalExcluirEmpresa({ open: true, empresa, loading: false }); setMenuEmpresa(null) }}
+                            onClick={() => { setModalExcluirEmpresa({ open: true, empresa, loading: false, erro: null }); setMenuEmpresa(null) }}
                             className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-destructive"
                           >
                             Excluir
@@ -486,7 +495,7 @@ export default function AdminPage() {
                           Editar
                         </button>
                         <button
-                          onClick={() => { setModalExcluirSetor({ open: true, setor, loading: false }); setMenuSetor(null) }}
+                          onClick={() => { setModalExcluirSetor({ open: true, setor, loading: false, erro: null }); setMenuSetor(null) }}
                           className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-destructive"
                         >
                           Excluir
@@ -601,8 +610,9 @@ export default function AdminPage() {
         titulo="Excluir Empresa"
         descricao="Todos os dados desta empresa serão excluídos permanentemente."
         loading={modalExcluirEmpresa.loading}
+        erro={modalExcluirEmpresa.erro}
         onConfirmar={handleExcluirEmpresa}
-        onClose={() => setModalExcluirEmpresa({ open: false, empresa: null, loading: false })}
+        onClose={() => setModalExcluirEmpresa({ open: false, empresa: null, loading: false, erro: null })}
       />
 
       <ModalConfirmarExclusao
@@ -610,8 +620,9 @@ export default function AdminPage() {
         titulo="Excluir Setor"
         descricao="Esta ação não pode ser desfeita."
         loading={modalExcluirSetor.loading}
+        erro={modalExcluirSetor.erro}
         onConfirmar={handleExcluirSetor}
-        onClose={() => setModalExcluirSetor({ open: false, setor: null, loading: false })}
+        onClose={() => setModalExcluirSetor({ open: false, setor: null, loading: false, erro: null })}
       />
     </div>
   )
