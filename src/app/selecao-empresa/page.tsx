@@ -25,10 +25,20 @@ export default function SelecaoEmpresaPage() {
       }
       const { data } = await supabase
         .from('user_company_roles')
-        .select('clients(*)')
+        .select('permission_level, clients(*)')
         .eq('user_id', user.id)
       if (data) {
-        const lista = data.map((item: any) => item.clients) as Empresa[]
+        const lista = data.map((item: any) => item.clients).filter(Boolean) as Empresa[]
+        const isAdministrador = data.some((item: any) => item.permission_level === 'administrador')
+
+        // Usuário comum com apenas uma empresa: pula a seleção e vai direto para a página inicial.
+        // Administradores sempre escolhem, pois podem acompanhar múltiplas empresas.
+        if (!isAdministrador && lista.length === 1) {
+          setEmpresa(lista[0])
+          window.location.href = '/inicio'
+          return
+        }
+
         setEmpresas(lista)
       }
       setLoading(false)
@@ -57,7 +67,7 @@ export default function SelecaoEmpresaPage() {
             Selecione a empresa
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Você tem acesso a múltiplas empresas. Escolha com qual deseja trabalhar.
+            Escolha com qual empresa deseja trabalhar.
           </p>
         </div>
         <div className="space-y-3">

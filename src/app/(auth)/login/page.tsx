@@ -3,10 +3,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { Target } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
+  const { setEmpresa } = useEmpresaStore()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -18,15 +20,40 @@ export default function LoginPage() {
     setError(null)
 
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password })
 
-    if (error) {
+    if (error || !authData.user) {
       setError('E-mail ou senha incorretos.')
       setLoading(false)
       return
     }
 
-    window.location.href = '/selecao-empresa'
+    // Busca as empresas e o nível de permissão do usuário
+    const { data: rolesData } = await supabase
+      .from('user_company_roles')
+      .select('permission_level, clients(*)')
+      .eq('user_id', authData.user.id)
+
+    const roles = rolesData ?? []
+    const empresas = roles.map((item: any) => item.clients).filter(Boolean)
+    const isAdministrador = roles.some((item: any) => item.permission_level === 'administrador')
+
+    // Administradores acompanham múltiplas empresas: sempre passam pela seleção,
+    // mesmo que hoje só tenham acesso a uma.
+    if (!isAdministrador && empresas.length === 1) {
+      // Usuário comum com apenas uma empresa: pula a seleção e vai direto para a página inicial
+      setEmpresa(empresas[0])
+      window.location.href = '/inicio'
+      return
+    }
+
+    if (empresas.length >= 1) {
+      window.location.href = '/selecao-empresa'
+      return
+    }
+
+    setError('Nenhuma empresa vinculada a este usuário.')
+    setLoading(false)
   }
 
   return (
