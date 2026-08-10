@@ -7,9 +7,16 @@ import { createClient } from '@/lib/supabase/client'
 import { getObjetivos, getSetoresByEmpresa, getFuncionariosByEmpresa } from '@/lib/queries/okr'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
 import { formatDate } from '@/lib/utils'
-import { User, Building2, Calendar, CheckCircle2, Circle, MessageSquare, Send, Trash2, ChevronDown, ChevronUp, Zap, Plus, X } from 'lucide-react'
+import { User, Building2, Calendar, CheckCircle2, Circle, MessageSquare, Send, Trash2, ChevronDown, ChevronUp, Zap, Plus, X, GripVertical } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 const STATUS_OPTIONS = ['Não Iniciado', 'Em Andamento', 'Concluído']
+
+const COLUNA_ESTILO: Record<string, { barra: string; badge: string }> = {
+  'Não Iniciado': { barra: 'bg-slate-400', badge: 'bg-slate-100 text-slate-600' },
+  'Em Andamento': { barra: 'bg-blue-500', badge: 'bg-blue-100 text-blue-700' },
+  'Concluído': { barra: 'bg-emerald-500', badge: 'bg-emerald-100 text-emerald-700' },
+}
 
 interface FormTatica {
   descricao: string
@@ -236,9 +243,10 @@ export default function TaticasPage() {
   const [filtroKr, setFiltroKr] = useState('')
   const [filtroResponsavel, setFiltroResponsavel] = useState('')
   const [filtroSetor, setFiltroSetor] = useState('')
-  const [filtroStatus, setFiltroStatus] = useState('')
   const [nomeUsuario, setNomeUsuario] = useState('')
   const [userId, setUserId] = useState('')
+  const [arrastandoId, setArrastandoId] = useState<string | null>(null)
+  const [colunaSobre, setColunaSobre] = useState<string | null>(null)
 
   const [modalCriar, setModalCriar] = useState(false)
   const [modalExcluir, setModalExcluir] = useState<{ open: boolean; tatica: any | null; loading: boolean }>({ open: false, tatica: null, loading: false })
@@ -303,10 +311,45 @@ export default function TaticasPage() {
     fetchData()
   }
 
+  // Mantém `concluida` e `Status` sincronizados, já que outras telas (ex.: painel
+  // de Táticas do KR) somam pendentes/concluídas a partir do booleano `concluida`.
   async function handleToggleConcluida(tatica: any) {
+    const novaConcluida = !tatica.concluida
     const supabase = createClient()
-    await supabase.from('taticas').update({ concluida: !tatica.concluida }).eq('id', tatica.id)
+    await supabase.from('taticas').update({
+      concluida: novaConcluida,
+      Status: novaConcluida ? 'Concluído' : (tatica.Status === 'Concluído' ? 'Não Iniciado' : tatica.Status),
+    }).eq('id', tatica.id)
     fetchData()
+  }
+
+  async function handleMoverStatus(taticaId: string, novoStatus: string) {
+    const supabase = createClient()
+    await supabase.from('taticas').update({
+      Status: novoStatus,
+      concluida: novoStatus === 'Concluído',
+    }).eq('id', taticaId)
+    fetchData()
+  }
+
+  function handleDragStart(e: React.DragEvent, taticaId: string) {
+    e.dataTransfer.setData('text/plain', taticaId)
+    e.dataTransfer.effectAllowed = 'move'
+    setArrastandoId(taticaId)
+  }
+
+  function handleDragEnd() {
+    setArrastandoId(null)
+    setColunaSobre(null)
+  }
+
+  function handleDropNaColuna(e: React.DragEvent, status: string) {
+    e.preventDefault()
+    const taticaId = e.dataTransfer.getData('text/plain')
+    setColunaSobre(null)
+    setArrastandoId(null)
+    if (!taticaId) return
+    handleMoverStatus(taticaId, status)
   }
 
   async function handleExcluir() {
@@ -323,22 +366,15 @@ export default function TaticasPage() {
     .filter((t) => !filtroKr || t.kr_id === filtroKr)
     .filter((t) => !filtroResponsavel || t.responsavel_id === filtroResponsavel)
     .filter((t) => !filtroSetor || t.setor_id === filtroSetor)
-    .filter((t) => {
-      if (!filtroStatus) return true
-      if (filtroStatus === 'concluida') return t.concluida
-      if (filtroStatus === 'pendente') return !t.concluida
-      return true
-    })
 
-  const statusColor = (status: string) => {
-    if (status === 'Concluído') return 'bg-green-100 text-green-700'
-    if (status === 'Em Andamento') return 'bg-blue-100 text-blue-700'
-    return 'bg-gray-100 text-gray-600'
-  }
+  const colunas = STATUS_OPTIONS.map((status) => ({
+    status,
+    itens: taticasFiltradas.filter((t) => (t.Status || 'Não Iniciado') === status),
+  }))
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-4 h-[calc(100vh-48px)]">
+      <div className="flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
             <Zap className="w-5 h-5 text-primary" />
@@ -359,7 +395,7 @@ export default function TaticasPage() {
       </div>
 
       {/* Filtros */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3 shrink-0">
         <select value={filtroObjetivo} onChange={(e) => { setFiltroObjetivo(e.target.value); setFiltroKr('') }}
           className="px-3 py-1.5 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
           <option value="">Todos os objetivos</option>
@@ -382,23 +418,17 @@ export default function TaticasPage() {
           <option value="">Todos os setores</option>
           {setores.map((s) => <option key={s.id} value={s.id}>{s.name ?? s.nome}</option>)}
         </select>
-        <select value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)}
-          className="px-3 py-1.5 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
-          <option value="">Todos os status</option>
-          <option value="pendente">Pendentes</option>
-          <option value="concluida">Concluídas</option>
-        </select>
       </div>
 
-      {/* Lista */}
+      {/* Board Kanban */}
       {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-20 rounded-2xl bg-secondary animate-pulse" />
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 min-h-0">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="rounded-2xl bg-secondary animate-pulse" />
           ))}
         </div>
       ) : taticasFiltradas.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center">
+        <div className="flex-1 rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center flex flex-col items-center justify-center">
           <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
             <Zap className="w-6 h-6 text-muted-foreground/40" />
           </div>
@@ -409,71 +439,121 @@ export default function TaticasPage() {
           </button>
         </div>
       ) : (
-        <div className="space-y-3">
-          {taticasFiltradas.map((tatica) => (
-            <div
-              key={tatica.id}
-              className={`bg-card border border-border rounded-2xl p-4 hover:shadow-sm transition-shadow ${tatica.concluida ? 'opacity-60' : ''}`}
-            >
-              <div className="flex items-start gap-3">
-                <button onClick={() => handleToggleConcluida(tatica)} className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary transition-colors">
-                  {tatica.concluida
-                    ? <CheckCircle2 className="w-5 h-5 text-green-500" />
-                    : <Circle className="w-5 h-5" />
-                  }
-                </button>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className={`text-sm font-medium text-foreground ${tatica.concluida ? 'line-through' : ''}`}>
-                      {tatica.descricao}
-                    </p>
-                    {tatica.Status && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${statusColor(tatica.Status)}`}>
-                        {tatica.Status}
-                      </span>
-                    )}
+        <div className="flex-1 min-h-0 flex gap-4 overflow-x-auto pb-1">
+          {colunas.map(({ status, itens }) => {
+            const estilo = COLUNA_ESTILO[status]
+            const emFoco = colunaSobre === status
+            return (
+              <div
+                key={status}
+                onDragOver={(e) => { e.preventDefault(); setColunaSobre(status) }}
+                onDragLeave={() => setColunaSobre((atual) => (atual === status ? null : atual))}
+                onDrop={(e) => handleDropNaColuna(e, status)}
+                className={cn(
+                  'flex flex-col w-[300px] shrink-0 md:w-auto md:flex-1 min-w-[260px] rounded-2xl border bg-card/50 transition-colors',
+                  emFoco ? 'border-primary/50 bg-primary/[0.03]' : 'border-border'
+                )}
+              >
+                {/* Cabeçalho da coluna */}
+                <div className="shrink-0 p-3 pb-2">
+                  <div className={`h-1 w-8 rounded-full mb-2.5 ${estilo.barra}`} />
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">{status}</p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold tabular-nums ${estilo.badge}`}>
+                      {itens.length}
+                    </span>
                   </div>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {tatica.objetivos && <span className="text-xs text-muted-foreground">{tatica.objetivos.titulo}</span>}
-                    {tatica.krs && <span className="text-xs text-muted-foreground">· {tatica.krs.titulo}</span>}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground">
-                    {tatica.funcionarios && (
-                      <span className="flex items-center gap-1">
-                        <User className="w-3 h-3" />
-                        {tatica.funcionarios.full_name}
-                      </span>
-                    )}
-                    {tatica.setores && (
-                      <span className="flex items-center gap-1">
-                        <Building2 className="w-3 h-3" />
-                        {tatica.setores.name}
-                      </span>
-                    )}
-                    {tatica.prazo && (
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        {formatDate(tatica.prazo)}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Comentários */}
-                  <ComentariosTatica
-                    taticaId={tatica.id}
-                    userId={userId}
-                    nomeUsuario={nomeUsuario}
-                  />
                 </div>
-                <button
-                  onClick={() => setModalExcluir({ open: true, tatica, loading: false })}
-                  className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0 mt-0.5"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+
+                {/* Cartões */}
+                <div className="flex-1 min-h-0 overflow-y-auto px-3 pb-3 space-y-2.5">
+                  {itens.length === 0 && (
+                    <div className={cn(
+                      'rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground/60 transition-colors',
+                      emFoco ? 'border-primary/40' : 'border-border'
+                    )}>
+                      {emFoco ? 'Solte aqui' : 'Sem táticas'}
+                    </div>
+                  )}
+                  {itens.map((tatica) => (
+                    <div
+                      key={tatica.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, tatica.id)}
+                      onDragEnd={handleDragEnd}
+                      className={cn(
+                        'group bg-card border border-border rounded-xl p-3 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing',
+                        arrastandoId === tatica.id && 'opacity-40'
+                      )}
+                    >
+                      <div className="flex items-start gap-2">
+                        <button
+                          onClick={() => handleToggleConcluida(tatica)}
+                          className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary transition-colors"
+                          title="Marcar como concluída"
+                        >
+                          {tatica.concluida
+                            ? <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                            : <Circle className="w-4 h-4" />
+                          }
+                        </button>
+                        <p className={`flex-1 text-xs font-medium text-foreground leading-snug ${tatica.concluida ? 'line-through text-muted-foreground' : ''}`}>
+                          {tatica.descricao}
+                        </p>
+                        <GripVertical className="w-3.5 h-3.5 text-muted-foreground/30 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+
+                      {(tatica.objetivos || tatica.krs) && (
+                        <p className="text-[10px] text-muted-foreground mt-1.5 ml-6 truncate">
+                          {tatica.objetivos?.titulo}
+                          {tatica.objetivos && tatica.krs ? ' · ' : ''}
+                          {tatica.krs?.titulo}
+                        </p>
+                      )}
+
+                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-2 ml-6 text-[10px] text-muted-foreground">
+                        {tatica.funcionarios && (
+                          <span className="flex items-center gap-1">
+                            <User className="w-3 h-3" />
+                            {tatica.funcionarios.full_name}
+                          </span>
+                        )}
+                        {tatica.setores && (
+                          <span className="flex items-center gap-1">
+                            <Building2 className="w-3 h-3" />
+                            {tatica.setores.name}
+                          </span>
+                        )}
+                        {tatica.prazo && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {formatDate(tatica.prazo)}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="ml-6">
+                        <ComentariosTatica
+                          taticaId={tatica.id}
+                          userId={userId}
+                          nomeUsuario={nomeUsuario}
+                        />
+                      </div>
+
+                      <div className="flex justify-end mt-1">
+                        <button
+                          onClick={() => setModalExcluir({ open: true, tatica, loading: false })}
+                          className="p-1 rounded-md text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
