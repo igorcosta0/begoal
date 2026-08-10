@@ -5,14 +5,101 @@ import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
 import { getObjetivos, getKrsByEmpresa } from '@/lib/queries/okr'
 import { formatPercent } from '@/lib/utils'
-import { Edit2, Check, X, ArrowRight, TrendingUp, Megaphone, Target, Plus, Send, Trash2 } from 'lucide-react'
+import {
+  Edit2, Check, X, ArrowRight, TrendingUp, Megaphone, Plus, Send, Trash2,
+  MapPin, MessageCircle, Sparkles,
+} from 'lucide-react'
 import Link from 'next/link'
 
-function ComentariosBlock({ campo, clientId, userId, nomeUsuario }: { campo: string; clientId: string; userId: string; nomeUsuario: string }) {
+function toRoman(num: number) {
+  const map: [number, string][] = [
+    [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'],
+    [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I'],
+  ]
+  let n = num, out = ''
+  for (const [v, s] of map) { while (n >= v) { out += s; n -= v } }
+  return out
+}
+
+function formatDataHora(iso: string) {
+  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+/** Lista de tags editável (chips) — usada para o posicionamento de mercado. */
+function ChipList({ campo, itens, placeholder, onSalvar }: { campo: string; itens: string[]; placeholder: string; onSalvar: (campo: string, itens: string[]) => Promise<void> }) {
+  const [editandoIdx, setEditandoIdx] = useState<number | null>(null)
+  const [textoEdicao, setTextoEdicao] = useState('')
+  const [adicionando, setAdicionando] = useState(false)
+  const [novoItem, setNovoItem] = useState('')
+
+  async function handleEditarSalvar(idx: number) {
+    if (!textoEdicao.trim()) return
+    const novos = [...itens]; novos[idx] = textoEdicao.trim()
+    await onSalvar(campo, novos); setEditandoIdx(null)
+  }
+
+  async function handleExcluir(idx: number) {
+    await onSalvar(campo, itens.filter((_, i) => i !== idx))
+  }
+
+  async function handleAdicionar(e: React.FormEvent) {
+    e.preventDefault()
+    if (!novoItem.trim()) return
+    await onSalvar(campo, [...itens, novoItem.trim()])
+    setNovoItem(''); setAdicionando(false)
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {itens.length === 0 && !adicionando && (
+        <p className="text-xs text-muted-foreground/60 italic">{placeholder}</p>
+      )}
+
+      {itens.map((item, idx) =>
+        editandoIdx === idx ? (
+          <div key={idx} className="flex items-center gap-1">
+            <input
+              type="text" value={textoEdicao} onChange={(e) => setTextoEdicao(e.target.value)} autoFocus
+              className="px-3 py-1.5 text-xs rounded-full border border-primary/40 bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+              onKeyDown={(e) => { if (e.key === 'Enter') handleEditarSalvar(idx); if (e.key === 'Escape') setEditandoIdx(null) }}
+            />
+            <button onClick={() => handleEditarSalvar(idx)} className="p-1 rounded-full bg-primary text-primary-foreground"><Check className="w-3 h-3" /></button>
+            <button onClick={() => setEditandoIdx(null)} className="p-1 rounded-full border border-border text-muted-foreground"><X className="w-3 h-3" /></button>
+          </div>
+        ) : (
+          <div key={idx} className="group/chip flex items-center gap-1 pl-3 pr-1.5 py-1.5 rounded-full text-xs font-semibold bg-primary/[0.07] text-primary border border-primary/[0.16] transition-colors hover:bg-primary/[0.12]">
+            <span>{item}</span>
+            <span className="flex items-center gap-0.5 opacity-0 group-hover/chip:opacity-100 transition-opacity">
+              <button onClick={() => { setEditandoIdx(idx); setTextoEdicao(item) }} className="p-0.5 rounded-full hover:bg-primary/10"><Edit2 className="w-2.5 h-2.5" /></button>
+              <button onClick={() => handleExcluir(idx)} className="p-0.5 rounded-full hover:bg-primary/10"><X className="w-2.5 h-2.5" /></button>
+            </span>
+          </div>
+        )
+      )}
+
+      {adicionando ? (
+        <form onSubmit={handleAdicionar} className="flex items-center gap-1">
+          <input type="text" value={novoItem} onChange={(e) => setNovoItem(e.target.value)} placeholder="Novo item..." autoFocus
+            className="px-3 py-1.5 text-xs rounded-full border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            onKeyDown={(e) => { if (e.key === 'Escape') setAdicionando(false) }} />
+          <button type="submit" disabled={!novoItem.trim()} className="p-1.5 rounded-full bg-primary text-primary-foreground disabled:opacity-50"><Check className="w-3 h-3" /></button>
+          <button type="button" onClick={() => setAdicionando(false)} className="p-1.5 rounded-full border border-border text-muted-foreground"><X className="w-3 h-3" /></button>
+        </form>
+      ) : (
+        <button onClick={() => setAdicionando(true)} className="flex items-center gap-1 pl-2.5 pr-3 py-1.5 rounded-full text-xs font-medium text-muted-foreground border border-dashed border-border hover:border-primary/40 hover:text-primary transition-colors">
+          <Plus className="w-3 h-3" /> Adicionar
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** Bloco de nota/comentários fixado — mostra o último registro e permite expandir a conversa. */
+function NotaFixada({ campo, clientId, userId, nomeUsuario }: { campo: string; clientId: string; userId: string; nomeUsuario: string }) {
   const [comentarios, setComentarios] = useState<any[]>([])
   const [novoComentario, setNovoComentario] = useState('')
   const [loading, setLoading] = useState(false)
-  const [mostrar, setMostrar] = useState(false)
+  const [expandido, setExpandido] = useState(false)
 
   const fetchComentarios = useCallback(async () => {
     const supabase = createClient()
@@ -39,135 +126,57 @@ function ComentariosBlock({ campo, clientId, userId, nomeUsuario }: { campo: str
     await fetchComentarios()
   }
 
+  const ultimo = comentarios[comentarios.length - 1]
+
   return (
-    <div className="mt-3 pt-3 border-t border-border">
-      <button onClick={() => setMostrar(!mostrar)} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors">
-        <span>💬</span>
-        {mostrar ? 'Ocultar' : `Comentários${comentarios.length > 0 ? ` (${comentarios.length})` : ''}`}
+    <div className="flex-1 flex flex-col">
+      {ultimo ? (
+        <div className="flex items-start gap-2.5">
+          <div className="w-6 h-6 rounded-full bg-violet-500/15 text-violet-600 text-[11px] font-extrabold flex items-center justify-center shrink-0 mt-px">
+            {(ultimo.autor_nome ?? 'U').charAt(0).toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold text-foreground">
+              {ultimo.autor_nome} <span className="font-normal text-muted-foreground">{formatDataHora(ultimo.created_at)}</span>
+            </p>
+            <p className="text-xs leading-snug mt-0.5 text-foreground/90">{ultimo.comentario}</p>
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground/60 italic">Nenhuma nota registrada ainda.</p>
+      )}
+
+      <button onClick={() => setExpandido(!expandido)} className="mt-2.5 self-start text-[11px] font-semibold text-primary hover:text-primary/80 transition-colors">
+        {expandido ? 'Ocultar conversa' : ultimo ? `Ver conversa${comentarios.length > 1 ? ` (${comentarios.length})` : ''} →` : '+ Adicionar nota'}
       </button>
-      {mostrar && (
-        <div className="mt-2 space-y-2">
-          {comentarios.length === 0 && <p className="text-xs text-muted-foreground italic">Nenhum comentário ainda.</p>}
-          {comentarios.map((c) => (
-            <div key={c.id} className="flex items-start gap-1.5 group/comment">
-              <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-bold text-primary">{(c.autor_nome ?? 'U').charAt(0).toUpperCase()}</div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-semibold text-foreground">{c.autor_nome} <span className="text-muted-foreground font-normal">{new Date(c.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span></p>
-                <p className="text-xs text-foreground">{c.comentario}</p>
-              </div>
-              {c.user_id === userId && (
-                <button onClick={() => handleExcluir(c.id)} className="opacity-0 group-hover/comment:opacity-100 p-0.5 rounded shrink-0">
-                  <Trash2 className="w-2.5 h-2.5 text-muted-foreground" />
-                </button>
-              )}
+
+      {expandido && (
+        <div className="mt-3 pt-3 border-t border-border space-y-2.5">
+          {comentarios.length > 1 && (
+            <div className="max-h-24 overflow-y-auto space-y-2 pr-1">
+              {comentarios.slice(0, -1).map((c) => (
+                <div key={c.id} className="group/comment flex items-start gap-1.5">
+                  <div className="w-5 h-5 rounded-full bg-violet-500/10 text-violet-600 flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-bold">{(c.autor_nome ?? 'U').charAt(0).toUpperCase()}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-semibold text-foreground">{c.autor_nome} <span className="text-muted-foreground font-normal">{formatDataHora(c.created_at)}</span></p>
+                    <p className="text-xs text-foreground">{c.comentario}</p>
+                  </div>
+                  {c.user_id === userId && (
+                    <button onClick={() => handleExcluir(c.id)} className="opacity-0 group-hover/comment:opacity-100 p-0.5 rounded shrink-0">
+                      <Trash2 className="w-2.5 h-2.5 text-muted-foreground" />
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
+          )}
           <form onSubmit={handleEnviar} className="flex gap-1.5">
-            <input type="text" value={novoComentario} onChange={(e) => setNovoComentario(e.target.value)} placeholder="Comentar..." className="flex-1 px-2 py-1 text-xs rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
-            <button type="submit" disabled={loading || !novoComentario.trim()} className="p-1 rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"><Send className="w-3 h-3" /></button>
+            <input type="text" value={novoComentario} onChange={(e) => setNovoComentario(e.target.value)} placeholder="Escrever nota..." className="flex-1 px-2.5 py-1.5 text-xs rounded-full border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+            <button type="submit" disabled={loading || !novoComentario.trim()} className="p-1.5 rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"><Send className="w-3 h-3" /></button>
           </form>
         </div>
       )}
     </div>
-  )
-}
-
-function ListaItens({ campo, itens, placeholder, onSalvar }: { campo: string; itens: string[]; placeholder: string; onSalvar: (campo: string, itens: string[]) => Promise<void> }) {
-  const [editandoIdx, setEditandoIdx] = useState<number | null>(null)
-  const [textoEdicao, setTextoEdicao] = useState('')
-  const [novoItem, setNovoItem] = useState('')
-  const [adicionando, setAdicionando] = useState(false)
-
-  async function handleEditarSalvar(idx: number) {
-    if (!textoEdicao.trim()) return
-    const novos = [...itens]; novos[idx] = textoEdicao.trim()
-    await onSalvar(campo, novos); setEditandoIdx(null)
-  }
-
-  async function handleExcluir(idx: number) {
-    await onSalvar(campo, itens.filter((_, i) => i !== idx))
-  }
-
-  async function handleAdicionar(e: React.FormEvent) {
-    e.preventDefault()
-    if (!novoItem.trim()) return
-    await onSalvar(campo, [...itens, novoItem.trim()])
-    setNovoItem(''); setAdicionando(false)
-  }
-
-  return (
-    <div className="space-y-1">
-      <div className="max-h-28 overflow-y-auto space-y-1 pr-1">
-        {itens.length === 0 && !adicionando && <p className="text-xs text-muted-foreground/50 italic">{placeholder}</p>}
-        {itens.map((item, idx) => (
-          <div key={idx} className="group/item flex items-start gap-1.5">
-            {editandoIdx === idx ? (
-              <div className="flex-1 flex gap-1">
-                <input type="text" value={textoEdicao} onChange={(e) => setTextoEdicao(e.target.value)}
-                  className="flex-1 px-2 py-0.5 text-xs rounded border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring" autoFocus
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleEditarSalvar(idx); if (e.key === 'Escape') setEditandoIdx(null) }} />
-                <button onClick={() => handleEditarSalvar(idx)} className="p-0.5 rounded bg-primary text-primary-foreground"><Check className="w-3 h-3" /></button>
-                <button onClick={() => setEditandoIdx(null)} className="p-0.5 rounded border border-border text-muted-foreground"><X className="w-3 h-3" /></button>
-              </div>
-            ) : (
-              <>
-                <div className="w-1 h-1 rounded-full bg-primary/40 shrink-0 mt-1.5" />
-                <p className="flex-1 text-xs text-foreground leading-snug">{item}</p>
-                <div className="flex gap-0.5 opacity-0 group-hover/item:opacity-100 shrink-0">
-                  <button onClick={() => { setEditandoIdx(idx); setTextoEdicao(item) }} className="p-0.5 rounded hover:bg-accent"><Edit2 className="w-2.5 h-2.5 text-muted-foreground" /></button>
-                  <button onClick={() => handleExcluir(idx)} className="p-0.5 rounded hover:bg-accent"><Trash2 className="w-2.5 h-2.5 text-muted-foreground" /></button>
-                </div>
-              </>
-            )}
-          </div>
-        ))}
-      </div>
-      {adicionando ? (
-        <form onSubmit={handleAdicionar} className="flex gap-1 mt-1">
-          <input type="text" value={novoItem} onChange={(e) => setNovoItem(e.target.value)} placeholder="Novo item..." autoFocus
-            className="flex-1 px-2 py-1 text-xs rounded border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            onKeyDown={(e) => { if (e.key === 'Escape') setAdicionando(false) }} />
-          <button type="submit" disabled={!novoItem.trim()} className="p-1 rounded bg-primary text-primary-foreground disabled:opacity-50"><Check className="w-3 h-3" /></button>
-          <button type="button" onClick={() => setAdicionando(false)} className="p-1 rounded border border-border text-muted-foreground"><X className="w-3 h-3" /></button>
-        </form>
-      ) : (
-        <button onClick={() => setAdicionando(true)} className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors mt-1">
-          <Plus className="w-3 h-3" /> Adicionar
-        </button>
-      )}
-    </div>
-  )
-}
-
-function ValorCard({ valor, onEditar, onExcluir }: { valor: any; onEditar: (v: any) => void; onExcluir: (id: string) => void }) {
-  return (
-    <div className="relative group bg-card rounded-2xl p-4 flex flex-col gap-2
-      shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.10)]
-      border border-border/60 transition-all duration-200
-      before:absolute before:inset-0 before:rounded-2xl before:border before:border-white/60 before:pointer-events-none">
-      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onClick={() => onEditar(valor)} className="p-1 rounded-md hover:bg-accent transition-colors">
-          <Edit2 className="w-3 h-3 text-muted-foreground" />
-        </button>
-        <button onClick={() => onExcluir(valor.id)} className="p-1 rounded-md hover:bg-accent transition-colors">
-          <Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive" />
-        </button>
-      </div>
-      <div className="w-6 h-0.5 bg-primary/40 rounded-full" />
-      <p className="text-xs font-medium text-foreground leading-relaxed pr-10">{valor.texto}</p>
-    </div>
-  )
-}
-
-function ValorVazioCard({ onCadastrar }: { onCadastrar: () => void }) {
-  return (
-    <button onClick={onCadastrar}
-      className="relative bg-card/50 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 min-h-[80px]
-        border border-dashed border-border hover:border-primary/40 hover:bg-accent/20
-        shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all duration-200 group">
-      <Plus className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-      <p className="text-[11px] text-muted-foreground group-hover:text-foreground transition-colors font-medium">Cadastrar Valor</p>
-    </button>
   )
 }
 
@@ -316,15 +325,14 @@ export default function InicioPage() {
   const progressoGeral = objetivosComKrs.length > 0 ? objetivosComKrs.reduce((a, obj) => a + obj.progresso, 0) / objetivosComKrs.length : 0
   const krsAtivos = krs.filter((kr: any) => !kr.concluido).length
   const temCampanha = !!(formIdentidade.campanha_titulo || formIdentidade.campanha_descricao)
-  const valorSlots = Array.from({ length: 4 }, (_, i) => valores[i] ?? null)
 
   if (loading) {
     return (
       <div className="flex gap-4 h-[calc(100vh-48px)] animate-pulse">
         <div className="flex-1 space-y-4">
           <div className="h-40 rounded-2xl bg-secondary" />
-          <div className="h-40 rounded-2xl bg-secondary" />
-          <div className="h-36 rounded-2xl bg-secondary" />
+          <div className="h-24 rounded-2xl bg-secondary" />
+          <div className="h-64 rounded-2xl bg-secondary" />
         </div>
         <div className="w-72 rounded-2xl bg-secondary" />
       </div>
@@ -392,9 +400,8 @@ export default function InicioPage() {
           </div>
         ) : (
           <div className="relative rounded-2xl overflow-hidden shrink-0"
-            style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5986 40%, #1a4a7a 100%)' }}>
+            style={{ background: 'radial-gradient(680px 260px at 88% -10%, rgba(96,165,250,0.35), transparent 60%), linear-gradient(135deg, #1e3a5f 0%, #234b7c 45%, #163863 100%)' }}>
             <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
-            <div className="absolute top-0 right-0 w-64 h-64 opacity-10 rounded-full blur-3xl" style={{ background: 'radial-gradient(circle, #60a5fa, transparent)' }} />
             <div className="relative z-10 p-5 md:p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -412,11 +419,11 @@ export default function InicioPage() {
                     </button>
                   )}
                   <div className="bg-white/10 border border-white/10 rounded-xl px-3 py-2 text-center">
-                    <p className="text-lg font-bold text-white">{krsAtivos}</p>
+                    <p className="text-lg font-bold text-white tabular-nums">{krsAtivos}</p>
                     <p className="text-[9px] text-white/50 uppercase tracking-wider">KRs ativos</p>
                   </div>
                   <div className="bg-white/10 border border-white/10 rounded-xl px-3 py-2 text-center">
-                    <p className="text-lg font-bold text-white">{formatPercent(progressoGeral)}</p>
+                    <p className="text-lg font-bold text-white tabular-nums">{formatPercent(progressoGeral)}</p>
                     <p className="text-[9px] text-white/50 uppercase tracking-wider">Progresso</p>
                   </div>
                 </div>
@@ -454,21 +461,32 @@ export default function InicioPage() {
           </div>
         )}
 
-        {/* MERCADO */}
-        <div className="bg-card border border-border rounded-2xl p-4 flex flex-col shrink-0">
-          <div className="flex items-center gap-2 mb-3 shrink-0">
-            <div className="w-6 h-6 rounded-md bg-blue-50 flex items-center justify-center border border-blue-100">
-              <Target className="w-3.5 h-3.5 text-blue-600" />
+        {/* MERCADO + NOTA — banda única, lado a lado */}
+        <div className="bg-card border border-border rounded-2xl overflow-hidden shrink-0 grid grid-cols-1 md:grid-cols-[1.3fr_1fr]">
+          <div className="p-4 md:p-5">
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className="w-6 h-6 rounded-md bg-blue-50 flex items-center justify-center border border-blue-100 shrink-0">
+                <MapPin className="w-3.5 h-3.5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-foreground">Mercado</p>
+                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Onde a empresa atua</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-semibold text-foreground">Mercado</p>
-              <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Posicionamento</p>
+            <ChipList campo="mercado_posicionamento" itens={mercadoItens} placeholder="Adicione onde atuamos..." onSalvar={handleSalvarLista} />
+          </div>
+          <div className="p-4 md:p-5 border-t md:border-t-0 md:border-l border-border flex flex-col">
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className="w-6 h-6 rounded-md bg-violet-50 flex items-center justify-center border border-violet-100 shrink-0">
+                <MessageCircle className="w-3.5 h-3.5 text-violet-600" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-foreground">Nota fixada</p>
+                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Recado da equipe</p>
+              </div>
             </div>
+            {empresa && <NotaFixada campo="mercado_posicionamento" clientId={empresa.id} userId={userId} nomeUsuario={nomeUsuario} />}
           </div>
-          <div className="flex-1">
-            <ListaItens campo="mercado_posicionamento" itens={mercadoItens} placeholder="Adicione onde atuamos..." onSalvar={handleSalvarLista} />
-          </div>
-          {empresa && <ComentariosBlock campo="mercado_posicionamento" clientId={empresa.id} userId={userId} nomeUsuario={nomeUsuario} />}
         </div>
 
         {/* OKRs — GRÁFICO */}
@@ -483,9 +501,17 @@ export default function InicioPage() {
                 <p className="text-[11px] text-muted-foreground font-medium">{objetivos.length} objetivos estratégicos ativos</p>
               </div>
             </div>
-            <Link href="/okr" className="group flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-bold transition-all">
-              Painel Completo <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
+            <div className="flex items-center gap-5">
+              {objetivosComKrs.length > 0 && (
+                <div className="text-right">
+                  <p className="text-xl font-extrabold text-primary tabular-nums leading-none">{formatPercent(progressoGeral)}</p>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">Média geral</p>
+                </div>
+              )}
+              <Link href="/okr" className="group flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-bold transition-all">
+                Painel Completo <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+            </div>
           </div>
 
           <div className="flex-1 relative flex items-end justify-around gap-6 px-4 pb-4">
@@ -500,7 +526,7 @@ export default function InicioPage() {
             {objetivosComKrs.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center mb-10 gap-3">
                 <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                  <Target className="w-6 h-6 text-muted-foreground/40" />
+                  <TrendingUp className="w-6 h-6 text-muted-foreground/40" />
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-medium text-muted-foreground">Nenhum dado para exibir</p>
@@ -520,7 +546,7 @@ export default function InicioPage() {
                     <div className="absolute -top-2 opacity-0 group-hover:opacity-100 group-hover:-top-6 transition-all duration-300 z-10 px-2 py-1 rounded-md bg-foreground text-background text-[10px] font-bold shadow-xl">
                       {formatPercent(progresso)}
                     </div>
-                    <span className={`text-[11px] font-black mb-3 transition-colors duration-300 ${config.text}`}>{formatPercent(progresso)}</span>
+                    <span className={`text-[11px] font-black mb-3 tabular-nums transition-colors duration-300 ${config.text}`}>{formatPercent(progresso)}</span>
                     <div className="w-full max-w-[36px] bg-muted/30 backdrop-blur-[2px] rounded-t-xl relative flex items-end overflow-hidden h-[160px] border border-foreground/[0.03] shadow-inner">
                       <div className={`w-full bg-gradient-to-t ${config.bg} ${config.shadow} transition-all duration-1000 ease-out rounded-t-lg group-hover:brightness-110 shadow-lg`}
                         style={{ height: `${Math.max(progresso, 6)}%` }}>
@@ -539,33 +565,50 @@ export default function InicioPage() {
       </div>
 
       {/* ═══ COLUNA DIREITA — VALORES DA EMPRESA ═══ */}
-      <div className="w-72 shrink-0 bg-card border border-border rounded-2xl p-4 flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between mb-4 shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-violet-50 border border-violet-100 flex items-center justify-center">
-              <span className="text-xs">✦</span>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-foreground">Valores</p>
-              <p className="text-[9px] text-muted-foreground">Da empresa</p>
-            </div>
+      <div className="w-72 shrink-0 bg-card border border-border rounded-2xl overflow-hidden flex flex-col">
+        <div className="relative px-5 py-5 border-b border-border shrink-0 overflow-hidden"
+          style={{ background: 'linear-gradient(160deg, rgba(139,92,246,0.14), rgba(139,92,246,0.03) 70%)' }}>
+          <div className="absolute inset-0 opacity-[0.35] pointer-events-none"
+            style={{
+              backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(139,92,246,0.35) 1px, transparent 0)',
+              backgroundSize: '16px 16px',
+              maskImage: 'linear-gradient(180deg, black, transparent)',
+              WebkitMaskImage: 'linear-gradient(180deg, black, transparent)',
+            }} />
+          <div className="relative flex items-center gap-1.5 text-violet-600">
+            <Sparkles className="w-3 h-3" />
+            <p className="text-[9.5px] font-bold uppercase tracking-widest">Cultura</p>
           </div>
+          <p className="relative text-lg font-extrabold text-foreground mt-1 tracking-tight">Valores</p>
+          <p className="relative text-[11px] text-muted-foreground mt-1 leading-relaxed">
+            O que guia as decisões {empresa?.company_name ? `da ${empresa.company_name}` : 'da empresa'} no dia a dia.
+          </p>
         </div>
 
-        <div className="flex-1 grid grid-cols-2 gap-2 overflow-y-auto content-start">
-          {valorSlots.map((valor, idx) =>
-            valor ? (
-              <ValorCard
-                key={valor.id}
-                valor={valor}
-                onEditar={handleAbrirModalValor}
-                onExcluir={handleExcluirValor}
-              />
-            ) : (
-              <ValorVazioCard key={`empty-${idx}`} onCadastrar={() => handleAbrirModalValor()} />
-            )
+        <div className="flex-1 overflow-y-auto p-2">
+          {valores.length === 0 && (
+            <p className="text-xs text-muted-foreground/60 italic px-3 py-3">Nenhum valor cadastrado ainda.</p>
           )}
+          {valores.map((valor, idx) => (
+            <div key={valor.id} className="group relative flex items-start gap-3 px-3 py-3 rounded-xl hover:bg-accent/60 transition-colors border-b border-border/60 last:border-b-0">
+              <span className="text-xs font-extrabold text-violet-600 w-5 shrink-0 tabular-nums">{toRoman(idx + 1)}</span>
+              <p className="flex-1 text-xs font-semibold text-foreground leading-snug pr-8">{valor.texto}</p>
+              <div className="absolute right-2 top-2.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => handleAbrirModalValor(valor)} className="p-1 rounded-md hover:bg-accent transition-colors">
+                  <Edit2 className="w-3 h-3 text-muted-foreground" />
+                </button>
+                <button onClick={() => handleExcluirValor(valor.id)} className="p-1 rounded-md hover:bg-accent transition-colors">
+                  <Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive" />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
+
+        <button onClick={() => handleAbrirModalValor()}
+          className="mx-3 mb-3 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed border-border text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors text-xs font-semibold shrink-0">
+          <Plus className="w-3.5 h-3.5" /> Adicionar valor
+        </button>
       </div>
 
       {/* Modal Cadastrar/Editar Valor */}
