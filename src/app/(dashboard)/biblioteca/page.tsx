@@ -9,7 +9,7 @@ import {
 } from '@/lib/queries/biblioteca'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
 import { formatDate, formatBytes } from '@/lib/utils'
-import { Library, Plus, Download, X, UploadCloud, Check, BookOpen } from 'lucide-react'
+import { Library, Plus, Download, X, UploadCloud, Check, BookOpen, Trash2 } from 'lucide-react'
 
 // ── Estante: paleta e variação por documento ──────────────────────────────
 // Cada categoria tem 3 tons (efeito de lombadas variadas) e uma cor de faixa
@@ -39,7 +39,7 @@ const CATEGORIA_COR_CHIP: Record<string, string> = {
   'Outros': 'bg-gray-100 text-gray-600',
 }
 
-const LARGURAS = [36, 42, 48, 54]
+const LARGURAS = [40, 46, 52, 58]
 const ALTURAS = [168, 184, 200]
 
 function hashDoc(seed: string) {
@@ -53,25 +53,34 @@ function extensaoDoc(nome: string) {
   return idx === -1 ? '' : nome.slice(idx + 1).toUpperCase()
 }
 
+function tomDoDocumento(doc: BibliotecaDocumento) {
+  const tons = CATEGORIA_TONS[doc.categoria] ?? CATEGORIA_TONS['Outros']
+  return tons[hashDoc(doc.id) % tons.length]
+}
+
 function LombadaLivro({
-  doc, podeGerenciar, baixando, onBaixar, onExcluir,
+  doc, podeGerenciar, baixando, onBaixar, onExcluir, onFoco, onDesfoco,
 }: {
   doc: BibliotecaDocumento
   podeGerenciar: boolean
   baixando: string | null
   onBaixar: (doc: BibliotecaDocumento) => void
   onExcluir: (doc: BibliotecaDocumento) => void
+  onFoco: (doc: BibliotecaDocumento) => void
+  onDesfoco: (doc: BibliotecaDocumento) => void
 }) {
-  const tons = CATEGORIA_TONS[doc.categoria] ?? CATEGORIA_TONS['Outros']
   const faixa = CATEGORIA_FAIXA[doc.categoria] ?? CATEGORIA_FAIXA['Outros']
-  const tom = tons[hashDoc(doc.id) % tons.length]
+  const tom = tomDoDocumento(doc)
   const largura = LARGURAS[hashDoc(`${doc.id}w`) % LARGURAS.length]
   const altura = ALTURAS[hashDoc(`${doc.id}h`) % ALTURAS.length]
   const ext = extensaoDoc(doc.nome)
-  const titulo = `${doc.nome} · ${doc.categoria} · ${formatBytes(doc.tamanho_bytes)} · ${formatDate(doc.created_at)}`
 
   return (
-    <div className="group/book relative shrink-0 self-end" style={{ width: largura, height: altura }}>
+    <div
+      className="group/book relative shrink-0 self-end"
+      style={{ width: largura, height: altura }}
+      onMouseEnter={() => onFoco(doc)}
+    >
       {podeGerenciar && (
         <button
           type="button"
@@ -86,8 +95,9 @@ function LombadaLivro({
       <button
         type="button"
         onClick={() => onBaixar(doc)}
+        onFocus={() => onFoco(doc)}
+        onBlur={() => onDesfoco(doc)}
         disabled={baixando === doc.id}
-        title={titulo}
         aria-label={`Baixar ${doc.nome}`}
         className="relative w-full h-full rounded-t-[5px] rounded-b-[2px] flex flex-col items-center overflow-hidden transition-transform duration-200 ease-out group-hover/book:-translate-y-3 focus-visible:-translate-y-3 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 disabled:opacity-60"
         style={{
@@ -111,13 +121,15 @@ function LombadaLivro({
   )
 }
 
-function Prateleira({ categoria, documentos, podeGerenciar, baixando, onBaixar, onExcluir }: {
+function Prateleira({ categoria, documentos, podeGerenciar, baixando, onBaixar, onExcluir, onFoco, onDesfoco }: {
   categoria: string
   documentos: BibliotecaDocumento[]
   podeGerenciar: boolean
   baixando: string | null
   onBaixar: (doc: BibliotecaDocumento) => void
   onExcluir: (doc: BibliotecaDocumento) => void
+  onFoco: (doc: BibliotecaDocumento) => void
+  onDesfoco: (doc: BibliotecaDocumento) => void
 }) {
   return (
     <section id={`estante-${categoria}`} className="scroll-mt-4">
@@ -138,6 +150,8 @@ function Prateleira({ categoria, documentos, podeGerenciar, baixando, onBaixar, 
               baixando={baixando}
               onBaixar={onBaixar}
               onExcluir={onExcluir}
+              onFoco={onFoco}
+              onDesfoco={onDesfoco}
             />
           ))}
         </div>
@@ -253,6 +267,7 @@ export default function BibliotecaPage() {
   const [nomeUsuario, setNomeUsuario] = useState('')
   const [userId, setUserId] = useState('')
   const [baixando, setBaixando] = useState<string | null>(null)
+  const [docEmFoco, setDocEmFoco] = useState<BibliotecaDocumento | null>(null)
 
   const [modalEnviar, setModalEnviar] = useState(false)
   const [modalExcluir, setModalExcluir] = useState<{ open: boolean; doc: BibliotecaDocumento | null; loading: boolean }>({ open: false, doc: null, loading: false })
@@ -304,6 +319,10 @@ export default function BibliotecaPage() {
 
   function handlePular(categoria: string) {
     document.getElementById(`estante-${categoria}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  function handleDesfoco(doc: BibliotecaDocumento) {
+    setDocEmFoco((atual) => (atual?.id === doc.id ? null : atual))
   }
 
   return (
@@ -369,21 +388,72 @@ export default function BibliotecaPage() {
           )}
         </div>
       ) : (
-        <div className="rounded-3xl border border-border bg-gradient-to-b from-amber-50/50 to-transparent p-5 md:p-7 space-y-9">
-          {categoriasComDocs.map((categoria) => (
-            <Prateleira
-              key={categoria}
-              categoria={categoria}
-              documentos={documentos.filter((d) => d.categoria === categoria)}
-              podeGerenciar={podeGerenciar}
-              baixando={baixando}
-              onBaixar={handleBaixar}
-              onExcluir={(doc) => setModalExcluir({ open: true, doc, loading: false })}
-            />
-          ))}
-          <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground/70 pt-1">
-            <Download className="w-3 h-3" /> Clique em um livro pra baixar. Passe o mouse pra ver o nome completo.
-          </p>
+        <div
+          className="rounded-3xl border border-border bg-gradient-to-b from-amber-50/50 to-transparent p-5 md:p-7 space-y-6"
+          onMouseLeave={() => setDocEmFoco(null)}
+        >
+          {/* Painel de detalhes — mostra o título por extenso (na horizontal, sem
+              corte) do livro em foco, já que na lombada ele vai vertical e apertado. */}
+          <div className="rounded-2xl border border-border bg-card px-4 py-3 flex items-center gap-3 min-h-[60px]">
+            {docEmFoco ? (
+              <>
+                <div
+                  className="w-9 h-9 rounded-lg shrink-0 flex items-center justify-center text-[8px] font-bold text-white/90"
+                  style={{ background: tomDoDocumento(docEmFoco) }}
+                >
+                  {extensaoDoc(docEmFoco.nome)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground leading-snug line-clamp-2" title={docEmFoco.nome}>
+                    {docEmFoco.nome}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {docEmFoco.categoria} · {formatBytes(docEmFoco.tamanho_bytes)} · {formatDate(docEmFoco.created_at)}
+                    {docEmFoco.autor_nome ? ` · enviado por ${docEmFoco.autor_nome}` : ''}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => handleBaixar(docEmFoco)}
+                    disabled={baixando === docEmFoco.id}
+                    className="flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    {baixando === docEmFoco.id ? 'Abrindo...' : 'Baixar'}
+                  </button>
+                  {podeGerenciar && (
+                    <button
+                      onClick={() => setModalExcluir({ open: true, doc: docEmFoco, loading: false })}
+                      className="p-1.5 rounded-xl border border-border text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      title={`Excluir ${docEmFoco.nome}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <BookOpen className="w-4 h-4 shrink-0" /> Passe o mouse (ou navegue com Tab) sobre um livro pra ver o título completo aqui. Clique nele pra baixar.
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-9">
+            {categoriasComDocs.map((categoria) => (
+              <Prateleira
+                key={categoria}
+                categoria={categoria}
+                documentos={documentos.filter((d) => d.categoria === categoria)}
+                podeGerenciar={podeGerenciar}
+                baixando={baixando}
+                onBaixar={handleBaixar}
+                onExcluir={(doc) => setModalExcluir({ open: true, doc, loading: false })}
+                onFoco={setDocEmFoco}
+                onDesfoco={handleDesfoco}
+              />
+            ))}
+          </div>
         </div>
       )}
 
