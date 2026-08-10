@@ -67,7 +67,9 @@ insert into storage.buckets (id, name, public)
 values ('biblioteca', 'biblioteca', false)
 on conflict (id) do nothing;
 
-alter table storage.objects enable row level security;
+-- Não precisa (e não dá: "must be owner of table objects") rodar
+-- ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY — o Supabase já
+-- deixa RLS ligado por padrão nessa tabela em todo projeto novo.
 
 drop policy if exists "biblioteca_storage_select" on storage.objects;
 create policy "biblioteca_storage_select" on storage.objects
