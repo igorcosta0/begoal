@@ -7,7 +7,7 @@ import { getObjetivos, getKrsByEmpresa } from '@/lib/queries/okr'
 import { formatPercent } from '@/lib/utils'
 import {
   Edit2, Check, X, ArrowRight, TrendingUp, Megaphone, Plus, Send, Trash2,
-  MapPin, MessageCircle, Sparkles,
+  MapPin, MessageCircle, Sparkles, Library,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -409,6 +409,9 @@ export default function InicioPage() {
                   <p className="text-white/90 text-base font-medium mt-0.5">{hora}{nomeUsuario ? `, ${nomeUsuario}` : ''} 👋</p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Link href="/biblioteca" className="flex items-center gap-1.5 bg-white/8 hover:bg-white/15 border border-white/15 text-white/70 hover:text-white rounded-xl px-2.5 py-1.5 text-xs font-medium transition-colors">
+                    <Library className="w-3 h-3" /> Biblioteca
+                  </Link>
                   {temCampanha ? (
                     <button onClick={() => setVerCampanha(true)} className="flex items-center gap-1.5 bg-amber-400/20 hover:bg-amber-400/30 border border-amber-400/40 text-amber-300 rounded-xl px-2.5 py-1.5 text-xs font-medium transition-colors">
                       <Megaphone className="w-3 h-3" /> Campanha <ArrowRight className="w-3 h-3" />

@@ -65,6 +65,18 @@ export function getProgressStatus(progress: number) {
   return 'Atrasado'
 }
 
+export function formatBytes(bytes?: number | null): string {
+  if (!bytes || bytes <= 0) return '—'
+  const unidades = ['B', 'KB', 'MB', 'GB']
+  let valor = bytes
+  let i = 0
+  while (valor >= 1024 && i < unidades.length - 1) {
+    valor /= 1024
+    i++
+  }
+  return `${i === 0 ? valor : valor.toFixed(1)} ${unidades[i]}`
+}
+
 // Módulo de Avaliação de Desempenho foi construído só com o rubric da CTZ
 // (pilares culturais e verticais em ModalAvaliacao.tsx), por isso fica restrito a ela.
 export function isEmpresaCTZ(companyName?: string | null): boolean {
