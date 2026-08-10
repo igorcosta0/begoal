@@ -9,14 +9,150 @@ import {
 } from '@/lib/queries/biblioteca'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
 import { formatDate, formatBytes } from '@/lib/utils'
-import { Library, Plus, FileText, Download, Trash2, X, UploadCloud, Check } from 'lucide-react'
+import { Library, Plus, Download, X, UploadCloud, Check, BookOpen } from 'lucide-react'
 
-const CATEGORIA_COR: Record<string, string> = {
+// ── Estante: paleta e variação por documento ──────────────────────────────
+// Cada categoria tem 3 tons (efeito de lombadas variadas) e uma cor de faixa
+// decorativa. Largura/altura variam por um hash estável do id do documento,
+// pra parecer uma estante real (livros de tamanhos diferentes), sem
+// recalcular a cada re-render.
+
+const CATEGORIA_TONS: Record<string, string[]> = {
+  'Cultura': ['#4c2f7a', '#5f3f95', '#7550b0'],
+  'Estratégia': ['#1c3f70', '#264d8c', '#3160ab'],
+  'Pessoas': ['#7a4f18', '#966024', '#b17431'],
+  'Financeiro': ['#1c5943', '#237055', '#2c8768'],
+  'Outros': ['#3d3935', '#4c4742', '#5c564f'],
+}
+const CATEGORIA_FAIXA: Record<string, string> = {
+  'Cultura': '#c9a9f5',
+  'Estratégia': '#9fc4ff',
+  'Pessoas': '#f0c987',
+  'Financeiro': '#8fe3c3',
+  'Outros': '#d8d3ca',
+}
+const CATEGORIA_COR_CHIP: Record<string, string> = {
   'Cultura': 'bg-violet-100 text-violet-700',
   'Estratégia': 'bg-blue-100 text-blue-700',
   'Pessoas': 'bg-amber-100 text-amber-700',
   'Financeiro': 'bg-emerald-100 text-emerald-700',
   'Outros': 'bg-gray-100 text-gray-600',
+}
+
+const LARGURAS = [36, 42, 48, 54]
+const ALTURAS = [168, 184, 200]
+
+function hashDoc(seed: string) {
+  let h = 0
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0
+  return Math.abs(h)
+}
+
+function extensaoDoc(nome: string) {
+  const idx = nome.lastIndexOf('.')
+  return idx === -1 ? '' : nome.slice(idx + 1).toUpperCase()
+}
+
+function LombadaLivro({
+  doc, podeGerenciar, baixando, onBaixar, onExcluir,
+}: {
+  doc: BibliotecaDocumento
+  podeGerenciar: boolean
+  baixando: string | null
+  onBaixar: (doc: BibliotecaDocumento) => void
+  onExcluir: (doc: BibliotecaDocumento) => void
+}) {
+  const tons = CATEGORIA_TONS[doc.categoria] ?? CATEGORIA_TONS['Outros']
+  const faixa = CATEGORIA_FAIXA[doc.categoria] ?? CATEGORIA_FAIXA['Outros']
+  const tom = tons[hashDoc(doc.id) % tons.length]
+  const largura = LARGURAS[hashDoc(`${doc.id}w`) % LARGURAS.length]
+  const altura = ALTURAS[hashDoc(`${doc.id}h`) % ALTURAS.length]
+  const ext = extensaoDoc(doc.nome)
+  const titulo = `${doc.nome} · ${doc.categoria} · ${formatBytes(doc.tamanho_bytes)} · ${formatDate(doc.created_at)}`
+
+  return (
+    <div className="group/book relative shrink-0 self-end" style={{ width: largura, height: altura }}>
+      {podeGerenciar && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onExcluir(doc) }}
+          title={`Excluir ${doc.nome}`}
+          aria-label={`Excluir ${doc.nome}`}
+          className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 w-5 h-5 rounded-full bg-card border border-border text-muted-foreground hover:text-destructive hover:border-destructive/50 flex items-center justify-center opacity-70 group-hover/book:opacity-100 group-focus-within/book:opacity-100 transition-opacity shadow-sm"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={() => onBaixar(doc)}
+        disabled={baixando === doc.id}
+        title={titulo}
+        aria-label={`Baixar ${doc.nome}`}
+        className="relative w-full h-full rounded-t-[5px] rounded-b-[2px] flex flex-col items-center overflow-hidden transition-transform duration-200 ease-out group-hover/book:-translate-y-3 focus-visible:-translate-y-3 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 disabled:opacity-60"
+        style={{
+          background: `linear-gradient(90deg, rgba(255,255,255,.24) 0%, transparent 16%, transparent 84%, rgba(0,0,0,.22) 100%), ${tom}`,
+          boxShadow: '2px 2px 5px rgba(30,20,10,.28), -1px 0 0 rgba(255,255,255,.10) inset',
+        }}
+      >
+        <span className="w-full h-[3px] mt-3 shrink-0" style={{ background: faixa, opacity: 0.85 }} />
+        <span className="flex-1 min-h-0 w-full flex items-center justify-center py-1.5">
+          <span
+            className="block max-h-full overflow-hidden whitespace-nowrap text-ellipsis text-[10.5px] font-semibold tracking-wide text-white/95"
+            style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+          >
+            {doc.nome}
+          </span>
+        </span>
+        <span className="w-full h-[3px] mb-2.5 shrink-0" style={{ background: faixa, opacity: 0.85 }} />
+        {ext && <span className="mb-2 text-[7.5px] font-bold tracking-widest text-white/65 shrink-0">{ext}</span>}
+      </button>
+    </div>
+  )
+}
+
+function Prateleira({ categoria, documentos, podeGerenciar, baixando, onBaixar, onExcluir }: {
+  categoria: string
+  documentos: BibliotecaDocumento[]
+  podeGerenciar: boolean
+  baixando: string | null
+  onBaixar: (doc: BibliotecaDocumento) => void
+  onExcluir: (doc: BibliotecaDocumento) => void
+}) {
+  return (
+    <section id={`estante-${categoria}`} className="scroll-mt-4">
+      <div className="flex items-baseline gap-2 mb-3">
+        <h2 className="text-xs font-bold text-foreground uppercase tracking-widest">{categoria}</h2>
+        <span className="text-[11px] text-muted-foreground">
+          {documentos.length} documento{documentos.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+
+      <div className="relative">
+        <div className="flex items-end gap-1.5 overflow-x-auto pb-1 px-1 pt-3">
+          {documentos.map((doc) => (
+            <LombadaLivro
+              key={doc.id}
+              doc={doc}
+              podeGerenciar={podeGerenciar}
+              baixando={baixando}
+              onBaixar={onBaixar}
+              onExcluir={onExcluir}
+            />
+          ))}
+        </div>
+        {/* Tábua da prateleira */}
+        <div
+          className="h-3 rounded-[3px] mx-1"
+          style={{
+            background: 'linear-gradient(180deg, #b98653 0%, #96683c 55%, #74502c 100%)',
+            boxShadow: '0 8px 12px -6px rgba(59,33,14,.5), inset 0 1px 0 rgba(255,255,255,.3)',
+          }}
+        />
+        <div className="h-2 mx-2 rounded-b-[3px] opacity-40" style={{ background: 'linear-gradient(180deg, rgba(59,33,14,.35), transparent)' }} />
+      </div>
+    </section>
+  )
 }
 
 function ModalEnviarDocumento({
@@ -116,7 +252,6 @@ export default function BibliotecaPage() {
   const [podeGerenciar, setPodeGerenciar] = useState(false)
   const [nomeUsuario, setNomeUsuario] = useState('')
   const [userId, setUserId] = useState('')
-  const [categoriaFiltro, setCategoriaFiltro] = useState('')
   const [baixando, setBaixando] = useState<string | null>(null)
 
   const [modalEnviar, setModalEnviar] = useState(false)
@@ -166,7 +301,10 @@ export default function BibliotecaPage() {
   }
 
   const categoriasComDocs = CATEGORIAS_BIBLIOTECA.filter((c) => documentos.some((d) => d.categoria === c))
-  const documentosFiltrados = documentos.filter((d) => !categoriaFiltro || d.categoria === categoriaFiltro)
+
+  function handlePular(categoria: string) {
+    document.getElementById(`estante-${categoria}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   return (
     <div className="space-y-6">
@@ -178,7 +316,9 @@ export default function BibliotecaPage() {
           <div>
             <h1 className="text-2xl font-bold text-foreground tracking-tight">Biblioteca</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {empresa?.company_name} — Código de cultura, materiais de pessoas e outros documentos
+              {empresa?.company_name} — {documentos.length > 0
+                ? `${documentos.length} documento${documentos.length !== 1 ? 's' : ''} em ${categoriasComDocs.length} estante${categoriasComDocs.length !== 1 ? 's' : ''}`
+                : 'código de cultura, materiais de pessoas e outros documentos'}
             </p>
           </div>
         </div>
@@ -192,19 +332,13 @@ export default function BibliotecaPage() {
         )}
       </div>
 
-      {categoriasComDocs.length > 0 && (
+      {categoriasComDocs.length > 1 && (
         <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setCategoriaFiltro('')}
-            className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${categoriaFiltro === '' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
-          >
-            Todos ({documentos.length})
-          </button>
           {categoriasComDocs.map((c) => (
             <button
               key={c}
-              onClick={() => setCategoriaFiltro(c)}
-              className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${categoriaFiltro === c ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+              onClick={() => handlePular(c)}
+              className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${CATEGORIA_COR_CHIP[c] ?? CATEGORIA_COR_CHIP['Outros']} hover:opacity-80`}
             >
               {c} ({documentos.filter((d) => d.categoria === c).length})
             </button>
@@ -213,20 +347,21 @@ export default function BibliotecaPage() {
       )}
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-28 rounded-2xl bg-secondary animate-pulse" />
+        <div className="space-y-8">
+          {[1, 2].map((i) => (
+            <div key={i} className="space-y-3">
+              <div className="h-3 w-24 rounded bg-secondary animate-pulse" />
+              <div className="h-44 rounded-2xl bg-secondary animate-pulse" />
+            </div>
           ))}
         </div>
-      ) : documentosFiltrados.length === 0 ? (
+      ) : documentos.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center">
           <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
-            <Library className="w-6 h-6 text-muted-foreground/40" />
+            <BookOpen className="w-6 h-6 text-muted-foreground/40" />
           </div>
-          <p className="text-muted-foreground text-sm mb-3">
-            {documentos.length === 0 ? 'Nenhum documento na biblioteca ainda.' : 'Nenhum documento nessa categoria.'}
-          </p>
-          {podeGerenciar && documentos.length === 0 && (
+          <p className="text-muted-foreground text-sm mb-3">Nenhum documento na biblioteca ainda.</p>
+          {podeGerenciar && (
             <button onClick={() => setModalEnviar(true)}
               className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm">
               <Plus className="w-4 h-4" /> Enviar primeiro documento
@@ -234,49 +369,21 @@ export default function BibliotecaPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {documentosFiltrados.map((doc) => (
-            <div
-              key={doc.id}
-              className="group bg-card border border-border rounded-2xl p-4 flex flex-col gap-3 hover:shadow-sm transition-shadow"
-            >
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/15 flex items-center justify-center shrink-0">
-                  <FileText className="w-5 h-5 text-red-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground leading-snug line-clamp-2" title={doc.nome}>
-                    {doc.nome}
-                  </p>
-                  <span className={`inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full font-medium ${CATEGORIA_COR[doc.categoria] ?? CATEGORIA_COR['Outros']}`}>
-                    {doc.categoria}
-                  </span>
-                </div>
-                {podeGerenciar && (
-                  <button
-                    onClick={() => setModalExcluir({ open: true, doc, loading: false })}
-                    className="p-1 rounded-md text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                <span>{formatBytes(doc.tamanho_bytes)} · {formatDate(doc.created_at)}</span>
-                {doc.autor_nome && <span className="truncate max-w-[40%]">{doc.autor_nome}</span>}
-              </div>
-
-              <button
-                onClick={() => handleBaixar(doc)}
-                disabled={baixando === doc.id}
-                className="flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl border border-border text-xs font-medium text-foreground hover:bg-accent transition-colors disabled:opacity-50"
-              >
-                <Download className="w-3.5 h-3.5" />
-                {baixando === doc.id ? 'Abrindo...' : 'Baixar'}
-              </button>
-            </div>
+        <div className="rounded-3xl border border-border bg-gradient-to-b from-amber-50/50 to-transparent p-5 md:p-7 space-y-9">
+          {categoriasComDocs.map((categoria) => (
+            <Prateleira
+              key={categoria}
+              categoria={categoria}
+              documentos={documentos.filter((d) => d.categoria === categoria)}
+              podeGerenciar={podeGerenciar}
+              baixando={baixando}
+              onBaixar={handleBaixar}
+              onExcluir={(doc) => setModalExcluir({ open: true, doc, loading: false })}
+            />
           ))}
+          <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground/70 pt-1">
+            <Download className="w-3 h-3" /> Clique em um livro pra baixar. Passe o mouse pra ver o nome completo.
+          </p>
         </div>
       )}
 
