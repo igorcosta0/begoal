@@ -8,7 +8,7 @@ import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { cn, isEmpresaCTZ } from '@/lib/utils'
 import {
   Target, Flag, Zap, Activity, Users, Settings,
-  User, LogOut, ChevronLeft, ChevronRight, Building2, Home, ArrowLeftRight, Upload, Map, ClipboardList, Library,
+  User, LogOut, ChevronLeft, ChevronRight, Building2, Home, ArrowLeftRight, Upload, Map, ClipboardList, Library, Compass,
 } from 'lucide-react'
 
 const navItems = [
@@ -21,6 +21,7 @@ const navItems = [
   { href: '/funcionarios', label: 'Funcionários', icon: Users },
   { href: '/avaliacao', label: 'Avaliação', icon: ClipboardList },
   { href: '/biblioteca', label: 'Biblioteca', icon: Library },
+  { href: '/guia', label: 'Guia de Uso', icon: Compass },
   { href: '/importar-lancamentos', label: 'Importar', icon: Upload },
   { href: '/admin', label: 'Administração', icon: Settings },
 ]
