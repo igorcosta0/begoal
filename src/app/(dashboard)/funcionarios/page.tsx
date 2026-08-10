@@ -5,7 +5,7 @@ import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
 import { getSetoresByEmpresa } from '@/lib/queries/okr'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
-import { User, Building2, Briefcase, MoreHorizontal } from 'lucide-react'
+import { User, Building2, Briefcase, MoreHorizontal, Users, Plus } from 'lucide-react'
 
 const STATUS_OPTIONS = ['Ativo', 'Férias', 'Afastado', 'Desligado']
 const PROFILE_OPTIONS = [
@@ -54,7 +54,7 @@ function ModalFuncionario({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
-      <div className="relative bg-card border border-border rounded-lg shadow-lg w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <h2 className="text-base font-semibold text-foreground mb-4">{titulo}</h2>
         <form onSubmit={onSubmit} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
@@ -65,7 +65,7 @@ function ModalFuncionario({
                 value={form.full_name}
                 onChange={(e) => setForm({ ...form, full_name: e.target.value })}
                 required
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div>
@@ -74,7 +74,7 @@ function ModalFuncionario({
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
           </div>
@@ -86,7 +86,7 @@ function ModalFuncionario({
                 type="text"
                 value={form.cargo}
                 onChange={(e) => setForm({ ...form, cargo: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div>
@@ -94,7 +94,7 @@ function ModalFuncionario({
               <select
                 value={form.setor_id}
                 onChange={(e) => setForm({ ...form, setor_id: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">Nenhum</option>
                 {setores.map((s) => (
@@ -110,7 +110,7 @@ function ModalFuncionario({
               <select
                 value={form.status}
                 onChange={(e) => setForm({ ...form, status: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 {STATUS_OPTIONS.map((s) => (
                   <option key={s} value={s}>{s}</option>
@@ -123,7 +123,7 @@ function ModalFuncionario({
                 type="date"
                 value={form.data_admissao}
                 onChange={(e) => setForm({ ...form, data_admissao: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
           </div>
@@ -133,7 +133,7 @@ function ModalFuncionario({
             <select
               value={form.profile}
               onChange={(e) => setForm({ ...form, profile: e.target.value })}
-              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
               {PROFILE_OPTIONS.map((p) => (
                 <option key={p} value={p}>{p}</option>
@@ -146,7 +146,7 @@ function ModalFuncionario({
             <select
               value={form.gestor_id}
               onChange={(e) => setForm({ ...form, gestor_id: e.target.value })}
-              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Nenhum</option>
               {funcionarios.map((f) => (
@@ -159,13 +159,13 @@ function ModalFuncionario({
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 py-2 px-4 border border-border rounded-md text-sm text-muted-foreground hover:bg-accent transition-colors"
+              className="flex-1 py-2 px-4 border border-border rounded-xl text-sm text-muted-foreground hover:bg-accent transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+              className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
             >
               Salvar
             </button>
@@ -294,17 +294,22 @@ export default function FuncionariosPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Funcionários</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {empresa?.company_name} — Gerencie sua equipe
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+            <Users className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">Funcionários</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {empresa?.company_name} — Gerencie sua equipe
+            </p>
+          </div>
         </div>
         <button
           onClick={() => { setForm(FORM_INICIAL); setModalCriar(true) }}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+          className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
         >
-          + Novo Funcionário
+          <Plus className="w-4 h-4" /> Novo Funcionário
         </button>
       </div>
 
@@ -314,12 +319,12 @@ export default function FuncionariosPage() {
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           placeholder="Buscar funcionário..."
-          className="px-3 py-1.5 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          className="px-3 py-1.5 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         />
         <select
           value={filtroStatus}
           onChange={(e) => setFiltroStatus(e.target.value)}
-          className="px-3 py-1.5 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          className="px-3 py-1.5 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <option value="">Todos os status</option>
           {STATUS_OPTIONS.map((s) => (
@@ -329,7 +334,7 @@ export default function FuncionariosPage() {
         <select
           value={filtroSetor}
           onChange={(e) => setFiltroSetor(e.target.value)}
-          className="px-3 py-1.5 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          className="px-3 py-1.5 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <option value="">Todos os setores</option>
           {setores.map((s) => (
@@ -341,17 +346,20 @@ export default function FuncionariosPage() {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-20 rounded-lg bg-secondary animate-pulse" />
+            <div key={i} className="h-20 rounded-2xl bg-secondary animate-pulse" />
           ))}
         </div>
       ) : funcionariosFiltrados.length === 0 ? (
-        <div className="rounded-lg border border-border bg-card p-12 text-center">
+        <div className="rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center">
+          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+            <Users className="w-6 h-6 text-muted-foreground/40" />
+          </div>
           <p className="text-muted-foreground text-sm mb-3">Nenhum funcionário encontrado.</p>
           <button
             onClick={() => { setForm(FORM_INICIAL); setModalCriar(true) }}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
           >
-            + Adicionar primeiro funcionário
+            <Plus className="w-4 h-4" /> Adicionar primeiro funcionário
           </button>
         </div>
       ) : (
@@ -359,7 +367,7 @@ export default function FuncionariosPage() {
           {funcionariosFiltrados.map((f) => (
             <div
               key={f.id}
-              className="bg-card border border-border rounded-lg p-4 flex items-center justify-between gap-3 hover:shadow-sm transition-shadow"
+              className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between gap-3 hover:shadow-sm transition-shadow"
             >
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary font-semibold text-sm">
@@ -402,7 +410,7 @@ export default function FuncionariosPage() {
                     <MoreHorizontal className="w-4 h-4" />
                   </button>
                   {menuOpen === f.id && (
-                    <div className="absolute right-0 top-8 bg-popover border border-border rounded-md shadow-lg z-10 min-w-36 py-1">
+                    <div className="absolute right-0 top-8 bg-popover border border-border rounded-xl shadow-lg z-10 min-w-36 py-1">
                       <button
                         onClick={() => { setModalEditar({ open: true, funcionario: f }); setMenuOpen(null) }}
                         className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors"

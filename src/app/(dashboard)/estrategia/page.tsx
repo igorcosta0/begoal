@@ -9,6 +9,7 @@ import {
   getMercados, upsertMercado, deleteMercado, criarObjetivoDoMercado,
   getICP, upsertICP,
 } from '@/lib/queries/estrategia'
+import { Map, Plus, Sparkles, Loader2 } from 'lucide-react'
 
 // ─── Tipos ────────────────────────────────────────────────────
 type QuemSomosData = Record<string, string | string[]>
@@ -37,7 +38,7 @@ function TagInput({ tags, onChange }: { tags: string[]; onChange: (t: string[]) 
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), adicionar())}
           placeholder="Digite e pressione Enter"
-          className="flex-1 px-3 py-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+          className="flex-1 px-3 py-2 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
         />
         <button onClick={adicionar} className="px-3 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:opacity-90">
           +
@@ -71,7 +72,7 @@ function ArrayInput({ label, values, onChange }: { label: string; values: string
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), adicionar())}
           placeholder="Digite e pressione Enter"
-          className="flex-1 px-3 py-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+          className="flex-1 px-3 py-2 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
         />
         <button onClick={adicionar} className="px-3 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:opacity-90">+</button>
       </div>
@@ -132,7 +133,7 @@ function QuemSomos({ clientId }: { clientId: string }) {
           value={(dados[key] as string) ?? ''}
           onChange={e => setDados(prev => ({ ...prev, [key]: e.target.value }))}
           placeholder={placeholder}
-          className="px-3 py-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+          className="px-3 py-2 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-none"
         />
       </div>
     )
@@ -161,7 +162,7 @@ function QuemSomos({ clientId }: { clientId: string }) {
               onChange={e => setNovaComp(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), adicionarComp())}
               placeholder="Ex: Gestão de projetos, UX/UI..."
-              className="flex-1 px-3 py-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+              className="flex-1 px-3 py-2 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
             />
             <button onClick={adicionarComp} className="px-3 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:opacity-90">+</button>
           </div>
@@ -267,8 +268,8 @@ function MelhoresClientes({ clientId }: { clientId: string }) {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">Cadastre seus clientes atuais e o percentual de faturamento que cada um representa.</p>
-        <button onClick={() => abrirModal()} className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:opacity-90">
-          + Adicionar Cliente
+        <button onClick={() => abrirModal()} className="flex items-center gap-1.5 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-xl hover:opacity-90 font-medium">
+          <Plus className="w-3.5 h-3.5" /> Adicionar Cliente
         </button>
       </div>
 
@@ -324,19 +325,19 @@ function MelhoresClientes({ clientId }: { clientId: string }) {
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium">Nome</label>
                 <input value={form.nome} onChange={e => setForm(p => ({ ...p, nome: e.target.value }))}
-                  className="px-3 py-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+                  className="px-3 py-2 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium">Segmento</label>
                 <input value={form.segmento} onChange={e => setForm(p => ({ ...p, segmento: e.target.value }))}
                   placeholder="Ex: Incorporadoras, Tecnologia..."
-                  className="px-3 py-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+                  className="px-3 py-2 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium">% do Faturamento</label>
                 <input type="number" min="0" max="100" value={form.faturamento_pct} onChange={e => setForm(p => ({ ...p, faturamento_pct: e.target.value }))}
                   placeholder="Ex: 25"
-                  className="px-3 py-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+                  className="px-3 py-2 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium">Características (tags)</label>
@@ -417,7 +418,7 @@ function MercadosPotenciais({ clientId }: { clientId: string }) {
           value={anotacoes}
           onChange={e => setAnotacoes(e.target.value)}
           placeholder="Ex: Empresas de loteamento no interior do PR poderiam usar nosso serviço de aprovação..."
-          className="px-3 py-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+          className="px-3 py-2 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-none"
         />
         <div className="flex items-center gap-3">
           <button
@@ -503,8 +504,8 @@ function MapeamentoMercados({ clientId }: { clientId: string }) {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">Mapeie os mercados que você atende ou quer atender. Mercados priorizados podem virar objetivos no OKR.</p>
-        <button onClick={() => abrirModal()} className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:opacity-90">
-          + Adicionar Mercado
+        <button onClick={() => abrirModal()} className="flex items-center gap-1.5 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-xl hover:opacity-90 font-medium">
+          <Plus className="w-3.5 h-3.5" /> Adicionar Mercado
         </button>
       </div>
 
@@ -559,12 +560,12 @@ function MapeamentoMercados({ clientId }: { clientId: string }) {
                 <label className="text-sm font-medium">Nome do Mercado</label>
                 <input value={form.nome} onChange={e => setForm(p => ({ ...p, nome: e.target.value }))}
                   placeholder="Ex: Incorporadoras de loteamentos"
-                  className="px-3 py-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+                  className="px-3 py-2 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium">Potencial Estimado</label>
                 <select value={form.potencial} onChange={e => setForm(p => ({ ...p, potencial: e.target.value }))}
-                  className="px-3 py-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring">
+                  className="px-3 py-2 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring">
                   <option value="">Selecionar...</option>
                   {NIVEIS_POTENCIAL.map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
@@ -572,7 +573,7 @@ function MapeamentoMercados({ clientId }: { clientId: string }) {
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium">Prioridade (0 = sem prioridade)</label>
                 <input type="number" min="0" max="10" value={form.prioridade} onChange={e => setForm(p => ({ ...p, prioridade: e.target.value }))}
-                  className="px-3 py-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+                  className="px-3 py-2 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-2">
@@ -655,7 +656,7 @@ function ICPSection({ clientId }: { clientId: string }) {
           value={dados[key] ?? ''}
           onChange={e => setDados(prev => ({ ...prev, [key]: e.target.value }))}
           placeholder={placeholder}
-          className="px-3 py-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+          className="px-3 py-2 text-sm rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
     )
@@ -675,9 +676,9 @@ function ICPSection({ clientId }: { clientId: string }) {
             className="shrink-0 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
           >
             {gerando ? (
-              <><span className="animate-spin">⟳</span> Gerando...</>
+              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Gerando...</>
             ) : (
-              '✦ Sugerir com IA'
+              <><Sparkles className="w-3.5 h-3.5" /> Sugerir com IA</>
             )}
           </button>
         </div>
@@ -717,9 +718,14 @@ export default function EstrategiaPage() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Estratégia de Mercado</h1>
-        <p className="text-sm text-muted-foreground mt-1">Diagnóstico estratégico: melhores clientes, mercados promissores e perfil ideal de cliente.</p>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+          <Map className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Estratégia de Mercado</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Diagnóstico estratégico: melhores clientes, mercados promissores e perfil ideal de cliente.</p>
+        </div>
       </div>
 
       {/* Abas */}

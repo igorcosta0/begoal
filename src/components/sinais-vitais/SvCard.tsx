@@ -59,7 +59,7 @@ export default function SvCard({
             <MoreHorizontal className="w-4 h-4" />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-7 bg-popover border border-border rounded-md shadow-lg z-10 min-w-36 py-1">
+            <div className="absolute right-0 top-7 bg-popover border border-border rounded-xl shadow-lg z-10 min-w-36 py-1">
               <button
                 onClick={() => { onVerHistorico?.(sv); setMenuOpen(false) }}
                 className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors flex items-center gap-2"

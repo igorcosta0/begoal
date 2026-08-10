@@ -549,11 +549,16 @@ export default function ImportarLancamentosPage() {
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Importar Lançamentos</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Importe OKRs, KRs e Sinais Vitais a partir da planilha CTZ
-        </p>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+          <Upload className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Importar Lançamentos</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Importe OKRs, KRs e Sinais Vitais a partir da planilha CTZ
+          </p>
+        </div>
       </div>
 
       {/* Steps */}
@@ -596,7 +601,7 @@ export default function ImportarLancamentosPage() {
               type="number"
               value={ano}
               onChange={e => setAno(Number(e.target.value))}
-              className="w-20 px-2 py-1 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-20 px-2 py-1 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
@@ -655,7 +660,9 @@ export default function ImportarLancamentosPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-foreground">📄 {nomeArquivo}</p>
+              <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                <FileSpreadsheet className="w-4 h-4 text-muted-foreground shrink-0" /> {nomeArquivo}
+              </p>
               <p className="text-xs text-muted-foreground">
                 {Object.keys(porOkr).length} objetivo{Object.keys(porOkr).length !== 1 ? 's' : ''} · {totalKRs} KR{totalKRs !== 1 ? 's' : ''} · {totalSVs} Sinal{totalSVs !== 1 ? 'is' : ''} Vital
               </p>

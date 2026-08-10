@@ -77,7 +77,7 @@ export default function ModalEditarSv({ open, sv, onClose, onSuccess }: ModalEdi
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-card border border-border rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+      <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
         <h2 className="text-base font-semibold text-foreground mb-4">Editar Sinal Vital</h2>
 
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -88,7 +88,7 @@ export default function ModalEditarSv({ open, sv, onClose, onSuccess }: ModalEdi
               value={form.titulo}
               onChange={(e) => setForm({ ...form, titulo: e.target.value })}
               required
-              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
@@ -98,7 +98,7 @@ export default function ModalEditarSv({ open, sv, onClose, onSuccess }: ModalEdi
               <select
                 value={form.responsavel_id}
                 onChange={(e) => setForm({ ...form, responsavel_id: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">Nenhum</option>
                 {funcionarios.map((f) => (
@@ -111,7 +111,7 @@ export default function ModalEditarSv({ open, sv, onClose, onSuccess }: ModalEdi
               <select
                 value={form.setor_id}
                 onChange={(e) => setForm({ ...form, setor_id: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">Nenhum</option>
                 {setores.map((s) => (
@@ -128,7 +128,7 @@ export default function ModalEditarSv({ open, sv, onClose, onSuccess }: ModalEdi
                 type="number"
                 value={form.valor_inicial}
                 onChange={(e) => setForm({ ...form, valor_inicial: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div>
@@ -137,7 +137,7 @@ export default function ModalEditarSv({ open, sv, onClose, onSuccess }: ModalEdi
                 type="number"
                 value={form.meta}
                 onChange={(e) => setForm({ ...form, meta: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div>
@@ -145,7 +145,7 @@ export default function ModalEditarSv({ open, sv, onClose, onSuccess }: ModalEdi
               <select
                 value={form.tipo_valor}
                 onChange={(e) => setForm({ ...form, tipo_valor: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">Selecione</option>
                 <option value="Numero">Número</option>
@@ -161,14 +161,14 @@ export default function ModalEditarSv({ open, sv, onClose, onSuccess }: ModalEdi
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2 px-4 border border-border rounded-md text-sm text-muted-foreground hover:bg-accent transition-colors"
+              className="flex-1 py-2 px-4 border border-border rounded-xl text-sm text-muted-foreground hover:bg-accent transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               {loading ? 'Salvando...' : 'Salvar'}
             </button>

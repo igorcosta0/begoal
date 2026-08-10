@@ -41,7 +41,7 @@ export default function ModalHistoricoSv({ open, sv, onClose, onLancar }: ModalH
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-card border border-border rounded-lg shadow-lg w-full max-w-lg mx-4 p-6">
+      <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6">
 
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-4">

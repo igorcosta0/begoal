@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getObjetivos, getSetoresByEmpresa, getFuncionariosByEmpresa } from '@/lib/queries/okr'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
 import { formatDate } from '@/lib/utils'
-import { User, Building2, Calendar, CheckCircle2, Circle, MessageSquare, Send, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { User, Building2, Calendar, CheckCircle2, Circle, MessageSquare, Send, Trash2, ChevronDown, ChevronUp, Zap, Plus, X } from 'lucide-react'
 
 const STATUS_OPTIONS = ['Não Iniciado', 'Em Andamento', 'Concluído']
 
@@ -144,7 +144,7 @@ function ModalTatica({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
-      <div className="relative bg-card border border-border rounded-lg shadow-lg w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <h2 className="text-base font-semibold text-foreground mb-4">{titulo}</h2>
         <form onSubmit={onSubmit} className="space-y-3">
           <div>
@@ -153,13 +153,13 @@ function ModalTatica({
               value={form.descricao}
               onChange={(e) => setForm({ ...form, descricao: e.target.value })}
               required rows={3} placeholder="Descreva a tática..."
-              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+              className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
             />
           </div>
           <div>
             <label className="text-xs font-medium text-foreground">Objetivo</label>
             <select value={form.objetivo_id} onChange={(e) => setForm({ ...form, objetivo_id: e.target.value, kr_id: '' })}
-              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+              className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="">Selecione um objetivo</option>
               {objetivos.map((o) => <option key={o.id} value={o.id}>{o.titulo}</option>)}
             </select>
@@ -167,7 +167,7 @@ function ModalTatica({
           <div>
             <label className="text-xs font-medium text-foreground">KR vinculado *</label>
             <select value={form.kr_id} onChange={(e) => setForm({ ...form, kr_id: e.target.value })} required
-              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+              className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="">Selecione um KR</option>
               {krs.filter((k) => !form.objetivo_id || k.objetivo_id === form.objetivo_id).map((k) => (
                 <option key={k.id} value={k.id}>{k.titulo}</option>
@@ -178,7 +178,7 @@ function ModalTatica({
             <div>
               <label className="text-xs font-medium text-foreground">Responsável</label>
               <select value={form.responsavel_id} onChange={(e) => setForm({ ...form, responsavel_id: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
                 <option value="">Nenhum</option>
                 {funcionarios.map((f) => <option key={f.id} value={f.id}>{f.full_name}</option>)}
               </select>
@@ -186,7 +186,7 @@ function ModalTatica({
             <div>
               <label className="text-xs font-medium text-foreground">Setor</label>
               <select value={form.setor_id} onChange={(e) => setForm({ ...form, setor_id: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
                 <option value="">Nenhum</option>
                 {setores.map((s) => <option key={s.id} value={s.id}>{s.name ?? s.nome}</option>)}
               </select>
@@ -196,23 +196,23 @@ function ModalTatica({
             <div>
               <label className="text-xs font-medium text-foreground">Prazo</label>
               <input type="date" value={form.prazo} onChange={(e) => setForm({ ...form, prazo: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
             </div>
             <div>
               <label className="text-xs font-medium text-foreground">Status</label>
               <select value={form.Status} onChange={(e) => setForm({ ...form, Status: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
                 {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
           </div>
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={onCancel}
-              className="flex-1 py-2 px-4 border border-border rounded-md text-sm text-muted-foreground hover:bg-accent transition-colors">
+              className="flex-1 py-2 px-4 border border-border rounded-xl text-sm text-muted-foreground hover:bg-accent transition-colors">
               Cancelar
             </button>
             <button type="submit"
-              className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity">
+              className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity">
               Salvar
             </button>
           </div>
@@ -339,46 +339,51 @@ export default function TaticasPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Táticas</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {empresa?.company_name} — Ações vinculadas aos objetivos
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+            <Zap className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">Táticas</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {empresa?.company_name} — Ações vinculadas aos objetivos
+            </p>
+          </div>
         </div>
         <button
           onClick={() => setModalCriar(true)}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+          className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
         >
-          + Nova Tática
+          <Plus className="w-4 h-4" /> Nova Tática
         </button>
       </div>
 
       {/* Filtros */}
       <div className="flex flex-wrap gap-3">
         <select value={filtroObjetivo} onChange={(e) => { setFiltroObjetivo(e.target.value); setFiltroKr('') }}
-          className="px-3 py-1.5 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+          className="px-3 py-1.5 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
           <option value="">Todos os objetivos</option>
           {objetivos.map((o) => <option key={o.id} value={o.id}>{o.titulo}</option>)}
         </select>
         <select value={filtroKr} onChange={(e) => setFiltroKr(e.target.value)}
-          className="px-3 py-1.5 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+          className="px-3 py-1.5 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
           <option value="">Todos os KRs</option>
           {krs.filter((k) => !filtroObjetivo || k.objetivo_id === filtroObjetivo).map((k) => (
             <option key={k.id} value={k.id}>{k.titulo}</option>
           ))}
         </select>
         <select value={filtroResponsavel} onChange={(e) => setFiltroResponsavel(e.target.value)}
-          className="px-3 py-1.5 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+          className="px-3 py-1.5 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
           <option value="">Todos os responsáveis</option>
           {funcionarios.map((f) => <option key={f.id} value={f.id}>{f.full_name}</option>)}
         </select>
         <select value={filtroSetor} onChange={(e) => setFiltroSetor(e.target.value)}
-          className="px-3 py-1.5 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+          className="px-3 py-1.5 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
           <option value="">Todos os setores</option>
           {setores.map((s) => <option key={s.id} value={s.id}>{s.name ?? s.nome}</option>)}
         </select>
         <select value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)}
-          className="px-3 py-1.5 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+          className="px-3 py-1.5 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
           <option value="">Todos os status</option>
           <option value="pendente">Pendentes</option>
           <option value="concluida">Concluídas</option>
@@ -389,15 +394,18 @@ export default function TaticasPage() {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-20 rounded-lg bg-secondary animate-pulse" />
+            <div key={i} className="h-20 rounded-2xl bg-secondary animate-pulse" />
           ))}
         </div>
       ) : taticasFiltradas.length === 0 ? (
-        <div className="rounded-lg border border-border bg-card p-12 text-center">
+        <div className="rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center">
+          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+            <Zap className="w-6 h-6 text-muted-foreground/40" />
+          </div>
           <p className="text-muted-foreground text-sm mb-3">Nenhuma tática encontrada.</p>
           <button onClick={() => setModalCriar(true)}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity">
-            + Criar primeira tática
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm">
+            <Plus className="w-4 h-4" /> Criar primeira tática
           </button>
         </div>
       ) : (
@@ -405,7 +413,7 @@ export default function TaticasPage() {
           {taticasFiltradas.map((tatica) => (
             <div
               key={tatica.id}
-              className={`bg-card border border-border rounded-lg p-4 hover:shadow-sm transition-shadow ${tatica.concluida ? 'opacity-60' : ''}`}
+              className={`bg-card border border-border rounded-2xl p-4 hover:shadow-sm transition-shadow ${tatica.concluida ? 'opacity-60' : ''}`}
             >
               <div className="flex items-start gap-3">
                 <button onClick={() => handleToggleConcluida(tatica)} className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary transition-colors">
@@ -459,9 +467,9 @@ export default function TaticasPage() {
                 </div>
                 <button
                   onClick={() => setModalExcluir({ open: true, tatica, loading: false })}
-                  className="text-xs text-muted-foreground hover:text-destructive transition-colors shrink-0 mt-0.5"
+                  className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0 mt-0.5"
                 >
-                  ✕
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>

@@ -77,7 +77,7 @@ export default function ObjetivoCard({
               {menuOpen && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                  <div className="absolute right-0 top-8 bg-popover border border-border rounded-md shadow-lg z-20 min-w-40 py-1">
+                  <div className="absolute right-0 top-8 bg-popover border border-border rounded-xl shadow-lg z-20 min-w-40 py-1">
                     <button
                       onClick={() => { onCriarKr?.(objetivo); setMenuOpen(false) }}
                       className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-primary font-medium"

@@ -13,7 +13,7 @@ export default function NotFound() {
         </p>
         <Link
           href="/okr"
-          className="inline-block px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+          className="inline-block px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
         >
           Voltar para o início
         </Link>

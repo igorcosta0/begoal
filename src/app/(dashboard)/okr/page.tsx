@@ -24,7 +24,7 @@ import ModalCriarObjetivo from '@/components/okr/ModalCriarObjetivo'
 import ModalEditarObjetivo from '@/components/okr/ModalEditarObjetivo'
 import ModalTaticasKr from '@/components/okr/ModalTaticasKr'
 import ModalEditarLancamentos from '@/components/okr/ModalEditarLancamentos'
-import { Archive, ArchiveRestore, Target, ChevronDown, ChevronUp } from 'lucide-react'
+import { Archive, ArchiveRestore, Target, ChevronDown, ChevronUp, Plus } from 'lucide-react'
 import { formatPercent, cn } from '@/lib/utils'
 
 export default function OkrPage() {
@@ -192,17 +192,22 @@ export default function OkrPage() {
 
       {/* HEADER */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">OKRs</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {empresa?.company_name} — Gerencie seus objetivos e Key Results
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+            <Target className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">OKRs</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {empresa?.company_name} — Gerencie seus objetivos e Key Results
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setVerFinalizados(!verFinalizados)}
             className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium border transition-colors',
+              'flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors',
               verFinalizados
                 ? 'bg-secondary text-foreground border-border'
                 : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
@@ -211,16 +216,16 @@ export default function OkrPage() {
             <Archive className="w-4 h-4" />
             Finalizados
             {totalFinalizados > 0 && (
-              <span className="bg-muted text-muted-foreground text-xs px-1.5 py-0.5 rounded-full font-medium">
+              <span className="bg-muted text-muted-foreground text-xs px-1.5 py-0.5 rounded-full font-medium tabular-nums">
                 {totalFinalizados}
               </span>
             )}
           </button>
           <button
             onClick={() => setModalCriarObjetivo(true)}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
           >
-            + Novo Objetivo
+            <Plus className="w-4 h-4" /> Novo Objetivo
           </button>
         </div>
       </div>
@@ -230,19 +235,19 @@ export default function OkrPage() {
         <>
           <div className="flex flex-wrap gap-3 items-center">
             <select value={filters.objetivoId ?? ''} onChange={(e) => setFiltroObjetivo(e.target.value || null)}
-              className="px-3 py-1.5 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+              className="px-3 py-1.5 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="">Todos os objetivos</option>
               {objetivos.filter(o => !o.concluido).map((obj) => (
                 <option key={obj.id} value={obj.id}>{obj.titulo}</option>
               ))}
             </select>
             <select value={filters.responsavelId ?? ''} onChange={(e) => setFiltroResponsavel(e.target.value || null)}
-              className="px-3 py-1.5 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+              className="px-3 py-1.5 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="">Todos os responsáveis</option>
               {funcionarios.map((f) => <option key={f.id} value={f.id}>{f.full_name}</option>)}
             </select>
             <select value={filters.setorId ?? ''} onChange={(e) => setFiltroSetor(e.target.value || null)}
-              className="px-3 py-1.5 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+              className="px-3 py-1.5 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="">Todos os setores</option>
               {setores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
@@ -255,17 +260,20 @@ export default function OkrPage() {
 
           {loading ? (
             <div className="space-y-4">
-              {[1, 2, 3].map((i) => <div key={i} className="h-32 rounded-lg bg-secondary animate-pulse" />)}
+              {[1, 2, 3].map((i) => <div key={i} className="h-32 rounded-2xl bg-secondary animate-pulse" />)}
             </div>
           ) : objetivosAtivos.length === 0 ? (
-            <div className="rounded-lg border border-border bg-card p-12 text-center">
+            <div className="rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center">
+              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                <Target className="w-6 h-6 text-muted-foreground/40" />
+              </div>
               <p className="text-muted-foreground text-sm mb-3">
                 {temFiltros ? 'Nenhum resultado para os filtros aplicados.' : 'Nenhum objetivo ativo.'}
               </p>
               {!temFiltros && (
                 <button onClick={() => setModalCriarObjetivo(true)}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90">
-                  + Criar primeiro objetivo
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm">
+                  <Plus className="w-4 h-4" /> Criar primeiro objetivo
                 </button>
               )}
             </div>
@@ -293,7 +301,7 @@ export default function OkrPage() {
           </div>
 
           {totalFinalizados === 0 ? (
-            <div className="rounded-lg border border-border bg-card p-12 text-center">
+            <div className="rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center">
               <Archive className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
               <p className="text-sm text-muted-foreground">Nenhum objetivo ou KR finalizado ainda.</p>
             </div>

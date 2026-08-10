@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
+import { User } from 'lucide-react'
 
 export default function PerfilPage() {
   const { empresa } = useEmpresaStore()
@@ -89,26 +90,31 @@ export default function PerfilPage() {
     return (
       <div className="space-y-4 animate-pulse">
         <div className="h-8 w-48 rounded bg-secondary" />
-        <div className="h-40 rounded-lg bg-secondary" />
+        <div className="h-40 rounded-2xl bg-secondary" />
       </div>
     )
   }
 
   return (
     <div className="max-w-lg space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Perfil</h1>
-        <p className="text-sm text-muted-foreground mt-1">Gerencie suas informações pessoais</p>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+          <User className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Perfil</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Gerencie suas informações pessoais</p>
+        </div>
       </div>
 
       {mensagem && (
-        <div className={`px-4 py-3 rounded-lg text-sm font-medium ${mensagem.tipo === 'sucesso' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+        <div className={`px-4 py-3 rounded-xl text-sm font-medium ${mensagem.tipo === 'sucesso' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
           {mensagem.texto}
         </div>
       )}
 
       {/* Dados pessoais */}
-      <div className="bg-card border border-border rounded-lg p-6">
+      <div className="bg-card border border-border rounded-2xl p-6">
         <h2 className="text-sm font-semibold text-foreground mb-4">Dados pessoais</h2>
         <form onSubmit={handleSalvarPerfil} className="space-y-4">
           <div>
@@ -117,7 +123,7 @@ export default function PerfilPage() {
               type="text"
               value={form.full_name}
               onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
           <div>
@@ -126,14 +132,14 @@ export default function PerfilPage() {
               type="email"
               value={form.email}
               disabled
-              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-secondary text-muted-foreground cursor-not-allowed"
+              className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-secondary text-muted-foreground cursor-not-allowed"
             />
             <p className="text-[11px] text-muted-foreground mt-1">O e-mail não pode ser alterado aqui.</p>
           </div>
           <button
             type="submit"
             disabled={salvando}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+            className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm"
           >
             {salvando ? 'Salvando...' : 'Salvar alterações'}
           </button>
@@ -141,7 +147,7 @@ export default function PerfilPage() {
       </div>
 
       {/* Senha */}
-      <div className="bg-card border border-border rounded-lg p-6">
+      <div className="bg-card border border-border rounded-2xl p-6">
         <h2 className="text-sm font-semibold text-foreground mb-4">Alterar senha</h2>
         <form onSubmit={handleSalvarSenha} className="space-y-4">
           <div>
@@ -152,7 +158,7 @@ export default function PerfilPage() {
               onChange={(e) => setSenhaForm({ ...senhaForm, nova_senha: e.target.value })}
               required
               minLength={6}
-              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
           <div>
@@ -163,13 +169,13 @@ export default function PerfilPage() {
               onChange={(e) => setSenhaForm({ ...senhaForm, confirmar_senha: e.target.value })}
               required
               minLength={6}
-              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
           <button
             type="submit"
             disabled={salvando}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+            className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm"
           >
             {salvando ? 'Atualizando...' : 'Atualizar senha'}
           </button>

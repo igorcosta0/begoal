@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
-import { Target } from 'lucide-react'
+import { Target, Activity, Zap, Users } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -98,14 +98,14 @@ export default function LoginPage() {
             {/* Features */}
             <div className="mt-10 space-y-4">
               {[
-                { icon: '🎯', text: 'Objetivos e Key Results' },
-                { icon: '📊', text: 'Sinais Vitais e KPIs' },
-                { icon: '⚡', text: 'Táticas e execução' },
-                { icon: '👥', text: 'Multi-empresa e times' },
+                { Icon: Target, text: 'Objetivos e Key Results' },
+                { Icon: Activity, text: 'Sinais Vitais e KPIs' },
+                { Icon: Zap, text: 'Táticas e execução' },
+                { Icon: Users, text: 'Multi-empresa e times' },
               ].map((f) => (
                 <div key={f.text} className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-sm shrink-0">
-                    {f.icon}
+                  <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                    <f.Icon className="w-4 h-4 text-white/80" />
                   </div>
                   <span className="text-white/70 text-sm">{f.text}</span>
                 </div>

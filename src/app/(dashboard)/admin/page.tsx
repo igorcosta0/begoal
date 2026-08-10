@@ -48,7 +48,7 @@ function ModalEmpresa({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
-      <div className="relative bg-card border border-border rounded-lg shadow-lg w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <h2 className="text-base font-semibold text-foreground mb-4">{titulo}</h2>
         <form onSubmit={onSubmit} className="space-y-3">
           <div>
@@ -58,7 +58,7 @@ function ModalEmpresa({
               value={form.company_name}
               onChange={(e) => setForm({ ...form, company_name: e.target.value })}
               required
-              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -68,7 +68,7 @@ function ModalEmpresa({
                 type="text"
                 value={form.nome_fantasia}
                 onChange={(e) => setForm({ ...form, nome_fantasia: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div>
@@ -78,7 +78,7 @@ function ModalEmpresa({
                 value={form.cnpj}
                 onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
                 placeholder="00.000.000/0000-00"
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
           </div>
@@ -88,7 +88,7 @@ function ModalEmpresa({
               type="text"
               value={form.razao_social}
               onChange={(e) => setForm({ ...form, razao_social: e.target.value })}
-              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
           <div className="grid grid-cols-3 gap-3">
@@ -97,7 +97,7 @@ function ModalEmpresa({
               <select
                 value={form.status}
                 onChange={(e) => setForm({ ...form, status: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="Ativo">Ativo</option>
                 <option value="Inativo">Inativo</option>
@@ -110,7 +110,7 @@ function ModalEmpresa({
                 type="date"
                 value={form.data_inicio}
                 onChange={(e) => setForm({ ...form, data_inicio: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div>
@@ -119,7 +119,7 @@ function ModalEmpresa({
                 type="date"
                 value={form.data_fim}
                 onChange={(e) => setForm({ ...form, data_fim: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
           </div>
@@ -127,13 +127,13 @@ function ModalEmpresa({
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 py-2 px-4 border border-border rounded-md text-sm text-muted-foreground hover:bg-accent transition-colors"
+              className="flex-1 py-2 px-4 border border-border rounded-xl text-sm text-muted-foreground hover:bg-accent transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+              className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
             >
               Salvar
             </button>
@@ -287,11 +287,16 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Administração</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Gerencie empresas e setores da plataforma
-        </p>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+          <Building2 className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Administração</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Gerencie empresas e setores da plataforma
+          </p>
+        </div>
       </div>
 
       {/* Abas */}
@@ -324,7 +329,7 @@ export default function AdminPage() {
           <div className="flex justify-end">
             <button
               onClick={() => { setFormEmpresa(FORM_EMPRESA_INICIAL); setModalCriarEmpresa(true) }}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
+              className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
               Nova Empresa
@@ -334,7 +339,7 @@ export default function AdminPage() {
           {loadingEmpresas ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-20 rounded-lg bg-secondary animate-pulse" />
+                <div key={i} className="h-20 rounded-2xl bg-secondary animate-pulse" />
               ))}
             </div>
           ) : (
@@ -342,7 +347,7 @@ export default function AdminPage() {
               {empresas.map((empresa) => (
                 <div
                   key={empresa.id}
-                  className="bg-card border border-border rounded-lg p-4 flex items-center justify-between gap-3 hover:shadow-sm transition-shadow"
+                  className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between gap-3 hover:shadow-sm transition-shadow"
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     {empresa.logo_url ? (
@@ -383,7 +388,7 @@ export default function AdminPage() {
                         <MoreHorizontal className="w-4 h-4" />
                       </button>
                       {menuEmpresa === empresa.id && (
-                        <div className="absolute right-0 top-8 bg-popover border border-border rounded-md shadow-lg z-10 min-w-36 py-1">
+                        <div className="absolute right-0 top-8 bg-popover border border-border rounded-xl shadow-lg z-10 min-w-36 py-1">
                           <button
                             onClick={() => { setModalEditarEmpresa({ open: true, empresa }); setMenuEmpresa(null) }}
                             className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors"
@@ -421,7 +426,7 @@ export default function AdminPage() {
             {empresaSelecionada && (
               <button
                 onClick={() => setModalCriarSetor(true)}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
+                className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Novo Setor
@@ -430,7 +435,7 @@ export default function AdminPage() {
           </div>
 
           {!empresaSelecionada ? (
-            <div className="rounded-lg border border-border bg-card p-12 text-center">
+            <div className="rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center">
               <Building2 className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
               <p className="text-sm text-muted-foreground">
                 Vá para a aba Empresas e clique em "Setores" para gerenciar os setores de uma empresa.
@@ -439,19 +444,19 @@ export default function AdminPage() {
           ) : loadingSetores ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-14 rounded-lg bg-secondary animate-pulse" />
+                <div key={i} className="h-14 rounded-2xl bg-secondary animate-pulse" />
               ))}
             </div>
           ) : setores.length === 0 ? (
-            <div className="rounded-lg border border-border bg-card p-12 text-center">
+            <div className="rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center">
               <p className="text-sm text-muted-foreground mb-3">
                 Nenhum setor cadastrado para esta empresa.
               </p>
               <button
                 onClick={() => setModalCriarSetor(true)}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
               >
-                + Criar primeiro setor
+                <Plus className="w-4 h-4" /> Criar primeiro setor
               </button>
             </div>
           ) : (
@@ -459,7 +464,7 @@ export default function AdminPage() {
               {setores.map((setor) => (
                 <div
                   key={setor.id}
-                  className="bg-card border border-border rounded-lg px-4 py-3 flex items-center justify-between gap-3"
+                  className="bg-card border border-border rounded-2xl px-4 py-3 flex items-center justify-between gap-3"
                 >
                   <div className="flex items-center gap-2">
                     <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -473,7 +478,7 @@ export default function AdminPage() {
                       <MoreHorizontal className="w-4 h-4" />
                     </button>
                     {menuSetor === setor.id && (
-                      <div className="absolute right-0 top-8 bg-popover border border-border rounded-md shadow-lg z-10 min-w-36 py-1">
+                      <div className="absolute right-0 top-8 bg-popover border border-border rounded-xl shadow-lg z-10 min-w-36 py-1">
                         <button
                           onClick={() => { setEditarSetor({ open: true, setor, nome: setor.name }); setMenuSetor(null) }}
                           className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors"
@@ -520,7 +525,7 @@ export default function AdminPage() {
       {modalCriarSetor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50" onClick={() => setModalCriarSetor(false)} />
-          <div className="relative bg-card border border-border rounded-lg shadow-lg w-full max-w-sm mx-4 p-6">
+          <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
             <h2 className="text-base font-semibold text-foreground mb-4">Novo Setor</h2>
             <form onSubmit={handleCriarSetor} className="space-y-3">
               <div>
@@ -531,20 +536,20 @@ export default function AdminPage() {
                   onChange={(e) => setNovoSetor(e.target.value)}
                   required
                   placeholder="Ex: Financeiro"
-                  className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setModalCriarSetor(false)}
-                  className="flex-1 py-2 px-4 border border-border rounded-md text-sm text-muted-foreground hover:bg-accent transition-colors"
+                  className="flex-1 py-2 px-4 border border-border rounded-xl text-sm text-muted-foreground hover:bg-accent transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+                  className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
                 >
                   Criar
                 </button>
@@ -558,7 +563,7 @@ export default function AdminPage() {
       {editarSetor.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50" onClick={() => setEditarSetor({ open: false, setor: null, nome: '' })} />
-          <div className="relative bg-card border border-border rounded-lg shadow-lg w-full max-w-sm mx-4 p-6">
+          <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
             <h2 className="text-base font-semibold text-foreground mb-4">Editar Setor</h2>
             <form onSubmit={handleEditarSetor} className="space-y-3">
               <div>
@@ -568,20 +573,20 @@ export default function AdminPage() {
                   value={editarSetor.nome}
                   onChange={(e) => setEditarSetor({ ...editarSetor, nome: e.target.value })}
                   required
-                  className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setEditarSetor({ open: false, setor: null, nome: '' })}
-                  className="flex-1 py-2 px-4 border border-border rounded-md text-sm text-muted-foreground hover:bg-accent transition-colors"
+                  className="flex-1 py-2 px-4 border border-border rounded-xl text-sm text-muted-foreground hover:bg-accent transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+                  className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
                 >
                   Salvar
                 </button>

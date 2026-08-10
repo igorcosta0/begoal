@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Trash2, AlertTriangle } from 'lucide-react'
 
 interface ModalConfirmarExclusaoProps {
   open: boolean
@@ -24,11 +25,11 @@ export default function ModalConfirmarExclusao({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-card border border-border rounded-lg shadow-lg w-full max-w-sm mx-4 p-6">
+      <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
 
         <div className="text-center mb-4">
           <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3">
-            <span className="text-xl">🗑️</span>
+            <Trash2 className="w-5 h-5 text-red-600" />
           </div>
           <h2 className="text-base font-semibold text-foreground">
             {titulo}
@@ -40,8 +41,8 @@ export default function ModalConfirmarExclusao({
           )}
         </div>
 
-        <p className="text-xs text-muted-foreground bg-red-50 border border-red-200 rounded-md px-3 py-2 mb-4 text-center">
-          ⚠️ Esta ação não pode ser desfeita.
+        <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-4 text-center">
+          <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" /> Esta ação não pode ser desfeita.
         </p>
 
         <div className="flex gap-2">
@@ -49,7 +50,7 @@ export default function ModalConfirmarExclusao({
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="flex-1 py-2 px-4 border border-border rounded-md text-sm text-muted-foreground hover:bg-accent transition-colors disabled:opacity-50"
+            className="flex-1 py-2 px-4 border border-border rounded-xl text-sm text-muted-foreground hover:bg-accent transition-colors disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -57,7 +58,7 @@ export default function ModalConfirmarExclusao({
             type="button"
             onClick={onConfirmar}
             disabled={loading}
-            className="flex-1 py-2 px-4 bg-destructive text-destructive-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="flex-1 py-2 px-4 bg-destructive text-destructive-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {loading ? 'Excluindo...' : 'Excluir'}
           </button>

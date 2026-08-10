@@ -652,7 +652,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-card border border-border rounded-lg shadow-lg w-full max-w-3xl mx-4 max-h-[92vh] flex flex-col">
+      <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-3xl mx-4 max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="flex items-start justify-between p-5 border-b border-border shrink-0">
           <p className="text-xs text-muted-foreground">{cicloNome}</p>
@@ -710,7 +710,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
 
           {loading ? (
             <div className="space-y-3">
-              {[1, 2, 3].map((i) => <div key={i} className="h-20 rounded-lg bg-secondary animate-pulse" />)}
+              {[1, 2, 3].map((i) => <div key={i} className="h-20 rounded-2xl bg-secondary animate-pulse" />)}
             </div>
           ) : (
             <>
@@ -760,7 +760,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                                 rows={2}
                                 disabled={isAdmin}
                                 placeholder="Descreva exemplos concretos que justifiquem as notas..."
-                                className="mt-1 w-full px-3 py-1.5 text-xs rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
+                                className="mt-1 w-full px-3 py-1.5 text-xs rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
                               />
                             )}
                           </div>
@@ -844,7 +844,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                         rows={3}
                         disabled={!isAdmin}
                         placeholder="Feedback geral sobre a avaliação..."
-                        className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
+                        className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
                       />
                     )}
                   </div>
@@ -859,7 +859,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                     <select
                       value={vertical}
                       onChange={(e) => setVertical(e.target.value)}
-                      className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
+                      className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
                     >
                       <option value="">Selecione a vertical...</option>
                       {Object.entries(VERTICAIS_CTZ).map(([key, v]) => (
@@ -907,7 +907,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                                 }
                                 rows={2}
                                 placeholder="Descreva exemplos concretos que justifiquem as notas..."
-                                className="mt-1 w-full px-3 py-1.5 text-xs rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                                className="mt-1 w-full px-3 py-1.5 text-xs rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                               />
                             )}
                           </div>
@@ -991,7 +991,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                         rows={3}
                         disabled={!isAdmin}
                         placeholder="Feedback geral sobre a avaliação..."
-                        className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
+                        className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
                       />
                     )}
                   </div>
@@ -1064,7 +1064,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                           onChange={(e) => setNewPdi((p) => ({ ...p, acao: e.target.value }))}
                           required
                           placeholder="Ex: Melhorar gestão de prazos nas entregas..."
-                          className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                          className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
@@ -1075,7 +1075,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                             value={newPdi.indicador_sucesso}
                             onChange={(e) => setNewPdi((p) => ({ ...p, indicador_sucesso: e.target.value }))}
                             placeholder="Como mediremos o sucesso?"
-                            className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                            className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                           />
                         </div>
                         <div>
@@ -1084,7 +1084,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                             type="date"
                             value={newPdi.prazo}
                             onChange={(e) => setNewPdi((p) => ({ ...p, prazo: e.target.value }))}
-                            className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                            className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                           />
                         </div>
                       </div>
@@ -1095,7 +1095,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                           value={newPdi.suporte_necessario}
                           onChange={(e) => setNewPdi((p) => ({ ...p, suporte_necessario: e.target.value }))}
                           placeholder="Líder / RH / Treinamento..."
-                          className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                          className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                         />
                       </div>
                       <div className="flex gap-2">
@@ -1213,7 +1213,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60"
+              className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm disabled:opacity-60"
             >
               {saving ? 'Salvando...' : 'Salvar'}
             </button>

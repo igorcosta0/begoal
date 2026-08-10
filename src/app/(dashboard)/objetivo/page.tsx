@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { getObjetivos, createObjetivo, updateObjetivo, deleteObjetivo } from '@/lib/queries/okr'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
-import { Target, MoreHorizontal } from 'lucide-react'
+import { Target, MoreHorizontal, Plus } from 'lucide-react'
 
 export default function ObjetivoPage() {
   const { empresa } = useEmpresaStore()
@@ -75,17 +75,22 @@ export default function ObjetivoPage() {
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Objetivos</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {empresa?.company_name} — Gerencie os objetivos estratégicos
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+            <Target className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">Objetivos</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {empresa?.company_name} — Gerencie os objetivos estratégicos
+            </p>
+          </div>
         </div>
         <button
           onClick={() => setModalCriar(true)}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+          className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
         >
-          + Novo Objetivo
+          <Plus className="w-4 h-4" /> Novo Objetivo
         </button>
       </div>
 
@@ -93,19 +98,22 @@ export default function ObjetivoPage() {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 rounded-lg bg-secondary animate-pulse" />
+            <div key={i} className="h-20 rounded-2xl bg-secondary animate-pulse" />
           ))}
         </div>
       ) : objetivos.length === 0 ? (
-        <div className="rounded-lg border border-border bg-card p-12 text-center">
+        <div className="rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center">
+          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+            <Target className="w-6 h-6 text-muted-foreground/40" />
+          </div>
           <p className="text-muted-foreground text-sm mb-3">
             Nenhum objetivo cadastrado ainda.
           </p>
           <button
             onClick={() => setModalCriar(true)}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
           >
-            + Criar primeiro objetivo
+            <Plus className="w-4 h-4" /> Criar primeiro objetivo
           </button>
         </div>
       ) : (
@@ -113,7 +121,7 @@ export default function ObjetivoPage() {
           {objetivos.map((objetivo) => (
             <div
               key={objetivo.id}
-              className="bg-card border border-border rounded-lg p-4 flex items-start justify-between gap-3 hover:shadow-sm transition-shadow"
+              className="bg-card border border-border rounded-2xl p-4 flex items-start justify-between gap-3 hover:shadow-sm transition-shadow"
             >
               <div className="flex items-start gap-3 flex-1 min-w-0">
                 <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
@@ -145,7 +153,7 @@ export default function ObjetivoPage() {
                   <MoreHorizontal className="w-4 h-4" />
                 </button>
                 {menuOpen === objetivo.id && (
-                  <div className="absolute right-0 top-8 bg-popover border border-border rounded-md shadow-lg z-10 min-w-36 py-1">
+                  <div className="absolute right-0 top-8 bg-popover border border-border rounded-xl shadow-lg z-10 min-w-36 py-1">
                     <button
                       onClick={() => { setModalEditar({ open: true, objetivo }); setMenuOpen(null) }}
                       className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors"
@@ -170,7 +178,7 @@ export default function ObjetivoPage() {
       {modalCriar && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50" onClick={() => setModalCriar(false)} />
-          <div className="relative bg-card border border-border rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+          <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
             <h2 className="text-base font-semibold text-foreground mb-4">Novo Objetivo</h2>
             <form onSubmit={handleCriar} className="space-y-3">
               <div>
@@ -181,7 +189,7 @@ export default function ObjetivoPage() {
                   onChange={(e) => setFormCriar({ ...formCriar, titulo: e.target.value })}
                   required
                   placeholder="Ex: Aumentar satisfação dos clientes"
-                  className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
               <div>
@@ -191,20 +199,20 @@ export default function ObjetivoPage() {
                   onChange={(e) => setFormCriar({ ...formCriar, descricao: e.target.value })}
                   rows={3}
                   placeholder="Descreva o objetivo..."
-                  className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                  className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                 />
               </div>
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setModalCriar(false)}
-                  className="flex-1 py-2 px-4 border border-border rounded-md text-sm text-muted-foreground hover:bg-accent transition-colors"
+                  className="flex-1 py-2 px-4 border border-border rounded-xl text-sm text-muted-foreground hover:bg-accent transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+                  className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
                 >
                   Criar
                 </button>
@@ -218,7 +226,7 @@ export default function ObjetivoPage() {
       {modalEditar.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50" onClick={() => setModalEditar({ open: false, objetivo: null })} />
-          <div className="relative bg-card border border-border rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+          <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
             <h2 className="text-base font-semibold text-foreground mb-4">Editar Objetivo</h2>
             <form onSubmit={handleEditar} className="space-y-3">
               <div>
@@ -228,7 +236,7 @@ export default function ObjetivoPage() {
                   value={formEditar.titulo}
                   onChange={(e) => setFormEditar({ ...formEditar, titulo: e.target.value })}
                   required
-                  className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
               <div>
@@ -237,20 +245,20 @@ export default function ObjetivoPage() {
                   value={formEditar.descricao}
                   onChange={(e) => setFormEditar({ ...formEditar, descricao: e.target.value })}
                   rows={3}
-                  className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                  className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                 />
               </div>
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setModalEditar({ open: false, objetivo: null })}
-                  className="flex-1 py-2 px-4 border border-border rounded-md text-sm text-muted-foreground hover:bg-accent transition-colors"
+                  className="flex-1 py-2 px-4 border border-border rounded-xl text-sm text-muted-foreground hover:bg-accent transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+                  className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
                 >
                   Salvar
                 </button>

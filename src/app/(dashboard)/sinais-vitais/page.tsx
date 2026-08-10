@@ -10,6 +10,7 @@ import ModalEditarSv from '@/components/sinais-vitais/ModalEditarSv'
 import ModalLancarSv from '@/components/sinais-vitais/ModalLancarSv'
 import ModalHistoricoSv from '@/components/sinais-vitais/ModalHistoricoSv'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
+import { Activity, Plus } from 'lucide-react'
 
 export default function SinaisVitaisPage() {
   const { empresa } = useEmpresaStore()
@@ -67,17 +68,22 @@ export default function SinaisVitaisPage() {
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Sinais Vitais</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {empresa?.company_name} — KPIs contínuos da empresa
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+            <Activity className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">Sinais Vitais</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {empresa?.company_name} — KPIs contínuos da empresa
+            </p>
+          </div>
         </div>
         <button
           onClick={() => setModalCriar(true)}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+          className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
         >
-          + Novo Sinal Vital
+          <Plus className="w-4 h-4" /> Novo Sinal Vital
         </button>
       </div>
 
@@ -88,12 +94,12 @@ export default function SinaisVitaisPage() {
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           placeholder="Buscar sinal vital..."
-          className="w-full max-w-sm px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          className="w-full max-w-sm px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         />
         <select
           value={setorId ?? ''}
           onChange={(e) => setSetorId(e.target.value || null)}
-          className="px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          className="px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <option value="">Todos os setores</option>
           {setores.map((s) => (
@@ -118,16 +124,19 @@ export default function SinaisVitaisPage() {
           ))}
         </div>
       ) : svsFiltrados.length === 0 ? (
-        <div className="rounded-lg border border-border bg-card p-12 text-center">
+        <div className="rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center">
+          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+            <Activity className="w-6 h-6 text-muted-foreground/40" />
+          </div>
           <p className="text-muted-foreground text-sm mb-3">
             {temFiltros ? 'Nenhum sinal vital encontrado para este filtro.' : 'Nenhum sinal vital cadastrado ainda.'}
           </p>
           {!temFiltros && (
             <button
               onClick={() => setModalCriar(true)}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
             >
-              + Criar primeiro sinal vital
+              <Plus className="w-4 h-4" /> Criar primeiro sinal vital
             </button>
           )}
         </div>

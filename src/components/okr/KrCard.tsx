@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { cn, formatPercent, formatNumber, formatValor, getProgressColor, getProgressStatus } from '@/lib/utils'
-import { MoreHorizontal, TrendingUp, User, Building2, Calendar, Zap, ClipboardList } from 'lucide-react'
+import { MoreHorizontal, TrendingUp, User, Building2, Calendar, Zap, ClipboardList, CheckCircle2 } from 'lucide-react'
 
 interface KrCardProps {
   kr: {
@@ -76,7 +76,7 @@ export default function KrCard({
             <MoreHorizontal className="w-4 h-4" />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-7 bg-popover border border-border rounded-md shadow-lg z-10 min-w-40 py-1">
+            <div className="absolute right-0 top-7 bg-popover border border-border rounded-xl shadow-lg z-10 min-w-40 py-1">
               <button
                 onClick={() => { onVerGrafico?.(kr); setMenuOpen(false) }}
                 className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors flex items-center gap-2"
@@ -195,8 +195,8 @@ export default function KrCard({
 
       {/* Ação */}
       {kr.concluido ? (
-        <div className="w-full py-2 px-4 bg-secondary text-muted-foreground rounded-lg text-xs font-medium text-center">
-          ✓ KR Finalizado
+        <div className="w-full py-2 px-4 bg-secondary text-muted-foreground rounded-lg text-xs font-medium text-center flex items-center justify-center gap-1.5">
+          <CheckCircle2 className="w-3.5 h-3.5" /> KR Finalizado
         </div>
       ) : (
         <button

@@ -370,7 +370,7 @@ export default function AvaliacaoPage() {
       <div className="space-y-6">
         <div className="h-8 w-48 bg-secondary rounded animate-pulse" />
         <div className="space-y-3">
-          {[1, 2, 3].map((i) => <div key={i} className="h-20 rounded-lg bg-secondary animate-pulse" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-20 rounded-2xl bg-secondary animate-pulse" />)}
         </div>
       </div>
     )
@@ -379,7 +379,7 @@ export default function AvaliacaoPage() {
   // Módulo construído apenas para a CTZ (rubric de pilares/verticais é específico dela)
   if (!isEmpresaCTZ(empresa?.company_name)) {
     return (
-      <div className="rounded-lg border border-dashed border-border bg-card p-16 text-center">
+      <div className="rounded-2xl border border-dashed border-border bg-card/50 p-16 text-center">
         <p className="text-muted-foreground text-sm">Este módulo ainda não está disponível para esta empresa.</p>
       </div>
     )
@@ -389,13 +389,18 @@ export default function AvaliacaoPage() {
   if (!isAdmin) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Minhas Avaliações</h1>
-          <p className="text-sm text-muted-foreground mt-1">{empresa?.company_name}</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+            <LayoutGrid className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">Minhas Avaliações</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">{empresa?.company_name}</p>
+          </div>
         </div>
 
         {minhasAvaliacoes.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border bg-card p-16 text-center">
+          <div className="rounded-2xl border border-dashed border-border bg-card/50 p-16 text-center">
             <p className="text-muted-foreground text-sm">Nenhuma avaliação disponível no momento.</p>
             <p className="text-xs text-muted-foreground mt-1">
               Aguarde o administrador iniciar um ciclo de avaliação.
@@ -406,7 +411,7 @@ export default function AvaliacaoPage() {
             {minhasAvaliacoes.map((av) => (
               <div
                 key={av.id}
-                className="bg-card border border-border rounded-lg p-4 flex items-center justify-between gap-4"
+                className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between gap-4"
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
@@ -464,7 +469,7 @@ export default function AvaliacaoPage() {
                 </div>
                 <button
                   onClick={() => abrirMinhaAvaliacao(av)}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity shrink-0"
+                  className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm shrink-0"
                 >
                   {av.status === 'pendente' ? 'Preencher' : 'Ver Avaliação'}
                 </button>
@@ -489,14 +494,19 @@ export default function AvaliacaoPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Avaliação de Desempenho</h1>
-          <p className="text-sm text-muted-foreground mt-1">{empresa?.company_name}</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+            <LayoutGrid className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">Avaliação de Desempenho</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">{empresa?.company_name}</p>
+          </div>
         </div>
         {podeCriarCiclo && (
           <button
             onClick={() => setModalCriarCiclo(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
           >
             <Plus className="w-4 h-4" />
             Novo Ciclo
@@ -512,14 +522,14 @@ export default function AvaliacaoPage() {
 
       {/* Lista de ciclos */}
       {ciclos.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border bg-card p-16 text-center">
+        <div className="rounded-2xl border border-dashed border-border bg-card/50 p-16 text-center">
           <p className="text-muted-foreground text-sm mb-3">
             {podeCriarCiclo ? 'Nenhum ciclo de avaliação criado.' : 'Nenhum ciclo de avaliação disponível ainda.'}
           </p>
           {podeCriarCiclo && (
             <button
               onClick={() => setModalCriarCiclo(true)}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+              className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
             >
               Criar primeiro ciclo
             </button>

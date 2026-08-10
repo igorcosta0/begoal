@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { MailCheck } from 'lucide-react'
 
 export default function ResetSenhaPage() {
   const [email, setEmail] = useState('')
@@ -37,7 +38,9 @@ export default function ResetSenhaPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-full max-w-md space-y-4 px-8 text-center">
-          <div className="text-4xl">📬</div>
+          <div className="w-14 h-14 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto">
+            <MailCheck className="w-6 h-6 text-primary" />
+          </div>
           <h2 className="text-xl font-semibold text-foreground">
             E-mail enviado!
           </h2>
@@ -85,7 +88,7 @@ export default function ResetSenhaPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="seu@email.com"
-              className="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+              className="w-full px-3 py-2 rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
             />
           </div>
 
@@ -96,7 +99,7 @@ export default function ResetSenhaPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-2.5 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           >
             {loading ? 'Enviando...' : 'Enviar link de recuperação'}
           </button>
