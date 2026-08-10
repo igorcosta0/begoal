@@ -65,22 +65,39 @@ interface Funcionario {
   full_name: string
   cargo: string | null
   setor?: { name: string } | null
+  gestor?: { full_name: string } | null
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 // Mapeia o setor cadastrado do funcionário para a chave de vertical usada na
 // Avaliação Técnica (VERTICAIS_CTZ), pra pré-preencher em vez de deixar em branco.
+// "Concretize" não entra aqui porque foi dividida em duas equipes com metas
+// próprias — ver verticalDoFuncionario abaixo.
 const SETOR_PARA_VERTICAL: Record<string, string> = {
-  'Concretize': 'concretize',
   'CSC': 'csc_financeiro',
   'Novos negocios': 'novos_negocios',
   'Loteamentos': 'loteadora',
   'Investimento': 'investimentos',
 }
 
-function verticalDoFuncionario(setorName: string | undefined | null): string | undefined {
+// Dentro do setor "Concretize", quem é o próprio Felipe Ross ou responde a ele
+// (Laura, Jean, Luiz Gazeta) entra na Equipe Comercial; os demais — incluindo o
+// próprio Felipe Marques — ficam na Equipe Técnica (pedido de ago/2026).
+// É só um pré-preenchimento: a vertical continua editável na avaliação, então um
+// gestor_id desatualizado no cadastro do funcionário não trava nada, só erra o
+// palpite inicial (aí é só corrigir no seletor "Vertical de atuação").
+function verticalDoFuncionario(
+  setorName: string | undefined | null,
+  nomeFuncionario?: string | null,
+  nomeGestor?: string | null
+): string | undefined {
   if (!setorName) return undefined
+  if (setorName === 'Concretize') {
+    const ehRoss = (nomeFuncionario ?? '').toLowerCase().includes('ross')
+    const respondeRoss = (nomeGestor ?? '').toLowerCase().includes('ross')
+    return ehRoss || respondeRoss ? 'concretize_comercial' : 'concretize_tecnica'
+  }
   return SETOR_PARA_VERTICAL[setorName]
 }
 
@@ -175,7 +192,7 @@ export default function AvaliacaoPage() {
     const supabase = createClient()
     let query = supabase
       .from('funcionarios')
-      .select('id, full_name, cargo, setor:setores!setor_id(name)')
+      .select('id, full_name, cargo, setor:setores!setor_id(name), gestor:funcionarios!gestor_id(full_name)')
       .eq('client_id', empresa.id)
       .eq('status', 'Ativo')
       .order('full_name')
@@ -272,7 +289,7 @@ export default function AvaliacaoPage() {
       await Promise.all([
         supabase
           .from('funcionarios')
-          .select('id, setor:setores!setor_id(name)')
+          .select('id, full_name, setor:setores!setor_id(name), gestor:funcionarios!gestor_id(full_name)')
           .eq('client_id', empresa.id)
           .eq('status', 'Ativo'),
         supabase.from('avaliacoes').select('funcionario_id').eq('ciclo_id', cicloId),
@@ -288,7 +305,7 @@ export default function AvaliacaoPage() {
 
     const resultados = await Promise.all(
       faltando.map((f) =>
-        createAvaliacao({ ciclo_id: cicloId, funcionario_id: f.id, vertical: verticalDoFuncionario(f.setor?.name) })
+        createAvaliacao({ ciclo_id: cicloId, funcionario_id: f.id, vertical: verticalDoFuncionario(f.setor?.name, f.full_name, f.gestor?.full_name) })
       )
     )
     const erro = resultados.find((r) => r.error)?.error
@@ -326,7 +343,7 @@ export default function AvaliacaoPage() {
     const { data, error } = await createAvaliacao({
       ciclo_id: cicloAtivo.id,
       funcionario_id: funcionario.id,
-      vertical: verticalDoFuncionario(funcionario.setor?.name),
+      vertical: verticalDoFuncionario(funcionario.setor?.name, funcionario.full_name, funcionario.gestor?.full_name),
     })
     if (error) {
       setErro(error.message)

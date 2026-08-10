@@ -74,8 +74,12 @@ export const VERTICAIS_CTZ: Record<
       },
     ],
   },
-  concretize: {
-    label: 'Concretize',
+  // A vertical Concretize foi dividida em duas equipes com metas próprias
+  // (pedido de ago/2026): quem responde pro Felipe Marques (incluindo ele) fica na
+  // Equipe Técnica; quem responde pro Felipe Ross (Laura, Jean, Luiz Gazeta) fica na
+  // Equipe Comercial. Ver avaliacao/page.tsx → verticalDoFuncionario para o pré-preenchimento.
+  concretize_tecnica: {
+    label: 'Concretize — Equipe Técnica (Felipe Marques)',
     criterios: [
       {
         key: 'con_engenharia',
@@ -85,10 +89,30 @@ export const VERTICAIS_CTZ: Record<
       {
         key: 'con_faturamento',
         label: 'Previsibilidade de Faturamento',
-        descricao: 'Garantia da linha de faturamento contratado e projetado para os próximos 90 dias.',
+        descricao: 'Garantia da linha de faturamento contratado e projetado para os próximos 90 dias da vertical.',
       },
       {
-        key: 'con_relacionamento',
+        key: 'con_relacionamento_cliente',
+        label: 'Relacionamento com Cliente',
+        descricao: 'Garantia de satisfação, com atendimento pontual e gestão para antecipação dos problemas.',
+      },
+    ],
+  },
+  concretize_comercial: {
+    label: 'Concretize — Equipe Comercial (Felipe Ross)',
+    criterios: [
+      {
+        key: 'con_com_engenharia',
+        label: 'Eficiência de Engenharia',
+        descricao: 'Execução sem retrabalhos e desenvolvimento de projetos executivos.',
+      },
+      {
+        key: 'con_com_vendas',
+        label: 'Previsibilidade de Vendas',
+        descricao: 'Garantia da linha de vendas, com gestão eficiente do funil.',
+      },
+      {
+        key: 'con_com_relacionamento',
         label: 'Relacionamento Ativo (ABM) e Novos Clientes',
         descricao: 'Manutenção ativa das visitas de captação e ampliação de clientes estratégicos.',
       },
