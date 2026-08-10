@@ -1,12 +1,14 @@
 'use client'
 
 import { useEmpresaStore } from '@/store/useEmpresaStore'
+import { useTourStore, TOUR_PASSOS } from '@/store/useTourStore'
 import { isEmpresaCTZ } from '@/lib/utils'
 import { PILARES_CULTURAIS, VERTICAIS_CTZ } from '@/components/avaliacao/ModalAvaliacao'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   Compass, Home, Target, Flag, Zap, Activity, Map, Users, ClipboardList, Library,
-  ArrowRight, LogIn, LayoutList, Sparkles, ChevronDown,
+  ArrowRight, LogIn, LayoutList, Sparkles, ChevronDown, MapPinned,
 } from 'lucide-react'
 
 const AREAS = [
@@ -92,7 +94,14 @@ const FAQ = [
 
 export default function GuiaPage() {
   const { empresa } = useEmpresaStore()
+  const { iniciar } = useTourStore()
+  const router = useRouter()
   const ctz = isEmpresaCTZ(empresa?.company_name)
+
+  function handleIniciarTour() {
+    iniciar()
+    router.push(TOUR_PASSOS[0].pagina)
+  }
 
   return (
     <div className="space-y-8 max-w-4xl">
@@ -109,13 +118,39 @@ export default function GuiaPage() {
         </div>
       </div>
 
+      {/* Tour guiado */}
+      <div
+        className="relative rounded-2xl overflow-hidden p-6 flex items-center justify-between gap-4 flex-wrap"
+        style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #234b7c 45%, #163863 100%)' }}
+      >
+        <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+        <div className="relative flex items-start gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0">
+            <MapPinned className="w-5 h-5 text-blue-200" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-white">Prefere um tour guiado?</p>
+            <p className="text-xs text-white/60 mt-0.5 max-w-md">
+              A gente passa pelos {TOUR_PASSOS.length} principais lugares da plataforma com você, um de cada vez, explicando em pop-ups o que faz cada um.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={handleIniciarTour}
+          className="relative shrink-0 flex items-center gap-1.5 px-4 py-2.5 bg-white text-gray-900 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
+        >
+          <Compass className="w-4 h-4" /> Começar o tour
+        </button>
+      </div>
+
       {/* Intro */}
       <div className="rounded-2xl border border-border bg-card p-6">
         <p className="text-sm text-foreground leading-relaxed">
           O <strong>Begoal</strong> é onde a {empresa?.company_name ?? 'sua empresa'} organiza a gestão estratégica: os{' '}
           <strong>OKRs</strong> (Objetivos e Key Results) do ano, as <strong>táticas</strong> do dia a dia que os
           empurram pra frente, os <strong>KPIs</strong> que rodam continuamente e a <strong>avaliação de desempenho</strong> do
-          time — tudo no mesmo lugar, atualizado por quem realmente faz o trabalho.
+          time — tudo no mesmo lugar, atualizado por quem realmente faz o trabalho. Se preferir ler no seu ritmo em
+          vez do tour, o resto desta página cobre a mesma coisa por escrito.
         </p>
       </div>
 

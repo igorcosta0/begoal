@@ -389,6 +389,7 @@ export default function BibliotecaPage() {
         </div>
       ) : (
         <div
+          data-tour="tour-biblioteca"
           className="rounded-3xl border border-border bg-gradient-to-b from-amber-50/50 to-transparent p-5 md:p-7 space-y-6"
           onMouseLeave={() => setDocEmFoco(null)}
         >

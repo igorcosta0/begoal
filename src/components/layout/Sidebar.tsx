@@ -84,7 +84,7 @@ export default function Sidebar({ permissionLevel }: SidebarProps) {
       )}
 
       {/* Nav */}
-      <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+      <nav data-tour="tour-sidebar" className="flex-1 p-2 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           if (item.href === '/admin' && permissionLevel !== 'administrador') return null
           if (item.href === '/importar-lancamentos' && permissionLevel !== 'administrador') return null

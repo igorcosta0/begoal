@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Sidebar from '@/components/layout/Sidebar'
+import TourOverlay from '@/components/tour/TourOverlay'
 
 export default async function DashboardLayout({
   children,
@@ -34,6 +35,7 @@ export default async function DashboardLayout({
           {children}
         </div>
       </main>
+      <TourOverlay />
     </div>
   )
 }

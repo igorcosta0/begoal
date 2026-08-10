@@ -363,7 +363,7 @@ export default function FuncionariosPage() {
           </button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div data-tour="tour-funcionarios-lista" className="space-y-3">
           {funcionariosFiltrados.map((f) => (
             <div
               key={f.id}

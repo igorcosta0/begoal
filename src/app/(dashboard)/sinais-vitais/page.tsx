@@ -141,7 +141,7 @@ export default function SinaisVitaisPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div data-tour="tour-sv-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {svsFiltrados.map((sv) => (
             <SvCard
               key={sv.id}

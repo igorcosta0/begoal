@@ -399,7 +399,7 @@ export default function InicioPage() {
             </div>
           </div>
         ) : (
-          <div className="relative rounded-2xl overflow-hidden shrink-0"
+          <div data-tour="tour-hero" className="relative rounded-2xl overflow-hidden shrink-0"
             style={{ background: 'radial-gradient(680px 260px at 88% -10%, rgba(96,165,250,0.35), transparent 60%), linear-gradient(135deg, #1e3a5f 0%, #234b7c 45%, #163863 100%)' }}>
             <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
             <div className="relative z-10 p-5 md:p-6">
@@ -468,7 +468,7 @@ export default function InicioPage() {
         )}
 
         {/* MERCADO + NOTA — banda única, lado a lado */}
-        <div className="bg-card border border-border rounded-2xl overflow-hidden shrink-0 grid grid-cols-1 md:grid-cols-[1.3fr_1fr]">
+        <div data-tour="tour-mercado" className="bg-card border border-border rounded-2xl overflow-hidden shrink-0 grid grid-cols-1 md:grid-cols-[1.3fr_1fr]">
           <div className="p-4 md:p-5">
             <div className="flex items-center gap-2.5 mb-3">
               <div className="w-6 h-6 rounded-md bg-blue-50 flex items-center justify-center border border-blue-100 shrink-0">
@@ -496,7 +496,7 @@ export default function InicioPage() {
         </div>
 
         {/* OKRs — GRÁFICO */}
-        <div className="bg-card border border-border rounded-2xl p-6 flex-1 min-h-0 flex flex-col shadow-sm">
+        <div data-tour="tour-okr-panel" className="bg-card border border-border rounded-2xl p-6 flex-1 min-h-0 flex flex-col shadow-sm">
           <div className="flex items-center justify-between mb-8 shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shadow-inner">
@@ -571,7 +571,7 @@ export default function InicioPage() {
       </div>
 
       {/* ═══ COLUNA DIREITA — VALORES DA EMPRESA ═══ */}
-      <div className="w-72 shrink-0 bg-card border border-border rounded-2xl overflow-hidden flex flex-col">
+      <div data-tour="tour-valores" className="w-72 shrink-0 bg-card border border-border rounded-2xl overflow-hidden flex flex-col">
         <div className="relative px-5 py-5 border-b border-border shrink-0 overflow-hidden"
           style={{ background: 'linear-gradient(160deg, rgba(139,92,246,0.14), rgba(139,92,246,0.03) 70%)' }}>
           <div className="absolute inset-0 opacity-[0.35] pointer-events-none"

@@ -439,7 +439,7 @@ export default function TaticasPage() {
           </button>
         </div>
       ) : (
-        <div className="flex-1 min-h-0 flex gap-4 overflow-x-auto pb-1">
+        <div data-tour="tour-taticas-board" className="flex-1 min-h-0 flex gap-4 overflow-x-auto pb-1">
           {colunas.map(({ status, itens }) => {
             const estilo = COLUNA_ESTILO[status]
             const emFoco = colunaSobre === status

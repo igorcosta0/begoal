@@ -405,7 +405,7 @@ export default function AvaliacaoPage() {
   // ── View do funcionário ───────────────────────────────────────────────────
   if (!isAdmin) {
     return (
-      <div className="space-y-6">
+      <div data-tour="tour-avaliacao" className="space-y-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
             <LayoutGrid className="w-5 h-5 text-primary" />
@@ -509,7 +509,7 @@ export default function AvaliacaoPage() {
 
   // ── View admin ────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
+    <div data-tour="tour-avaliacao" className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">

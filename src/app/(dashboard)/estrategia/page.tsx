@@ -729,7 +729,7 @@ export default function EstrategiaPage() {
       </div>
 
       {/* Abas */}
-      <div className="flex gap-1 border-b border-border overflow-x-auto">
+      <div data-tour="tour-estrategia-tabs" className="flex gap-1 border-b border-border overflow-x-auto">
         {ABAS.map((aba, i) => (
           <button
             key={aba}
