@@ -3,8 +3,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { getObjetivos, createObjetivo, updateObjetivo, deleteObjetivo } from '@/lib/queries/okr'
+import { createClient } from '@/lib/supabase/client'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
-import { Target, MoreHorizontal, Plus } from 'lucide-react'
+import { Target, MoreHorizontal, Plus, ArchiveRestore } from 'lucide-react'
 import { mensagemErroExclusao } from '@/lib/utils'
 
 export default function ObjetivoPage() {
@@ -75,6 +76,14 @@ export default function ObjetivoPage() {
     fetchData()
   }
 
+  // Objetivo marcado como concluído some da visão "ativa" da página de OKRs (só
+  // aparece lá em "Finalizados") — reativar aqui evita ter que ir até lá pra isso.
+  async function handleReativar(objetivo: any) {
+    const supabase = createClient()
+    await supabase.from('objetivos').update({ concluido: false }).eq('id', objetivo.id)
+    fetchData()
+  }
+
   return (
     <div className="space-y-6">
 
@@ -126,16 +135,23 @@ export default function ObjetivoPage() {
           {objetivos.map((objetivo) => (
             <div
               key={objetivo.id}
-              className="bg-card border border-border rounded-2xl p-4 flex items-start justify-between gap-3 hover:shadow-sm transition-shadow"
+              className={`bg-card border border-border rounded-2xl p-4 flex items-start justify-between gap-3 hover:shadow-sm transition-shadow ${objetivo.concluido ? 'opacity-70' : ''}`}
             >
               <div className="flex items-start gap-3 flex-1 min-w-0">
                 <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
                   <Target className="w-4 h-4 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground">
-                    {objetivo.titulo}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className={`text-sm font-semibold text-foreground ${objetivo.concluido ? 'line-through' : ''}`}>
+                      {objetivo.titulo}
+                    </p>
+                    {objetivo.concluido && (
+                      <span className="text-[10px] px-2 py-0.5 bg-secondary text-muted-foreground rounded-full shrink-0">
+                        Finalizado — não aparece em OKRs
+                      </span>
+                    )}
+                  </div>
                   {objetivo.descricao && (
                     <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                       {objetivo.descricao}
@@ -165,6 +181,14 @@ export default function ObjetivoPage() {
                     >
                       Editar
                     </button>
+                    {objetivo.concluido && (
+                      <button
+                        onClick={() => { handleReativar(objetivo); setMenuOpen(null) }}
+                        className="w-full flex items-center gap-1.5 text-left px-3 py-2 text-xs text-primary hover:bg-accent transition-colors"
+                      >
+                        <ArchiveRestore className="w-3.5 h-3.5" /> Reativar
+                      </button>
+                    )}
                     <button
                       onClick={() => { setModalExcluir({ open: true, objetivo, loading: false, erro: null }); setMenuOpen(null) }}
                       className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-destructive"
