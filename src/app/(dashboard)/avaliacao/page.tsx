@@ -19,7 +19,7 @@ import ModalCriarCiclo from '@/components/avaliacao/ModalCriarCiclo'
 import ModalAvaliacao from '@/components/avaliacao/ModalAvaliacao'
 import ModalNineBox from '@/components/avaliacao/ModalNineBox'
 import ModalMontarAvaliacoes, { type LinhaMontagem, type OpcaoAvaliador } from '@/components/avaliacao/ModalMontarAvaliacoes'
-import ModalAvaliacaoPares from '@/components/avaliacao/ModalAvaliacaoPares'
+import ModalAvaliacaoPares, { type CandidatoLider } from '@/components/avaliacao/ModalAvaliacaoPares'
 import { cn, isEmpresaCTZ } from '@/lib/utils'
 import { LayoutGrid, Plus, ChevronRight, Trash2, Users2, ArrowRightLeft, X } from 'lucide-react'
 import { VERTICAIS_CTZ } from '@/components/avaliacao/ModalAvaliacao'
@@ -355,10 +355,11 @@ export default function AvaliacaoPage() {
     setModalPares({ open: true, ciclo, lideres: lideresCandidatos, confirmando: false, erro: null })
   }
 
-  // Cria a rodada completa: cada líder avalia todos os outros (N × (N-1) linhas),
-  // pulando pares que já existem neste ciclo pra não duplicar.
-  async function handleConfirmarPares() {
-    const { ciclo, lideres } = modalPares
+  // Cria a rodada completa: cada líder marcado avalia todos os outros marcados
+  // (N × (N-1) linhas), pulando pares que já existem neste ciclo pra não duplicar.
+  async function handleConfirmarPares(selecionados: CandidatoLider[]) {
+    const { ciclo } = modalPares
+    const lideres = selecionados
     if (!ciclo || lideres.length < 2) return
     setModalPares((prev) => ({ ...prev, confirmando: true, erro: null }))
 
