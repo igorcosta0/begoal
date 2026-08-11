@@ -31,15 +31,10 @@ export function verticalDoFuncionario(
 }
 
 // ── Avaliação de Pares (líderes avaliando líderes) ──────────────────────────
-// "Líder" não é uma coluna própria — é calculado a partir do que já existe no
-// cadastro de Funcionários: cargo contém "líder" OU a pessoa tem pelo menos um
-// liderado (aparece como gestor_id de alguém). Isso evita depender de uma
-// lista fixa de nomes, que fica desatualizada assim que o organograma muda.
-export function ehLider(funcionario: { id: string; cargo?: string | null }, idsComLiderado: Set<string>): boolean {
-  const cargoIndicaLider = (funcionario.cargo ?? '').toLowerCase().includes('líder')
-    || (funcionario.cargo ?? '').toLowerCase().includes('lider')
-  return cargoIndicaLider || idsComLiderado.has(funcionario.id)
-}
+// "Líder" já foi tentativa por heurística (cargo/organograma), mas isso
+// incluía gente que não deveria (ex.: CEO) e ficava sempre desatualizado. Hoje
+// é uma marcação manual e explícita: funcionarios.lider_avaliacao, ligada pelo
+// administrador na tela "Gerenciar Líderes" dentro de Avaliação.
 
 export async function getCiclosAvaliacao(clientId: string) {
   const supabase = createClient()

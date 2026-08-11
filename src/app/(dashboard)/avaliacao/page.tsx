@@ -12,7 +12,6 @@ import {
   updateCicloStatus,
   deleteCicloAvaliacao,
   deleteAvaliacao,
-  ehLider,
 } from '@/lib/queries/avaliacao'
 import { getFuncionariosByEmpresa } from '@/lib/queries/okr'
 import ModalCriarCiclo from '@/components/avaliacao/ModalCriarCiclo'
@@ -20,8 +19,9 @@ import ModalAvaliacao from '@/components/avaliacao/ModalAvaliacao'
 import ModalNineBox from '@/components/avaliacao/ModalNineBox'
 import ModalMontarAvaliacoes, { type LinhaMontagem, type OpcaoAvaliador } from '@/components/avaliacao/ModalMontarAvaliacoes'
 import ModalAvaliacaoPares, { type CandidatoLider } from '@/components/avaliacao/ModalAvaliacaoPares'
+import ModalGerenciarLideres from '@/components/avaliacao/ModalGerenciarLideres'
 import { cn, isEmpresaCTZ } from '@/lib/utils'
-import { LayoutGrid, Plus, ChevronRight, Trash2, Users2, ArrowRightLeft, X } from 'lucide-react'
+import { LayoutGrid, Plus, ChevronRight, Trash2, Users2, ArrowRightLeft, X, Crown } from 'lucide-react'
 import { VERTICAIS_CTZ } from '@/components/avaliacao/ModalAvaliacao'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
@@ -89,6 +89,7 @@ interface Funcionario {
   setor?: { name: string } | null
   gestor_id?: string | null
   gestor?: { full_name: string } | null
+  lider_avaliacao?: boolean | null
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -179,6 +180,13 @@ export default function AvaliacaoPage() {
     confirmando: boolean
     erro: string | null
   }>({ open: false, ciclo: null, lideres: [], confirmando: false, erro: null })
+  const [modalLideres, setModalLideres] = useState<{
+    open: boolean
+    abrindo: boolean
+    funcionarios: Funcionario[]
+    salvando: boolean
+    erro: string | null
+  }>({ open: false, abrindo: false, funcionarios: [], salvando: false, erro: null })
 
   const fetchCiclos = useCallback(async () => {
     if (!empresa) return
@@ -243,7 +251,7 @@ export default function AvaliacaoPage() {
           .single(),
         supabase
           .from('funcionarios')
-          .select('id, full_name, cargo')
+          .select('id, full_name, cargo, lider_avaliacao')
           .eq('user_id', user.id)
           .eq('client_id', empresa!.id)
           .single(),
@@ -259,19 +267,10 @@ export default function AvaliacaoPage() {
       const meuFunc = funcRes.data as Funcionario | null
       if (meuFunc) setMeuFuncionario(meuFunc)
 
-      await fetchCiclos()
-      // Precisamos saber se a pessoa é líder ANTES de decidir se ela vê o console
-      // administrativo — busca a lista de funcionários primeiro (empresa toda pra
-      // admin/calibrador, só os próprios liderados pros demais) e só então fecha
-      // os estados de permissão.
-      let listaFuncionarios: Funcionario[] = []
-      if (todaEmpresa) {
-        listaFuncionarios = (await fetchFuncionarios()) ?? []
-      } else if (meuFunc?.id) {
-        listaFuncionarios = (await fetchFuncionarios(meuFunc.id)) ?? []
-      }
-      const idsComLideradoInit = new Set(listaFuncionarios.map((f) => f.gestor_id).filter((id): id is string => !!id))
-      const souLiderAtual = meuFunc ? ehLider(meuFunc, idsComLideradoInit) : false
+      // "Líder" não é mais adivinhado por cargo/organograma — é uma marcação
+      // manual (funcionarios.lider_avaliacao) que o administrador liga pra quem
+      // realmente participa da avaliação de pares e pode abrir ciclo.
+      const souLiderAtual = meuFunc?.lider_avaliacao === true
       const admin = administrador || calibrador || souLiderAtual
 
       setIsAdmin(admin)
@@ -279,6 +278,13 @@ export default function AvaliacaoPage() {
       setSouLider(souLiderAtual)
       setPodeCriarCiclo(administrador || souLiderAtual)
       setVeTodaEmpresa(todaEmpresa)
+
+      await fetchCiclos()
+      if (todaEmpresa) {
+        await fetchFuncionarios()
+      } else if (meuFunc?.id) {
+        await fetchFuncionarios(meuFunc.id)
+      }
 
       // Opções de avaliador na montagem do ciclo cobrem a empresa toda (não só os
       // liderados de quem está montando) — dá pra escalar qualquer pessoa, não só o
@@ -361,27 +367,84 @@ export default function AvaliacaoPage() {
     if (cicloAtivo?.id === ciclo.id) fetchAvaliacoes()
   }
 
-  // Busca fresh a empresa toda (não só quem cada gestor lidera) pra detectar
-  // líderes com precisão — quem abre isso pode ser um líder comum, que só tem
-  // os próprios liderados no estado `funcionarios`.
+  // Busca fresh quem está marcado como líder (funcionarios.lider_avaliacao) na
+  // empresa toda — quem abre isso pode ser um líder comum, que só tem os
+  // próprios liderados no estado `funcionarios`.
   async function abrirModalPares(ciclo: Ciclo) {
     setErro('')
     if (!empresa) return
     const supabase = createClient()
     const { data, error } = await supabase
       .from('funcionarios')
-      .select('id, full_name, cargo, gestor_id')
+      .select('id, full_name, cargo')
       .eq('client_id', empresa.id)
       .eq('status', 'Ativo')
+      .eq('lider_avaliacao', true)
       .order('full_name')
     if (error) {
       setErro(error.message)
       return
     }
-    const todos = (data ?? []) as unknown as Funcionario[]
-    const idsComLideradoTodos = new Set(todos.map((f) => f.gestor_id).filter((id): id is string => !!id))
-    const candidatos = todos.filter((f) => ehLider(f, idsComLideradoTodos))
-    setModalPares({ open: true, ciclo, lideres: candidatos, confirmando: false, erro: null })
+    setModalPares({ open: true, ciclo, lideres: (data ?? []) as unknown as Funcionario[], confirmando: false, erro: null })
+  }
+
+  // Lista TODOS os funcionários (marcados ou não) pra tela de gerenciar quem
+  // conta como líder — decisão manual do administrador, não mais heurística.
+  async function abrirModalGerenciarLideres() {
+    setErro('')
+    if (!empresa) return
+    setModalLideres((prev) => ({ ...prev, abrindo: true }))
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('funcionarios')
+      .select('id, full_name, cargo, lider_avaliacao')
+      .eq('client_id', empresa.id)
+      .eq('status', 'Ativo')
+      .order('full_name')
+    if (error) {
+      setErro(error.message)
+      setModalLideres((prev) => ({ ...prev, abrindo: false }))
+      return
+    }
+    setModalLideres({
+      open: true,
+      abrindo: false,
+      funcionarios: (data ?? []) as unknown as Funcionario[],
+      salvando: false,
+      erro: null,
+    })
+  }
+
+  async function handleSalvarLideres(selecionados: Record<string, boolean>) {
+    setModalLideres((prev) => ({ ...prev, salvando: true, erro: null }))
+    const supabase = createClient()
+
+    const alteracoes = modalLideres.funcionarios.filter(
+      (f) => !!f.lider_avaliacao !== !!selecionados[f.id]
+    )
+    if (alteracoes.length > 0) {
+      const resultados = await Promise.all(
+        alteracoes.map((f) =>
+          supabase.from('funcionarios').update({ lider_avaliacao: !!selecionados[f.id] }).eq('id', f.id)
+        )
+      )
+      const erroSalvar = resultados.find((r) => r.error)?.error
+      if (erroSalvar) {
+        setModalLideres((prev) => ({ ...prev, salvando: false, erro: erroSalvar.message }))
+        return
+      }
+    }
+
+    // Se eu mesmo estiver na lista, meu próprio status de líder pode ter mudado —
+    // atualiza na hora pra sidebar/botões refletirem sem precisar recarregar.
+    if (meuFuncionario && selecionados[meuFuncionario.id] !== undefined) {
+      const novoSouLider = selecionados[meuFuncionario.id]
+      setSouLider(novoSouLider)
+      setPodeCriarCiclo(souAdministrador || novoSouLider)
+      setMeuFuncionario({ ...meuFuncionario, lider_avaliacao: novoSouLider })
+    }
+
+    setModalLideres({ open: false, abrindo: false, funcionarios: [], salvando: false, erro: null })
   }
 
   // Sorteia a distribuição: embaralha os líderes marcados e usa offsets fixos
@@ -716,6 +779,16 @@ export default function AvaliacaoPage() {
             <p className="text-sm text-muted-foreground mt-0.5">{empresa?.company_name}</p>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+        {souAdministrador && (
+          <button
+            onClick={abrirModalGerenciarLideres}
+            className="flex items-center gap-1.5 px-3 py-2.5 border border-border rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors"
+          >
+            <Crown className="w-4 h-4 text-amber-600" />
+            Gerenciar Líderes
+          </button>
+        )}
         {podeCriarCiclo && (
           existeCicloEmAberto ? (
             <p
@@ -734,6 +807,7 @@ export default function AvaliacaoPage() {
             </button>
           )
         )}
+        </div>
       </div>
 
       {erro && (
@@ -1014,6 +1088,15 @@ export default function AvaliacaoPage() {
         erro={modalPares.erro}
         onClose={() => setModalPares({ open: false, ciclo: null, lideres: [], confirmando: false, erro: null })}
         onConfirmar={handleConfirmarPares}
+      />
+
+      <ModalGerenciarLideres
+        open={modalLideres.open}
+        funcionarios={modalLideres.funcionarios}
+        salvando={modalLideres.salvando}
+        erro={modalLideres.erro}
+        onClose={() => setModalLideres({ open: false, abrindo: false, funcionarios: [], salvando: false, erro: null })}
+        onSalvar={handleSalvarLideres}
       />
     </div>
   )

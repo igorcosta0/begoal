@@ -19,22 +19,17 @@ interface Props {
   onConfirmar: (selecionados: CandidatoLider[], quantidade: number) => void
 }
 
-// Cargos de topo (CEO, sócio, diretoria) que citam "líder" mas normalmente não
-// deviam entrar como PAR dos líderes de vertical — ficam desmarcados por
-// padrão, mas continuam na lista pra quem quiser incluir mesmo assim.
-function pareceTopoDeHierarquia(cargo?: string | null): boolean {
-  const c = (cargo ?? '').toLowerCase()
-  return c.includes('ceo') || c.includes('sócio') || c.includes('socio') || c.includes('diretor') || c.includes('presidente')
-}
-
 export default function ModalAvaliacaoPares({ open, cicloNome, lideres, confirmando, erro, onClose, onConfirmar }: Props) {
   const [selecionados, setSelecionados] = useState<Record<string, boolean>>({})
   const [quantidade, setQuantidade] = useState(2)
 
+  // Quem chega aqui já é líder marcado manualmente (funcionarios.lider_avaliacao,
+  // via tela "Gerenciar Líderes") — todos entram marcados por padrão; ainda dá
+  // pra desmarcar pontualmente pra deixar alguém de fora só nesta rodada.
   useEffect(() => {
     if (!open) return
     const iniciais: Record<string, boolean> = {}
-    for (const l of lideres) iniciais[l.id] = !pareceTopoDeHierarquia(l.cargo)
+    for (const l of lideres) iniciais[l.id] = true
     setSelecionados(iniciais)
     setQuantidade(2)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,10 +70,10 @@ export default function ModalAvaliacaoPares({ open, cicloNome, lideres, confirma
         {/* Lista de líderes */}
         <div className="flex-1 overflow-y-auto p-5">
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-            {lideres.length} líder{lideres.length !== 1 ? 'es' : ''} identificado{lideres.length !== 1 ? 's' : ''} pelo cargo ou por ter liderados
+            {lideres.length} líder{lideres.length !== 1 ? 'es' : ''} marcado{lideres.length !== 1 ? 's' : ''} em "Gerenciar Líderes"
           </p>
           <p className="text-[11px] text-muted-foreground mb-3">
-            Desmarque quem não deve entrar no sorteio (ex.: CEO/sócio — não costuma ser "par" dos líderes de vertical).
+            Desmarque quem não deve entrar no sorteio só nesta rodada — pra tirar alguém definitivamente, use "Gerenciar Líderes".
           </p>
 
           {lideres.length < 2 ? (
@@ -86,11 +81,11 @@ export default function ModalAvaliacaoPares({ open, cicloNome, lideres, confirma
               <Users className="w-6 h-6 text-muted-foreground/40 mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">
                 {lideres.length === 0
-                  ? 'Nenhum líder identificado ainda.'
-                  : 'Só 1 líder identificado — precisa de pelo menos 2 pra ter avaliação de pares.'}
+                  ? 'Nenhum líder marcado ainda.'
+                  : 'Só 1 líder marcado — precisa de pelo menos 2 pra ter avaliação de pares.'}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Confira o campo Cargo ou o Gestor dos liderados em Funcionários.
+                Use o botão "Gerenciar Líderes" pra marcar quem participa.
               </p>
             </div>
           ) : (
