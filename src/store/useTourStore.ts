@@ -8,7 +8,9 @@ export interface TourPasso {
   alvo: string | null
   titulo: string
   texto: string
-  posicao?: 'top' | 'bottom' | 'left' | 'right'
+  /** 'center' destaca o alvo com o spotlight mas mantém o pop-up centralizado na tela
+   *  — útil quando o alvo é grande/fica perto da borda e um pop-up ancorado cortaria. */
+  posicao?: 'top' | 'bottom' | 'left' | 'right' | 'center'
 }
 
 export const TOUR_PASSOS: TourPasso[] = [
@@ -73,7 +75,7 @@ export const TOUR_PASSOS: TourPasso[] = [
     alvo: 'tour-taticas-board',
     titulo: 'O quadro de tarefas',
     texto: 'Um Kanban de verdade: arraste os cartões entre "Não Iniciado", "Em Andamento" e "Concluído" conforme o trabalho avança.',
-    posicao: 'top',
+    posicao: 'center',
   },
   {
     id: 'sinais-vitais',
@@ -81,7 +83,7 @@ export const TOUR_PASSOS: TourPasso[] = [
     alvo: 'tour-sv-grid',
     titulo: 'O painel de sinais vitais',
     texto: 'KPIs contínuos da empresa — os números que você acompanha sempre, sem uma "linha de chegada" como um KR.',
-    posicao: 'top',
+    posicao: 'center',
   },
   {
     id: 'estrategia',

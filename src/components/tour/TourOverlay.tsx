@@ -186,38 +186,42 @@ export default function TourOverlay() {
   )
 }
 
-function calcularPosicaoPopup(rect: Retangulo | null, posicao?: 'top' | 'bottom' | 'left' | 'right'): React.CSSProperties {
-  if (typeof window === 'undefined') return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
+// Altura aproximada do card do pop-up (título + texto + dots + botões) — usada só
+// pra garantir que ele nunca nasça cortado no topo/rodapé da tela, não precisa ser exata.
+const POPUP_ALTURA_ESTIMADA = 240
 
-  if (!rect) {
-    return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
-  }
+const CENTRALIZADO: React.CSSProperties = { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
+
+function calcularPosicaoPopup(rect: Retangulo | null, posicao?: 'top' | 'bottom' | 'left' | 'right' | 'center'): React.CSSProperties {
+  if (typeof window === 'undefined' || !rect || posicao === 'center') return CENTRALIZADO
 
   const vw = window.innerWidth
   const vh = window.innerHeight
   const clampLeft = (left: number) => Math.min(Math.max(MARGEM, left), vw - POPUP_LARGURA - MARGEM)
+  const clampTop = (top: number) => Math.min(Math.max(MARGEM, top), vh - POPUP_ALTURA_ESTIMADA - MARGEM)
+  const centroHorizontal = clampLeft(rect.left + rect.width / 2 - POPUP_LARGURA / 2)
 
   switch (posicao) {
     case 'right':
       return {
-        top: Math.min(Math.max(MARGEM, rect.top), vh - MARGEM - 200),
+        top: clampTop(rect.top),
         left: Math.min(rect.left + rect.width + MARGEM, vw - POPUP_LARGURA - MARGEM),
       }
     case 'left':
       return {
-        top: Math.min(Math.max(MARGEM, rect.top), vh - MARGEM - 200),
+        top: clampTop(rect.top),
         left: Math.max(MARGEM, rect.left - POPUP_LARGURA - MARGEM),
       }
     case 'top':
       return {
-        left: clampLeft(rect.left + rect.width / 2 - POPUP_LARGURA / 2),
-        bottom: Math.max(MARGEM, vh - rect.top + MARGEM),
+        left: centroHorizontal,
+        top: clampTop(rect.top - MARGEM - POPUP_ALTURA_ESTIMADA),
       }
     case 'bottom':
     default:
       return {
-        left: clampLeft(rect.left + rect.width / 2 - POPUP_LARGURA / 2),
-        top: Math.min(rect.top + rect.height + MARGEM, vh - MARGEM - 160),
+        left: centroHorizontal,
+        top: clampTop(rect.top + rect.height + MARGEM),
       }
   }
 }
