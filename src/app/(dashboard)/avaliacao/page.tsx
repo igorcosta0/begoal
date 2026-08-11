@@ -447,26 +447,95 @@ export default function AvaliacaoPage() {
     setModalLideres({ open: false, abrindo: false, funcionarios: [], salvando: false, erro: null })
   }
 
-  // Sorteia a distribuição: embaralha os líderes marcados e usa offsets fixos
-  // (1..quantidade) sobre a ordem embaralhada. Isso garante que cada líder
-  // avalia exatamente `quantidade` colegas E é avaliado por exatamente
-  // `quantidade` colegas (grafo k-regular), sem ninguém avaliar a si mesmo.
-  function sortearPares(lideres: CandidatoLider[], quantidade: number) {
-    const embaralhados = [...lideres]
-    for (let i = embaralhados.length - 1; i > 0; i--) {
+  // Grupos de líderes com verticais/trabalho relacionado (pedido ago/2026): o
+  // sorteio prioriza pares dentro do mesmo grupo, só cruzando pra fora quando o
+  // grupo é pequeno demais pra cobrir a quantidade pedida, ou a pessoa não
+  // pertence a nenhum grupo (ex.: sócios/CEO). É matching por trecho do nome, em
+  // minúsculo — ajuste aqui se a composição dos grupos mudar.
+  const GRUPOS_LIDERES: string[][] = [
+    ['graciela', 'felipe marques', 'felipe bet ross'],
+    ['guilherme', 'filipe bossoni finato', 'jean patrick'],
+  ]
+
+  function grupoDoLider(nomeCompleto: string): number {
+    const nome = nomeCompleto.toLowerCase()
+    return GRUPOS_LIDERES.findIndex((apelidos) => apelidos.some((apelido) => nome.includes(apelido)))
+  }
+
+  function embaralhar<T>(itens: T[]): T[] {
+    const copia = [...itens]
+    for (let i = copia.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
-      ;[embaralhados[i], embaralhados[j]] = [embaralhados[j], embaralhados[i]]
+      ;[copia[i], copia[j]] = [copia[j], copia[i]]
     }
-    const n = embaralhados.length
+    return copia
+  }
+
+  // Circula uma lista já embaralhada e devolve pares avaliador→avaliado com
+  // offsets 1..k (grafo k-regular: todo mundo avalia k e é avaliado por k dentro
+  // dessa lista), sem duplicar uma chave já presente em `usados`.
+  function circularPares(
+    itens: CandidatoLider[],
+    quantidade: number,
+    usados: Set<string>
+  ): { funcionario_id: string; avaliador_id: string }[] {
+    const n = itens.length
     const k = Math.min(quantidade, Math.max(n - 1, 0))
     const pares: { funcionario_id: string; avaliador_id: string }[] = []
     for (let i = 0; i < n; i++) {
       for (let offset = 1; offset <= k; offset++) {
-        const avaliador = embaralhados[i]
-        const avaliado = embaralhados[(i + offset) % n]
+        const avaliador = itens[i]
+        const avaliado = itens[(i + offset) % n]
+        const chave = `${avaliado.id}:${avaliador.id}`
+        if (usados.has(chave)) continue
+        usados.add(chave)
         pares.push({ funcionario_id: avaliado.id, avaliador_id: avaliador.id })
       }
     }
+    return pares
+  }
+
+  // Sorteia a distribuição em duas passadas:
+  //   1) dentro de cada grupo (verticais relacionadas) — é a distribuição
+  //      preferida, e com grupos de 3 e quantidade=2 já fecha a conta sozinha;
+  //   2) quem sobrou sem cota completa (grupo pequeno demais pra cobrir a
+  //      quantidade pedida, ou fora de qualquer grupo — ex.: sócios/CEO) fecha
+  //      o que falta sorteando entre todo mundo. Só a passada 1 garante que quem
+  //      avalia X colegas também é avaliado X vezes; na passada 2 isso é
+  //      best-effort — é o preço de resolver a sobra pequena.
+  function sortearPares(lideres: CandidatoLider[], quantidade: number) {
+    const usados = new Set<string>()
+    const pares: { funcionario_id: string; avaliador_id: string }[] = []
+    const atendidos = new Map<string, number>(lideres.map((l) => [l.id, 0]))
+
+    const grupos = new Map<number, CandidatoLider[]>()
+    for (const l of lideres) {
+      const g = grupoDoLider(l.full_name)
+      if (g === -1) continue
+      grupos.set(g, [...(grupos.get(g) ?? []), l])
+    }
+
+    for (const membros of Array.from(grupos.values())) {
+      for (const p of circularPares(embaralhar(membros), quantidade, usados)) {
+        pares.push(p)
+        atendidos.set(p.avaliador_id, (atendidos.get(p.avaliador_id) ?? 0) + 1)
+      }
+    }
+
+    for (const avaliador of embaralhar(lideres)) {
+      let faltam = quantidade - (atendidos.get(avaliador.id) ?? 0)
+      if (faltam <= 0) continue
+      for (const candidato of embaralhar(lideres.filter((c) => c.id !== avaliador.id))) {
+        if (faltam <= 0) break
+        const chave = `${candidato.id}:${avaliador.id}`
+        if (usados.has(chave)) continue
+        usados.add(chave)
+        pares.push({ funcionario_id: candidato.id, avaliador_id: avaliador.id })
+        atendidos.set(avaliador.id, (atendidos.get(avaliador.id) ?? 0) + 1)
+        faltam--
+      }
+    }
+
     return pares
   }
 
