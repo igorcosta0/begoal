@@ -136,7 +136,11 @@ export default function AvaliacaoPage() {
   const [isAdmin, setIsAdmin] = useState(false)
   // Ativar/encerrar/excluir ciclo continua exclusivo de administrador — regra espelha a RLS.
   const [souAdministrador, setSouAdministrador] = useState(false)
-  // Criar ciclo é liberado pra administrador e gestor comum também.
+  // Líder = cargo contém "líder" OU a pessoa tem pelo menos 1 liderado — é quem
+  // pode criar ciclo e configurar avaliação de pares (administrador também pode,
+  // como via de suporte, mesmo sem ser líder).
+  const [souLider, setSouLider] = useState(false)
+  // Criar ciclo é liberado pra administrador e líder.
   const [podeCriarCiclo, setPodeCriarCiclo] = useState(false)
   // Administrador e calibrador enxergam todos os funcionários da empresa; gestor comum
   // vê somente seus próprios liderados (definidos pelo campo "gestor_id" de cada funcionário).
@@ -217,7 +221,9 @@ export default function AvaliacaoPage() {
       .order('full_name')
     if (gestorId) query = query.eq('gestor_id', gestorId)
     const { data } = await query
-    setFuncionarios((data ?? []) as unknown as Funcionario[])
+    const lista = (data ?? []) as unknown as Funcionario[]
+    setFuncionarios(lista)
+    return lista
   }, [empresa])
 
   useEffect(() => {
@@ -243,32 +249,37 @@ export default function AvaliacaoPage() {
           .single(),
       ])
 
-      // 'administrador', 'gestor' e calibradores avulsos (is_calibrador) têm acesso ao
-      // fluxo de avaliação (em vez da tela "Minhas Avaliações" de um funcionário comum),
-      // mas só administrador/calibrador enxergam TODOS os funcionários da empresa — um
-      // gestor comum só pode ver e avaliar seus próprios liderados.
+      // 'administrador' e calibradores avulsos (is_calibrador) enxergam TODOS os
+      // funcionários da empresa; todo o resto (inclusive líder) só vê e avalia
+      // seus próprios liderados.
       const permission = roleRes.data?.permission_level
       const administrador = permission === 'administrador'
       const calibrador = roleRes.data?.is_calibrador === true
-      const souGestor = permission === 'gestor'
-      const admin = administrador || souGestor || calibrador
       const todaEmpresa = administrador || calibrador
-      setIsAdmin(admin)
-      setSouAdministrador(administrador)
-      setPodeCriarCiclo(administrador || souGestor)
-      setVeTodaEmpresa(todaEmpresa)
       const meuFunc = funcRes.data as Funcionario | null
       if (meuFunc) setMeuFuncionario(meuFunc)
 
       await fetchCiclos()
-      // Gestor comum só busca a lista se tivermos o próprio funcionario.id pra escopar
-      // por gestor_id — sem isso, cair pra "buscar sem filtro" mostraria a empresa
-      // inteira (falha aberta). Nesse caso preferimos não listar ninguém.
+      // Precisamos saber se a pessoa é líder ANTES de decidir se ela vê o console
+      // administrativo — busca a lista de funcionários primeiro (empresa toda pra
+      // admin/calibrador, só os próprios liderados pros demais) e só então fecha
+      // os estados de permissão.
+      let listaFuncionarios: Funcionario[] = []
       if (todaEmpresa) {
-        await fetchFuncionarios()
-      } else if (admin && meuFunc?.id) {
-        await fetchFuncionarios(meuFunc.id)
+        listaFuncionarios = (await fetchFuncionarios()) ?? []
+      } else if (meuFunc?.id) {
+        listaFuncionarios = (await fetchFuncionarios(meuFunc.id)) ?? []
       }
+      const idsComLideradoInit = new Set(listaFuncionarios.map((f) => f.gestor_id).filter((id): id is string => !!id))
+      const souLiderAtual = meuFunc ? ehLider(meuFunc, idsComLideradoInit) : false
+      const admin = administrador || calibrador || souLiderAtual
+
+      setIsAdmin(admin)
+      setSouAdministrador(administrador)
+      setSouLider(souLiderAtual)
+      setPodeCriarCiclo(administrador || souLiderAtual)
+      setVeTodaEmpresa(todaEmpresa)
+
       // Opções de avaliador na montagem do ciclo cobrem a empresa toda (não só os
       // liderados de quem está montando) — dá pra escalar qualquer pessoa, não só o
       // gestor direto no organograma.
@@ -350,9 +361,27 @@ export default function AvaliacaoPage() {
     if (cicloAtivo?.id === ciclo.id) fetchAvaliacoes()
   }
 
-  function abrirModalPares(ciclo: Ciclo) {
+  // Busca fresh a empresa toda (não só quem cada gestor lidera) pra detectar
+  // líderes com precisão — quem abre isso pode ser um líder comum, que só tem
+  // os próprios liderados no estado `funcionarios`.
+  async function abrirModalPares(ciclo: Ciclo) {
     setErro('')
-    setModalPares({ open: true, ciclo, lideres: lideresCandidatos, confirmando: false, erro: null })
+    if (!empresa) return
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('funcionarios')
+      .select('id, full_name, cargo, gestor_id')
+      .eq('client_id', empresa.id)
+      .eq('status', 'Ativo')
+      .order('full_name')
+    if (error) {
+      setErro(error.message)
+      return
+    }
+    const todos = (data ?? []) as unknown as Funcionario[]
+    const idsComLideradoTodos = new Set(todos.map((f) => f.gestor_id).filter((id): id is string => !!id))
+    const candidatos = todos.filter((f) => ehLider(f, idsComLideradoTodos))
+    setModalPares({ open: true, ciclo, lideres: candidatos, confirmando: false, erro: null })
   }
 
   // Sorteia a distribuição: embaralha os líderes marcados e usa offsets fixos
@@ -503,11 +532,10 @@ export default function AvaliacaoPage() {
   const funcionariosComAvaliacao = new Set(avaliacoes.map((a) => a.funcionario?.id))
   const funcionariosSemAvaliacao = funcionarios.filter((f) => !funcionariosComAvaliacao.has(f.id))
 
-  // Líder = cargo contém "líder" OU aparece como gestor_id de alguém — calculado
-  // aqui, não é uma coluna própria. `funcionarios` só cobre a empresa toda quando
-  // souAdministrador (calibrador não configura pares, só admin).
-  const idsComLiderado = new Set(funcionarios.map((f) => f.gestor_id).filter((id): id is string => !!id))
-  const lideresCandidatos = souAdministrador ? funcionarios.filter((f) => ehLider(f, idsComLiderado)) : []
+  // Só pode existir 1 ciclo em aberto (rascunho ou ativo) por vez — evita criar
+  // vários e confundir quem está avaliando em qual. Ciclos encerrados não contam:
+  // uma vez fechado, dá pra abrir o próximo normalmente.
+  const existeCicloEmAberto = ciclos.some((c) => c.status !== 'encerrado')
 
   if (loading) {
     return (
@@ -689,13 +717,22 @@ export default function AvaliacaoPage() {
           </div>
         </div>
         {podeCriarCiclo && (
-          <button
-            onClick={() => setModalCriarCiclo(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            Novo Ciclo
-          </button>
+          existeCicloEmAberto ? (
+            <p
+              className="text-xs text-muted-foreground max-w-[220px] text-right"
+              title="Só dá pra ter 1 ciclo em rascunho/ativo por vez — encerre o atual pra liberar a criação de outro."
+            >
+              Encerre o ciclo atual pra criar um novo
+            </p>
+          ) : (
+            <button
+              onClick={() => setModalCriarCiclo(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Novo Ciclo
+            </button>
+          )
         )}
       </div>
 
@@ -792,10 +829,9 @@ export default function AvaliacaoPage() {
                           Adicionar ao ciclo
                         </button>
                       )}
-                      {souAdministrador && ciclo.status === 'ativo' && (
+                      {(souAdministrador || souLider) && ciclo.status === 'ativo' && (
                         <button
                           onClick={() => abrirModalPares(ciclo)}
-                          title={lideresCandidatos.length < 2 ? 'Precisa de pelo menos 2 líderes identificados' : undefined}
                           className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground"
                         >
                           <ArrowRightLeft className="w-3.5 h-3.5" />
