@@ -11,11 +11,13 @@ import {
   updateCicloStatus,
   deleteCicloAvaliacao,
 } from '@/lib/queries/avaliacao'
+import { getFuncionariosByEmpresa } from '@/lib/queries/okr'
 import ModalCriarCiclo from '@/components/avaliacao/ModalCriarCiclo'
 import ModalAvaliacao from '@/components/avaliacao/ModalAvaliacao'
 import ModalNineBox from '@/components/avaliacao/ModalNineBox'
+import ModalMontarAvaliacoes, { type LinhaMontagem, type OpcaoAvaliador } from '@/components/avaliacao/ModalMontarAvaliacoes'
 import { cn, isEmpresaCTZ } from '@/lib/utils'
-import { LayoutGrid, Plus, ChevronRight, Trash2 } from 'lucide-react'
+import { LayoutGrid, Plus, ChevronRight, Trash2, Users2 } from 'lucide-react'
 import { VERTICAIS_CTZ } from '@/components/avaliacao/ModalAvaliacao'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
@@ -65,41 +67,11 @@ interface Funcionario {
   full_name: string
   cargo: string | null
   setor?: { name: string } | null
+  gestor_id?: string | null
   gestor?: { full_name: string } | null
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-// Mapeia o setor cadastrado do funcionário para a chave de vertical usada na
-// Avaliação Técnica (VERTICAIS_CTZ), pra pré-preencher em vez de deixar em branco.
-// "Concretize" não entra aqui porque foi dividida em duas equipes com metas
-// próprias — ver verticalDoFuncionario abaixo.
-const SETOR_PARA_VERTICAL: Record<string, string> = {
-  'CSC': 'csc_financeiro',
-  'Novos negocios': 'novos_negocios',
-  'Loteamentos': 'loteadora',
-  'Investimento': 'investimentos',
-}
-
-// Dentro do setor "Concretize", quem é o próprio Felipe Ross ou responde a ele
-// (Laura, Jean, Luiz Gazeta) entra na Equipe Comercial; os demais — incluindo o
-// próprio Felipe Marques — ficam na Equipe Técnica (pedido de ago/2026).
-// É só um pré-preenchimento: a vertical continua editável na avaliação, então um
-// gestor_id desatualizado no cadastro do funcionário não trava nada, só erra o
-// palpite inicial (aí é só corrigir no seletor "Vertical de atuação").
-function verticalDoFuncionario(
-  setorName: string | undefined | null,
-  nomeFuncionario?: string | null,
-  nomeGestor?: string | null
-): string | undefined {
-  if (!setorName) return undefined
-  if (setorName === 'Concretize') {
-    const ehRoss = (nomeFuncionario ?? '').toLowerCase().includes('ross')
-    const respondeRoss = (nomeGestor ?? '').toLowerCase().includes('ross')
-    return ehRoss || respondeRoss ? 'concretize_comercial' : 'concretize_tecnica'
-  }
-  return SETOR_PARA_VERTICAL[setorName]
-}
 
 const cicloStatusLabel: Record<string, string> = {
   rascunho: 'Rascunho',
@@ -155,6 +127,7 @@ export default function AvaliacaoPage() {
   const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([])
   const [minhasAvaliacoes, setMinhasAvaliacoes] = useState<MinhaAvaliacao[]>([])
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([])
+  const [opcoesAvaliador, setOpcoesAvaliador] = useState<OpcaoAvaliador[]>([])
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
 
@@ -165,6 +138,14 @@ export default function AvaliacaoPage() {
     cicloNome: string
   }>({ open: false, avaliacao: null, cicloNome: '' })
   const [modalNineBox, setModalNineBox] = useState(false)
+  const [modalMontar, setModalMontar] = useState<{
+    open: boolean
+    ciclo: Ciclo | null
+    ativarAoConfirmar: boolean
+    funcionariosAlvo: Funcionario[]
+    confirmando: boolean
+    erro: string | null
+  }>({ open: false, ciclo: null, ativarAoConfirmar: false, funcionariosAlvo: [], confirmando: false, erro: null })
 
   const fetchCiclos = useCallback(async () => {
     if (!empresa) return
@@ -192,7 +173,7 @@ export default function AvaliacaoPage() {
     const supabase = createClient()
     let query = supabase
       .from('funcionarios')
-      .select('id, full_name, cargo, setor:setores!setor_id(name), gestor:funcionarios!gestor_id(full_name)')
+      .select('id, full_name, cargo, gestor_id, setor:setores!setor_id(name), gestor:funcionarios!gestor_id(full_name)')
       .eq('client_id', empresa.id)
       .eq('status', 'Ativo')
       .order('full_name')
@@ -250,6 +231,13 @@ export default function AvaliacaoPage() {
       } else if (admin && meuFunc?.id) {
         await fetchFuncionarios(meuFunc.id)
       }
+      // Opções de avaliador na montagem do ciclo cobrem a empresa toda (não só os
+      // liderados de quem está montando) — dá pra escalar qualquer pessoa, não só o
+      // gestor direto no organograma.
+      if (admin) {
+        const { data: todos } = await getFuncionariosByEmpresa(empresa!.id)
+        setOpcoesAvaliador((todos ?? []) as OpcaoAvaliador[])
+      }
       setLoading(false)
     }
     init()
@@ -263,63 +251,71 @@ export default function AvaliacaoPage() {
     if (meuFuncionario && !isAdmin) fetchMinhasAvaliacoes()
   }, [meuFuncionario, isAdmin, fetchMinhasAvaliacoes])
 
-  async function handleAtivarCiclo(ciclo: Ciclo) {
+  // "Ativar" (rascunho → ativo) e "Adicionar ao ciclo" (ativo, gente sem avaliação)
+  // agora abrem a montagem em vez de criar avaliações às cegas: busca fresh quem já
+  // tem avaliação NESTE ciclo (não dá pra confiar no estado `avaliacoes`, que é do
+  // ciclo expandido no acordeão, que pode ser um ciclo diferente do que foi clicado).
+  async function abrirMontagem(ciclo: Ciclo, ativarAoConfirmar: boolean) {
     setErro('')
-    const novoStatus = ciclo.status === 'rascunho' ? 'ativo' : 'encerrado'
-    const { error } = await updateCicloStatus(ciclo.id, novoStatus)
+    const supabase = createClient()
+    const { data: existentes, error } = await supabase
+      .from('avaliacoes')
+      .select('funcionario_id')
+      .eq('ciclo_id', ciclo.id)
     if (error) {
       setErro(error.message)
       return
     }
-    if (novoStatus === 'ativo') {
-      const { error: erroIniciar } = await iniciarAvaliacoesParaTodos(ciclo.id)
-      if (erroIniciar) {
-        setErro(erroIniciar)
+    const jaTem = new Set((existentes ?? []).map((a) => a.funcionario_id))
+    const alvo = funcionarios.filter((f) => !jaTem.has(f.id))
+    setModalMontar({ open: true, ciclo, ativarAoConfirmar, funcionariosAlvo: alvo, confirmando: false, erro: null })
+  }
+
+  async function handleConfirmarMontagem(linhas: LinhaMontagem[]) {
+    const { ciclo, ativarAoConfirmar } = modalMontar
+    if (!ciclo) return
+    setModalMontar((prev) => ({ ...prev, confirmando: true, erro: null }))
+
+    if (ativarAoConfirmar) {
+      const { error } = await updateCicloStatus(ciclo.id, 'ativo')
+      if (error) {
+        setModalMontar((prev) => ({ ...prev, confirmando: false, erro: error.message }))
         return
       }
     }
+
+    const incluidas = linhas.filter((l) => l.incluir)
+    if (incluidas.length > 0) {
+      const resultados = await Promise.all(
+        incluidas.map((l) =>
+          createAvaliacao({
+            ciclo_id: ciclo.id,
+            funcionario_id: l.funcionario_id,
+            avaliador_id: l.avaliador_id || undefined,
+            vertical: l.vertical || undefined,
+          })
+        )
+      )
+      const erroCriacao = resultados.find((r) => r.error)?.error
+      if (erroCriacao) {
+        setModalMontar((prev) => ({ ...prev, confirmando: false, erro: erroCriacao.message }))
+        return
+      }
+    }
+
+    setModalMontar({ open: false, ciclo: null, ativarAoConfirmar: false, funcionariosAlvo: [], confirmando: false, erro: null })
     fetchCiclos()
     if (cicloAtivo?.id === ciclo.id) fetchAvaliacoes()
   }
 
-  async function iniciarAvaliacoesParaTodos(cicloId: string): Promise<{ error: string | null }> {
-    if (!empresa) return { error: null }
-    const supabase = createClient()
-    const [{ data: todosFuncionarios, error: erroFunc }, { data: avaliacoesExistentes, error: erroAval }] =
-      await Promise.all([
-        supabase
-          .from('funcionarios')
-          .select('id, full_name, setor:setores!setor_id(name), gestor:funcionarios!gestor_id(full_name)')
-          .eq('client_id', empresa.id)
-          .eq('status', 'Ativo'),
-        supabase.from('avaliacoes').select('funcionario_id').eq('ciclo_id', cicloId),
-      ])
-    if (erroFunc) return { error: erroFunc.message }
-    if (erroAval) return { error: erroAval.message }
-
-    const jaTem = new Set((avaliacoesExistentes ?? []).map((a) => a.funcionario_id))
-    const faltando = ((todosFuncionarios ?? []) as unknown as (Funcionario & { id: string })[]).filter(
-      (f) => !jaTem.has(f.id)
-    )
-    if (!faltando.length) return { error: null }
-
-    const resultados = await Promise.all(
-      faltando.map((f) =>
-        createAvaliacao({ ciclo_id: cicloId, funcionario_id: f.id, vertical: verticalDoFuncionario(f.setor?.name, f.full_name, f.gestor?.full_name) })
-      )
-    )
-    const erro = resultados.find((r) => r.error)?.error
-    return { error: erro?.message ?? null }
-  }
-
-  async function handleSincronizarAvaliacoes(cicloId: string) {
+  async function handleEncerrarCiclo(ciclo: Ciclo) {
     setErro('')
-    const { error } = await iniciarAvaliacoesParaTodos(cicloId)
+    const { error } = await updateCicloStatus(ciclo.id, 'encerrado')
     if (error) {
-      setErro(error)
+      setErro(error.message)
       return
     }
-    fetchAvaliacoes()
+    fetchCiclos()
   }
 
   async function handleDeletarCiclo(ciclo: Ciclo) {
@@ -335,29 +331,6 @@ export default function AvaliacaoPage() {
     }
     if (cicloAtivo?.id === ciclo.id) setCicloAtivo(null)
     fetchCiclos()
-  }
-
-  async function handleIniciarAvaliacao(funcionario: Funcionario) {
-    if (!cicloAtivo) return
-    setErro('')
-    const { data, error } = await createAvaliacao({
-      ciclo_id: cicloAtivo.id,
-      funcionario_id: funcionario.id,
-      vertical: verticalDoFuncionario(funcionario.setor?.name, funcionario.full_name, funcionario.gestor?.full_name),
-    })
-    if (error) {
-      setErro(error.message)
-      return
-    }
-    if (data) {
-      fetchAvaliacoes()
-      const novaAvaliacao: Avaliacao = {
-        ...(data as unknown as Avaliacao),
-        funcionario: { id: funcionario.id, full_name: funcionario.full_name, cargo: funcionario.cargo },
-        avaliador: null,
-      }
-      setModalAvaliacao({ open: true, avaliacao: novaAvaliacao, cicloNome: cicloAtivo.nome })
-    }
   }
 
   function abrirAvaliacao(avaliacao: Avaliacao, cicloNome: string) {
@@ -583,7 +556,11 @@ export default function AvaliacaoPage() {
                   </span>
                   {souAdministrador && ciclo.status !== 'encerrado' && (
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleAtivarCiclo(ciclo) }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (ciclo.status === 'rascunho') abrirMontagem(ciclo, true)
+                        else handleEncerrarCiclo(ciclo)
+                      }}
                       className="text-xs px-3 py-1 border border-border rounded-md hover:bg-accent transition-colors text-muted-foreground"
                     >
                       {ciclo.status === 'rascunho' ? 'Ativar' : 'Encerrar'}
@@ -611,12 +588,13 @@ export default function AvaliacaoPage() {
                       {funcionariosSemAvaliacao.length > 0 && ` · ${funcionariosSemAvaliacao.length} funcionário(s) sem avaliação`}
                     </p>
                     <div className="flex items-center gap-2">
-                      {veTodaEmpresa && ciclo.status === 'ativo' && funcionariosSemAvaliacao.length > 0 && (
+                      {ciclo.status === 'ativo' && funcionariosSemAvaliacao.length > 0 && (
                         <button
-                          onClick={() => handleSincronizarAvaliacoes(ciclo.id)}
+                          onClick={() => abrirMontagem(ciclo, false)}
                           className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground"
                         >
-                          Sincronizar Avaliações
+                          <Users2 className="w-3.5 h-3.5" />
+                          Adicionar ao ciclo
                         </button>
                       )}
                       <button
@@ -655,6 +633,9 @@ export default function AvaliacaoPage() {
                                     · {VERTICAIS_CTZ[av.vertical]?.label ?? av.vertical}
                                   </span>
                                 )}
+                                <span className="text-xs text-muted-foreground">
+                                  · avaliador: {av.avaliador?.full_name ?? 'não definido'}
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -689,29 +670,31 @@ export default function AvaliacaoPage() {
                   {/* Funcionários sem avaliação */}
                   {funcionariosSemAvaliacao.length > 0 && (
                     <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Sem avaliação neste ciclo
-                      </p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          Sem avaliação neste ciclo
+                        </p>
+                        {ciclo.status === 'ativo' && (
+                          <button
+                            onClick={() => abrirMontagem(ciclo, false)}
+                            className="text-xs text-primary hover:underline font-medium"
+                          >
+                            Adicionar ao ciclo →
+                          </button>
+                        )}
+                      </div>
                       {funcionariosSemAvaliacao.map((f) => (
                         <div
                           key={f.id}
-                          className="flex items-center justify-between gap-3 p-3 rounded-md border border-dashed border-border bg-background"
+                          className="flex items-center gap-3 p-3 rounded-md border border-dashed border-border bg-background"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 text-muted-foreground font-semibold text-xs">
-                              {f.full_name.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <p className="text-sm text-foreground">{f.full_name}</p>
-                              {f.cargo && <p className="text-xs text-muted-foreground">{f.cargo}</p>}
-                            </div>
+                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 text-muted-foreground font-semibold text-xs">
+                            {f.full_name.charAt(0).toUpperCase()}
                           </div>
-                          <button
-                            onClick={() => handleIniciarAvaliacao(f)}
-                            className="px-3 py-1.5 border border-border rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                          >
-                            + Iniciar Avaliação
-                          </button>
+                          <div>
+                            <p className="text-sm text-foreground">{f.full_name}</p>
+                            {f.cargo && <p className="text-xs text-muted-foreground">{f.cargo}</p>}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -752,6 +735,18 @@ export default function AvaliacaoPage() {
           media_tecnica_gestor: a.media_tecnica_gestor,
         }))}
         onClose={() => setModalNineBox(false)}
+      />
+
+      <ModalMontarAvaliacoes
+        open={modalMontar.open}
+        cicloNome={modalMontar.ciclo?.nome ?? ''}
+        funcionarios={modalMontar.funcionariosAlvo}
+        opcoesAvaliador={opcoesAvaliador}
+        acaoLabel={modalMontar.ativarAoConfirmar ? 'Confirmar e ativar ciclo' : 'Adicionar ao ciclo'}
+        confirmando={modalMontar.confirmando}
+        erro={modalMontar.erro}
+        onClose={() => setModalMontar({ open: false, ciclo: null, ativarAoConfirmar: false, funcionariosAlvo: [], confirmando: false, erro: null })}
+        onConfirmar={handleConfirmarMontagem}
       />
     </div>
   )

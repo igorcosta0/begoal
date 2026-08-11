@@ -1,5 +1,35 @@
 import { createClient } from '@/lib/supabase/client'
 
+// ── Sugestão de vertical por setor/gestor ───────────────────────────────────
+// Usado só como pré-preenchimento na hora de montar um ciclo — a vertical
+// continua editável por avaliação, então nunca trava nada, só erra o palpite.
+
+// "Concretize" não entra aqui porque foi dividida em duas equipes com metas
+// próprias — ver verticalDoFuncionario abaixo.
+export const SETOR_PARA_VERTICAL: Record<string, string> = {
+  'CSC': 'csc_financeiro',
+  'Novos negocios': 'novos_negocios',
+  'Loteamentos': 'loteadora',
+  'Investimento': 'investimentos',
+}
+
+// Dentro do setor "Concretize", quem é o próprio Felipe Ross ou responde a ele
+// entra na Equipe Comercial; os demais — incluindo o próprio Felipe Marques —
+// ficam na Equipe Técnica (pedido de ago/2026).
+export function verticalDoFuncionario(
+  setorName: string | undefined | null,
+  nomeFuncionario?: string | null,
+  nomeGestor?: string | null
+): string | undefined {
+  if (!setorName) return undefined
+  if (setorName === 'Concretize') {
+    const ehRoss = (nomeFuncionario ?? '').toLowerCase().includes('ross')
+    const respondeRoss = (nomeGestor ?? '').toLowerCase().includes('ross')
+    return ehRoss || respondeRoss ? 'concretize_comercial' : 'concretize_tecnica'
+  }
+  return SETOR_PARA_VERTICAL[setorName]
+}
+
 export async function getCiclosAvaliacao(clientId: string) {
   const supabase = createClient()
   return supabase

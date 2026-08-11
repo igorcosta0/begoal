@@ -702,6 +702,9 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
             {avaliacao.funcionario?.cargo && (
               <p className="text-xs text-muted-foreground">{avaliacao.funcionario.cargo}</p>
             )}
+            {avaliacao.avaliador?.full_name && (
+              <p className="text-[11px] text-muted-foreground mt-0.5">Avaliador: {avaliacao.avaliador.full_name}</p>
+            )}
           </div>
         </div>
 
