@@ -30,6 +30,17 @@ export function verticalDoFuncionario(
   return SETOR_PARA_VERTICAL[setorName]
 }
 
+// ── Avaliação de Pares (líderes avaliando líderes) ──────────────────────────
+// "Líder" não é uma coluna própria — é calculado a partir do que já existe no
+// cadastro de Funcionários: cargo contém "líder" OU a pessoa tem pelo menos um
+// liderado (aparece como gestor_id de alguém). Isso evita depender de uma
+// lista fixa de nomes, que fica desatualizada assim que o organograma muda.
+export function ehLider(funcionario: { id: string; cargo?: string | null }, idsComLiderado: Set<string>): boolean {
+  const cargoIndicaLider = (funcionario.cargo ?? '').toLowerCase().includes('líder')
+    || (funcionario.cargo ?? '').toLowerCase().includes('lider')
+  return cargoIndicaLider || idsComLiderado.has(funcionario.id)
+}
+
 export async function getCiclosAvaliacao(clientId: string) {
   const supabase = createClient()
   return supabase
@@ -65,7 +76,7 @@ export async function getAvaliacoesByCiclo(cicloId: string) {
   return supabase
     .from('avaliacoes')
     .select(`
-      id, status, vertical, revelado, media_cultural_auto, media_cultural_gestor, media_cultural_calibragem,
+      id, status, vertical, tipo, revelado, media_cultural_auto, media_cultural_gestor, media_cultural_calibragem,
       media_tecnica_auto, media_tecnica_gestor, media_tecnica_calibragem,
       evidencias_culturais, evidencias_tecnicas, observacoes_gerais,
       funcionario:funcionarios!funcionario_id(id, full_name, cargo),
@@ -80,11 +91,27 @@ export async function getMinhasAvaliacoes(funcionarioId: string) {
   return supabase
     .from('avaliacoes')
     .select(`
-      id, status, vertical, revelado, media_cultural_auto, media_cultural_gestor, media_cultural_calibragem,
+      id, status, vertical, tipo, revelado, media_cultural_auto, media_cultural_gestor, media_cultural_calibragem,
       media_tecnica_auto, media_tecnica_gestor, media_tecnica_calibragem,
+      avaliador:funcionarios!avaliador_id(id, full_name),
       ciclo:ciclos_avaliacao!ciclo_id(id, nome, periodo, ano, status)
     `)
     .eq('funcionario_id', funcionarioId)
+    .order('created_at', { ascending: false })
+}
+
+// Avaliações onde a pessoa é a AVALIADORA (não a avaliada) — é daqui que vem a
+// lista "Preciso Avaliar" de quem recebeu avaliações de pares pra preencher.
+export async function getAvaliacoesParaAvaliar(avaliadorFuncionarioId: string) {
+  const supabase = createClient()
+  return supabase
+    .from('avaliacoes')
+    .select(`
+      id, status, vertical, tipo, revelado,
+      funcionario:funcionarios!funcionario_id(id, full_name, cargo),
+      ciclo:ciclos_avaliacao!ciclo_id(id, nome, periodo, ano, status)
+    `)
+    .eq('avaliador_id', avaliadorFuncionarioId)
     .order('created_at', { ascending: false })
 }
 
@@ -93,6 +120,7 @@ export async function createAvaliacao(payload: {
   funcionario_id: string
   avaliador_id?: string
   vertical?: string
+  tipo?: 'padrao' | 'pares'
 }) {
   const supabase = createClient()
   return supabase.from('avaliacoes').insert(payload).select().single()

@@ -320,6 +320,7 @@ interface Avaliacao {
   id: string
   status: string
   vertical: string | null
+  tipo?: 'padrao' | 'pares'
   revelado?: boolean
   observacoes_gerais: string | null
   media_cultural_auto: number | null
@@ -414,6 +415,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
 
   function validarCampos(): string[] {
     const faltando: string[] = []
+    const ehParesForm = avaliacao?.tipo === 'pares'
 
     const pilaresFaltando = [1, 2, 3, 4].some((p) =>
       isAdmin ? scoresC[String(p)]?.gestor == null : scoresC[String(p)]?.auto == null
@@ -433,11 +435,11 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
       faltando.push('observações do gestor')
     }
 
-    if (!vertical) {
+    if (!ehParesForm && !vertical) {
       faltando.push('vertical de atuação')
     }
 
-    const criteriosAtuais = vertical ? (VERTICAIS_CTZ[vertical]?.criterios ?? []) : []
+    const criteriosAtuais = !ehParesForm && vertical ? (VERTICAIS_CTZ[vertical]?.criterios ?? []) : []
     if (criteriosAtuais.length) {
       const criteriosFaltando = criteriosAtuais.some((c) =>
         isAdmin ? scoresT[c.key]?.gestor == null : scoresT[c.key]?.auto == null
@@ -491,7 +493,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
       return false
     }
 
-    const criterios = vertical ? (VERTICAIS_CTZ[vertical]?.criterios ?? []) : []
+    const criterios = avaliacao.tipo !== 'pares' && vertical ? (VERTICAIS_CTZ[vertical]?.criterios ?? []) : []
     if (criterios.length) {
       const resultadosT = await Promise.all(
         criterios.map((c) =>
@@ -625,7 +627,11 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
 
   if (!open || !avaliacao) return null
 
-  const criterios = vertical ? (VERTICAIS_CTZ[vertical]?.criterios ?? []) : []
+  // Avaliação de pares (líder avaliando líder) é só cultural — sem aba de
+  // metas técnicas, já que um colega de outra vertical raramente tem
+  // visibilidade das metas específicas de quem está avaliando.
+  const ehPares = avaliacao.tipo === 'pares'
+  const criterios = !ehPares && vertical ? (VERTICAIS_CTZ[vertical]?.criterios ?? []) : []
   const statusLabel: Record<string, string> = {
     pendente: 'Pendente',
     auto_concluida: 'Autoavaliação Concluída',
@@ -681,6 +687,11 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
         <div className="flex items-start justify-between p-5 border-b border-border shrink-0">
           <p className="text-xs text-muted-foreground">{cicloNome}</p>
           <div className="flex items-center gap-2">
+            {ehPares && (
+              <span className="text-xs px-2 py-1 rounded-full font-medium bg-violet-100 text-violet-700">
+                Avaliação de Pares
+              </span>
+            )}
             <span className={cn('text-xs px-2 py-1 rounded-full font-medium', statusColor[avaliacao.status] ?? 'bg-muted text-muted-foreground')}>
               {statusLabel[avaliacao.status] ?? avaliacao.status}
             </span>
@@ -710,7 +721,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
 
         {/* Tabs */}
         <div className="flex border-b border-border shrink-0 px-5">
-          {(['cultural', 'tecnica', 'pdi'] as const).map((tab) => (
+          {(['cultural', 'tecnica', 'pdi'] as const).filter((tab) => !ehPares || tab !== 'tecnica').map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -721,7 +732,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               )}
             >
-              {tab === 'cultural' && 'Alinhamento Cultural (50%)'}
+              {tab === 'cultural' && (ehPares ? 'Alinhamento Cultural' : 'Alinhamento Cultural (50%)')}
               {tab === 'tecnica' && 'Performance Técnica (50%)'}
               {tab === 'pdi' && 'PDI'}
             </button>

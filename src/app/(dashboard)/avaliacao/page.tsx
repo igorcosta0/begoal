@@ -7,17 +7,21 @@ import {
   getCiclosAvaliacao,
   getAvaliacoesByCiclo,
   getMinhasAvaliacoes,
+  getAvaliacoesParaAvaliar,
   createAvaliacao,
   updateCicloStatus,
   deleteCicloAvaliacao,
+  deleteAvaliacao,
+  ehLider,
 } from '@/lib/queries/avaliacao'
 import { getFuncionariosByEmpresa } from '@/lib/queries/okr'
 import ModalCriarCiclo from '@/components/avaliacao/ModalCriarCiclo'
 import ModalAvaliacao from '@/components/avaliacao/ModalAvaliacao'
 import ModalNineBox from '@/components/avaliacao/ModalNineBox'
 import ModalMontarAvaliacoes, { type LinhaMontagem, type OpcaoAvaliador } from '@/components/avaliacao/ModalMontarAvaliacoes'
+import ModalAvaliacaoPares from '@/components/avaliacao/ModalAvaliacaoPares'
 import { cn, isEmpresaCTZ } from '@/lib/utils'
-import { LayoutGrid, Plus, ChevronRight, Trash2, Users2 } from 'lucide-react'
+import { LayoutGrid, Plus, ChevronRight, Trash2, Users2, ArrowRightLeft, X } from 'lucide-react'
 import { VERTICAIS_CTZ } from '@/components/avaliacao/ModalAvaliacao'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
@@ -34,6 +38,7 @@ interface Avaliacao {
   id: string
   status: string
   vertical: string | null
+  tipo?: 'padrao' | 'pares'
   revelado: boolean
   media_cultural_auto: number | null
   media_cultural_gestor: number | null
@@ -52,6 +57,7 @@ interface MinhaAvaliacao {
   id: string
   status: string
   vertical: string | null
+  tipo?: 'padrao' | 'pares'
   revelado: boolean
   media_cultural_auto: number | null
   media_cultural_gestor: number | null
@@ -59,6 +65,20 @@ interface MinhaAvaliacao {
   media_tecnica_auto: number | null
   media_tecnica_gestor: number | null
   media_tecnica_calibragem: number | null
+  avaliador?: { id: string; full_name: string } | null
+  ciclo: { id: string; nome: string; periodo: number; ano: number; status: string } | null
+}
+
+// Avaliação que EU preciso preencher como avaliador (não sobre mim) — é assim
+// que um líder com permissão comum (não admin/gestor) enxerga a avaliação de
+// pares que outro líder pediu pra ele fazer.
+interface AvaliacaoParaAvaliar {
+  id: string
+  status: string
+  vertical: string | null
+  tipo?: 'padrao' | 'pares'
+  revelado: boolean
+  funcionario: { id: string; full_name: string; cargo: string | null } | null
   ciclo: { id: string; nome: string; periodo: number; ano: number; status: string } | null
 }
 
@@ -126,6 +146,7 @@ export default function AvaliacaoPage() {
   const [cicloAtivo, setCicloAtivo] = useState<Ciclo | null>(null)
   const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([])
   const [minhasAvaliacoes, setMinhasAvaliacoes] = useState<MinhaAvaliacao[]>([])
+  const [avaliacoesParaAvaliar, setAvaliacoesParaAvaliar] = useState<AvaliacaoParaAvaliar[]>([])
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([])
   const [opcoesAvaliador, setOpcoesAvaliador] = useState<OpcaoAvaliador[]>([])
   const [loading, setLoading] = useState(true)
@@ -136,7 +157,8 @@ export default function AvaliacaoPage() {
     open: boolean
     avaliacao: Avaliacao | MinhaAvaliacao | null
     cicloNome: string
-  }>({ open: false, avaliacao: null, cicloNome: '' })
+    papelAvaliador: boolean
+  }>({ open: false, avaliacao: null, cicloNome: '', papelAvaliador: false })
   const [modalNineBox, setModalNineBox] = useState(false)
   const [modalMontar, setModalMontar] = useState<{
     open: boolean
@@ -146,6 +168,13 @@ export default function AvaliacaoPage() {
     confirmando: boolean
     erro: string | null
   }>({ open: false, ciclo: null, ativarAoConfirmar: false, funcionariosAlvo: [], confirmando: false, erro: null })
+  const [modalPares, setModalPares] = useState<{
+    open: boolean
+    ciclo: Ciclo | null
+    lideres: Funcionario[]
+    confirmando: boolean
+    erro: string | null
+  }>({ open: false, ciclo: null, lideres: [], confirmando: false, erro: null })
 
   const fetchCiclos = useCallback(async () => {
     if (!empresa) return
@@ -163,6 +192,15 @@ export default function AvaliacaoPage() {
     if (!meuFuncionario) return
     const { data } = await getMinhasAvaliacoes(meuFuncionario.id)
     setMinhasAvaliacoes((data ?? []) as unknown as MinhaAvaliacao[])
+  }, [meuFuncionario])
+
+  // Avaliações de pares (ou qualquer outra) onde eu sou o avaliador designado,
+  // não o avaliado — é o que mostra a seção "Preciso Avaliar" pra um líder que
+  // não tem permissão de admin/gestor no sistema.
+  const fetchAvaliacoesParaAvaliar = useCallback(async () => {
+    if (!meuFuncionario) return
+    const { data } = await getAvaliacoesParaAvaliar(meuFuncionario.id)
+    setAvaliacoesParaAvaliar(((data ?? []) as unknown as AvaliacaoParaAvaliar[]).filter((a) => a.funcionario?.id !== meuFuncionario.id))
   }, [meuFuncionario])
 
   // Se gestorId for informado, restringe a lista aos liderados desse gestor
@@ -248,8 +286,11 @@ export default function AvaliacaoPage() {
   }, [fetchAvaliacoes])
 
   useEffect(() => {
-    if (meuFuncionario && !isAdmin) fetchMinhasAvaliacoes()
-  }, [meuFuncionario, isAdmin, fetchMinhasAvaliacoes])
+    if (meuFuncionario && !isAdmin) {
+      fetchMinhasAvaliacoes()
+      fetchAvaliacoesParaAvaliar()
+    }
+  }, [meuFuncionario, isAdmin, fetchMinhasAvaliacoes, fetchAvaliacoesParaAvaliar])
 
   // "Ativar" (rascunho → ativo) e "Adicionar ao ciclo" (ativo, gente sem avaliação)
   // agora abrem a montagem em vez de criar avaliações às cegas: busca fresh quem já
@@ -262,6 +303,7 @@ export default function AvaliacaoPage() {
       .from('avaliacoes')
       .select('funcionario_id')
       .eq('ciclo_id', ciclo.id)
+      .eq('tipo', 'padrao')
     if (error) {
       setErro(error.message)
       return
@@ -308,6 +350,66 @@ export default function AvaliacaoPage() {
     if (cicloAtivo?.id === ciclo.id) fetchAvaliacoes()
   }
 
+  function abrirModalPares(ciclo: Ciclo) {
+    setErro('')
+    setModalPares({ open: true, ciclo, lideres: lideresCandidatos, confirmando: false, erro: null })
+  }
+
+  // Cria a rodada completa: cada líder avalia todos os outros (N × (N-1) linhas),
+  // pulando pares que já existem neste ciclo pra não duplicar.
+  async function handleConfirmarPares() {
+    const { ciclo, lideres } = modalPares
+    if (!ciclo || lideres.length < 2) return
+    setModalPares((prev) => ({ ...prev, confirmando: true, erro: null }))
+
+    const supabase = createClient()
+    const { data: existentes, error: erroExistentes } = await supabase
+      .from('avaliacoes')
+      .select('funcionario_id, avaliador_id')
+      .eq('ciclo_id', ciclo.id)
+      .eq('tipo', 'pares')
+    if (erroExistentes) {
+      setModalPares((prev) => ({ ...prev, confirmando: false, erro: erroExistentes.message }))
+      return
+    }
+    const jaExiste = new Set((existentes ?? []).map((a) => `${a.funcionario_id}:${a.avaliador_id}`))
+
+    const pares: { funcionario_id: string; avaliador_id: string }[] = []
+    for (const avaliado of lideres) {
+      for (const avaliador of lideres) {
+        if (avaliado.id === avaliador.id) continue
+        if (jaExiste.has(`${avaliado.id}:${avaliador.id}`)) continue
+        pares.push({ funcionario_id: avaliado.id, avaliador_id: avaliador.id })
+      }
+    }
+
+    if (pares.length > 0) {
+      const resultados = await Promise.all(
+        pares.map((p) => createAvaliacao({ ciclo_id: ciclo.id, funcionario_id: p.funcionario_id, avaliador_id: p.avaliador_id, tipo: 'pares' }))
+      )
+      const erroCriacao = resultados.find((r) => r.error)?.error
+      if (erroCriacao) {
+        setModalPares((prev) => ({ ...prev, confirmando: false, erro: erroCriacao.message }))
+        return
+      }
+    }
+
+    setModalPares({ open: false, ciclo: null, lideres: [], confirmando: false, erro: null })
+    if (cicloAtivo?.id === ciclo.id) fetchAvaliacoes()
+  }
+
+  async function handleExcluirAvaliacao(av: Avaliacao) {
+    const confirmado = window.confirm(`Excluir a avaliação de ${av.funcionario?.full_name ?? 'este colaborador'}? Essa ação não pode ser desfeita.`)
+    if (!confirmado) return
+    setErro('')
+    const { error } = await deleteAvaliacao(av.id)
+    if (error) {
+      setErro(error.message)
+      return
+    }
+    fetchAvaliacoes()
+  }
+
   async function handleEncerrarCiclo(ciclo: Ciclo) {
     setErro('')
     const { error } = await updateCicloStatus(ciclo.id, 'encerrado')
@@ -334,7 +436,7 @@ export default function AvaliacaoPage() {
   }
 
   function abrirAvaliacao(avaliacao: Avaliacao, cicloNome: string) {
-    setModalAvaliacao({ open: true, avaliacao, cicloNome })
+    setModalAvaliacao({ open: true, avaliacao, cicloNome, papelAvaliador: false })
   }
 
   function abrirMinhaAvaliacao(avaliacao: MinhaAvaliacao) {
@@ -343,17 +445,52 @@ export default function AvaliacaoPage() {
       avaliacao: {
         ...avaliacao,
         funcionario: meuFuncionario ? { id: meuFuncionario.id, full_name: meuFuncionario.full_name, cargo: meuFuncionario.cargo } : null,
-        avaliador: null,
+        avaliador: avaliacao.avaliador ?? null,
         evidencias_culturais: null,
         evidencias_tecnicas: null,
         observacoes_gerais: null,
       } as Avaliacao,
       cicloNome: avaliacao.ciclo?.nome ?? '',
+      papelAvaliador: false,
+    })
+  }
+
+  // Avaliação de pares que EU preciso preencher sobre outro líder — abre o
+  // mesmo modal, mas no papel de avaliador (não de avaliado).
+  function abrirParaAvaliar(avaliacao: AvaliacaoParaAvaliar) {
+    setModalAvaliacao({
+      open: true,
+      avaliacao: {
+        id: avaliacao.id,
+        status: avaliacao.status,
+        vertical: avaliacao.vertical,
+        tipo: avaliacao.tipo,
+        revelado: avaliacao.revelado,
+        observacoes_gerais: null,
+        media_cultural_auto: null,
+        media_cultural_gestor: null,
+        media_cultural_calibragem: null,
+        media_tecnica_auto: null,
+        media_tecnica_gestor: null,
+        media_tecnica_calibragem: null,
+        evidencias_culturais: null,
+        evidencias_tecnicas: null,
+        funcionario: avaliacao.funcionario,
+        avaliador: meuFuncionario ? { id: meuFuncionario.id, full_name: meuFuncionario.full_name } : null,
+      } as Avaliacao,
+      cicloNome: avaliacao.ciclo?.nome ?? '',
+      papelAvaliador: true,
     })
   }
 
   const funcionariosComAvaliacao = new Set(avaliacoes.map((a) => a.funcionario?.id))
   const funcionariosSemAvaliacao = funcionarios.filter((f) => !funcionariosComAvaliacao.has(f.id))
+
+  // Líder = cargo contém "líder" OU aparece como gestor_id de alguém — calculado
+  // aqui, não é uma coluna própria. `funcionarios` só cobre a empresa toda quando
+  // souAdministrador (calibrador não configura pares, só admin).
+  const idsComLiderado = new Set(funcionarios.map((f) => f.gestor_id).filter((id): id is string => !!id))
+  const lideresCandidatos = souAdministrador ? funcionarios.filter((f) => ehLider(f, idsComLiderado)) : []
 
   if (loading) {
     return (
@@ -389,6 +526,44 @@ export default function AvaliacaoPage() {
           </div>
         </div>
 
+        {avaliacoesParaAvaliar.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <ArrowRightLeft className="w-3.5 h-3.5 text-violet-600" />
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Preciso Avaliar ({avaliacoesParaAvaliar.length})
+              </p>
+            </div>
+            {avaliacoesParaAvaliar.map((av) => (
+              <div
+                key={av.id}
+                className="bg-card border border-violet-200 rounded-2xl p-4 flex items-center justify-between gap-4"
+              >
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-foreground">{av.funcionario?.full_name ?? 'Colega'}</p>
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-violet-100 text-violet-700">
+                      Avaliação de Pares
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', avalStatusColor[av.status] ?? 'bg-muted text-muted-foreground')}>
+                      {avalStatusLabel[av.status] ?? av.status}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{av.ciclo?.nome}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => abrirParaAvaliar(av)}
+                  className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm shrink-0"
+                >
+                  {av.status === 'pendente' ? 'Avaliar' : 'Ver Avaliação'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {minhasAvaliacoes.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/50 p-16 text-center">
             <p className="text-muted-foreground text-sm">Nenhuma avaliação disponível no momento.</p>
@@ -398,6 +573,9 @@ export default function AvaliacaoPage() {
           </div>
         ) : (
           <div className="space-y-3">
+            {avaliacoesParaAvaliar.length > 0 && (
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Sobre mim</p>
+            )}
             {minhasAvaliacoes.map((av) => (
               <div
                 key={av.id}
@@ -472,9 +650,9 @@ export default function AvaliacaoPage() {
           open={modalAvaliacao.open}
           avaliacao={modalAvaliacao.avaliacao as Avaliacao}
           cicloNome={modalAvaliacao.cicloNome}
-          isAdmin={false}
-          onClose={() => setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '' })}
-          onSave={() => { fetchMinhasAvaliacoes(); setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '' }) }}
+          isAdmin={modalAvaliacao.papelAvaliador}
+          onClose={() => setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '', papelAvaliador: false })}
+          onSave={() => { fetchMinhasAvaliacoes(); fetchAvaliacoesParaAvaliar(); setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '', papelAvaliador: false }) }}
         />
       </div>
     )
@@ -597,6 +775,16 @@ export default function AvaliacaoPage() {
                           Adicionar ao ciclo
                         </button>
                       )}
+                      {souAdministrador && ciclo.status === 'ativo' && (
+                        <button
+                          onClick={() => abrirModalPares(ciclo)}
+                          title={lideresCandidatos.length < 2 ? 'Precisa de pelo menos 2 líderes identificados' : undefined}
+                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground"
+                        >
+                          <ArrowRightLeft className="w-3.5 h-3.5" />
+                          Avaliação de Pares
+                        </button>
+                      )}
                       <button
                         onClick={() => setModalNineBox(true)}
                         className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground"
@@ -621,9 +809,16 @@ export default function AvaliacaoPage() {
                               {(av.funcionario?.full_name ?? '?').charAt(0).toUpperCase()}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-foreground truncate">
-                                {av.funcionario?.full_name ?? 'Sem nome'}
-                              </p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-sm font-medium text-foreground truncate">
+                                  {av.funcionario?.full_name ?? 'Sem nome'}
+                                </p>
+                                {av.tipo === 'pares' && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-violet-100 text-violet-700 shrink-0">
+                                    Pares
+                                  </span>
+                                )}
+                              </div>
                               <div className="flex items-center gap-2 mt-0.5">
                                 {av.funcionario?.cargo && (
                                   <span className="text-xs text-muted-foreground">{av.funcionario.cargo}</span>
@@ -661,6 +856,15 @@ export default function AvaliacaoPage() {
                             >
                               Abrir
                             </button>
+                            {souAdministrador && (
+                              <button
+                                onClick={() => handleExcluirAvaliacao(av)}
+                                title="Excluir avaliação"
+                                className="p-1 rounded-md text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -719,16 +923,16 @@ export default function AvaliacaoPage() {
         avaliacao={modalAvaliacao.avaliacao as Avaliacao}
         cicloNome={modalAvaliacao.cicloNome}
         isAdmin={isAdmin}
-        onClose={() => setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '' })}
+        onClose={() => setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '', papelAvaliador: false })}
         onSave={() => {
           fetchAvaliacoes()
-          setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '' })
+          setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '', papelAvaliador: false })
         }}
       />
 
       <ModalNineBox
         open={modalNineBox}
-        avaliacoes={avaliacoes.map((a) => ({
+        avaliacoes={avaliacoes.filter((a) => a.tipo !== 'pares').map((a) => ({
           id: a.id,
           funcionario: a.funcionario,
           media_cultural_gestor: a.media_cultural_gestor,
@@ -747,6 +951,16 @@ export default function AvaliacaoPage() {
         erro={modalMontar.erro}
         onClose={() => setModalMontar({ open: false, ciclo: null, ativarAoConfirmar: false, funcionariosAlvo: [], confirmando: false, erro: null })}
         onConfirmar={handleConfirmarMontagem}
+      />
+
+      <ModalAvaliacaoPares
+        open={modalPares.open}
+        cicloNome={modalPares.ciclo?.nome ?? ''}
+        lideres={modalPares.lideres}
+        confirmando={modalPares.confirmando}
+        erro={modalPares.erro}
+        onClose={() => setModalPares({ open: false, ciclo: null, lideres: [], confirmando: false, erro: null })}
+        onConfirmar={handleConfirmarPares}
       />
     </div>
   )
