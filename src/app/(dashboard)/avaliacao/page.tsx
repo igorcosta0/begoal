@@ -355,9 +355,30 @@ export default function AvaliacaoPage() {
     setModalPares({ open: true, ciclo, lideres: lideresCandidatos, confirmando: false, erro: null })
   }
 
-  // Cria a rodada completa: cada líder marcado avalia todos os outros marcados
-  // (N × (N-1) linhas), pulando pares que já existem neste ciclo pra não duplicar.
-  async function handleConfirmarPares(selecionados: CandidatoLider[]) {
+  // Sorteia a distribuição: embaralha os líderes marcados e usa offsets fixos
+  // (1..quantidade) sobre a ordem embaralhada. Isso garante que cada líder
+  // avalia exatamente `quantidade` colegas E é avaliado por exatamente
+  // `quantidade` colegas (grafo k-regular), sem ninguém avaliar a si mesmo.
+  function sortearPares(lideres: CandidatoLider[], quantidade: number) {
+    const embaralhados = [...lideres]
+    for (let i = embaralhados.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[embaralhados[i], embaralhados[j]] = [embaralhados[j], embaralhados[i]]
+    }
+    const n = embaralhados.length
+    const k = Math.min(quantidade, Math.max(n - 1, 0))
+    const pares: { funcionario_id: string; avaliador_id: string }[] = []
+    for (let i = 0; i < n; i++) {
+      for (let offset = 1; offset <= k; offset++) {
+        const avaliador = embaralhados[i]
+        const avaliado = embaralhados[(i + offset) % n]
+        pares.push({ funcionario_id: avaliado.id, avaliador_id: avaliador.id })
+      }
+    }
+    return pares
+  }
+
+  async function handleConfirmarPares(selecionados: CandidatoLider[], quantidade: number) {
     const { ciclo } = modalPares
     const lideres = selecionados
     if (!ciclo || lideres.length < 2) return
@@ -375,14 +396,9 @@ export default function AvaliacaoPage() {
     }
     const jaExiste = new Set((existentes ?? []).map((a) => `${a.funcionario_id}:${a.avaliador_id}`))
 
-    const pares: { funcionario_id: string; avaliador_id: string }[] = []
-    for (const avaliado of lideres) {
-      for (const avaliador of lideres) {
-        if (avaliado.id === avaliador.id) continue
-        if (jaExiste.has(`${avaliado.id}:${avaliador.id}`)) continue
-        pares.push({ funcionario_id: avaliado.id, avaliador_id: avaliador.id })
-      }
-    }
+    const pares = sortearPares(lideres, quantidade).filter(
+      (p) => !jaExiste.has(`${p.funcionario_id}:${p.avaliador_id}`)
+    )
 
     if (pares.length > 0) {
       const resultados = await Promise.all(

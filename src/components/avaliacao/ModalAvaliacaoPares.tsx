@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, Check, ArrowRightLeft } from 'lucide-react'
+import { Users, Check, Shuffle } from 'lucide-react'
 
 export interface CandidatoLider {
   id: string
@@ -16,7 +16,7 @@ interface Props {
   confirmando?: boolean
   erro?: string | null
   onClose: () => void
-  onConfirmar: (selecionados: CandidatoLider[]) => void
+  onConfirmar: (selecionados: CandidatoLider[], quantidade: number) => void
 }
 
 // Cargos de topo (CEO, sócio, diretoria) que citam "líder" mas normalmente não
@@ -29,26 +29,30 @@ function pareceTopoDeHierarquia(cargo?: string | null): boolean {
 
 export default function ModalAvaliacaoPares({ open, cicloNome, lideres, confirmando, erro, onClose, onConfirmar }: Props) {
   const [selecionados, setSelecionados] = useState<Record<string, boolean>>({})
+  const [quantidade, setQuantidade] = useState(2)
 
   useEffect(() => {
     if (!open) return
     const iniciais: Record<string, boolean> = {}
     for (const l of lideres) iniciais[l.id] = !pareceTopoDeHierarquia(l.cargo)
     setSelecionados(iniciais)
+    setQuantidade(2)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, lideres])
 
   if (!open) return null
 
   const marcados = lideres.filter((l) => selecionados[l.id])
-  const totalAvaliacoes = marcados.length * Math.max(marcados.length - 1, 0)
+  const quantidadeMax = Math.max(marcados.length - 1, 0)
+  const quantidadeEfetiva = Math.min(quantidade, quantidadeMax)
+  const totalAvaliacoes = marcados.length * quantidadeEfetiva
 
   function alternar(id: string) {
     setSelecionados((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
   function handleConfirmar() {
-    onConfirmar(marcados)
+    onConfirmar(marcados, quantidadeEfetiva)
   }
 
   return (
@@ -58,12 +62,12 @@ export default function ModalAvaliacaoPares({ open, cicloNome, lideres, confirma
         {/* Header */}
         <div className="flex items-start gap-3 p-5 border-b border-border shrink-0">
           <div className="w-9 h-9 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
-            <ArrowRightLeft className="w-4 h-4 text-violet-600" />
+            <Shuffle className="w-4 h-4 text-violet-600" />
           </div>
           <div>
             <h2 className="text-sm font-semibold text-foreground">Avaliação de Pares</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {cicloNome} — cada líder marcado avalia todos os outros marcados, só no Alinhamento Cultural (sem metas técnicas).
+              {cicloNome} — sorteio distribui os líderes entre si, só no Alinhamento Cultural (sem metas técnicas).
             </p>
           </div>
         </div>
@@ -74,7 +78,7 @@ export default function ModalAvaliacaoPares({ open, cicloNome, lideres, confirma
             {lideres.length} líder{lideres.length !== 1 ? 'es' : ''} identificado{lideres.length !== 1 ? 's' : ''} pelo cargo ou por ter liderados
           </p>
           <p className="text-[11px] text-muted-foreground mb-3">
-            Desmarque quem não deve entrar nesta rodada (ex.: CEO/sócio — não costuma ser "par" dos líderes de vertical).
+            Desmarque quem não deve entrar no sorteio (ex.: CEO/sócio — não costuma ser "par" dos líderes de vertical).
           </p>
 
           {lideres.length < 2 ? (
@@ -111,8 +115,24 @@ export default function ModalAvaliacaoPares({ open, cicloNome, lideres, confirma
                   </div>
                 </label>
               ))}
+
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-border p-3 mt-3">
+                <div>
+                  <p className="text-xs font-semibold text-foreground">Cada líder avalia quantos colegas?</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Sorteado aleatoriamente a cada rodada — ninguém avalia a si mesmo.</p>
+                </div>
+                <input
+                  type="number"
+                  min={1}
+                  max={Math.max(quantidadeMax, 1)}
+                  value={quantidade}
+                  onChange={(e) => setQuantidade(Math.max(1, Number(e.target.value) || 1))}
+                  className="w-16 shrink-0 rounded-lg border border-input bg-background px-2 py-1.5 text-sm text-center"
+                />
+              </div>
+
               <p className="text-[11px] text-muted-foreground pt-1">
-                {marcados.length} marcado{marcados.length !== 1 ? 's' : ''} → {totalAvaliacoes} avaliações (cada um avaliando os outros {Math.max(marcados.length - 1, 0)}). Pares que já existem neste ciclo não são duplicados.
+                {marcados.length} marcado{marcados.length !== 1 ? 's' : ''} × {quantidadeEfetiva} → {totalAvaliacoes} avaliações no sorteio (e é avaliado por {quantidadeEfetiva} também). Pares que já existem neste ciclo não são duplicados.
               </p>
             </div>
           )}
@@ -138,8 +158,8 @@ export default function ModalAvaliacaoPares({ open, cicloNome, lideres, confirma
             disabled={confirmando || marcados.length < 2}
             className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm disabled:opacity-60"
           >
-            <Check className="w-3.5 h-3.5" />
-            {confirmando ? 'Criando...' : 'Criar avaliações de pares'}
+            <Shuffle className="w-3.5 h-3.5" />
+            {confirmando ? 'Sorteando...' : 'Sortear e criar avaliações'}
           </button>
         </div>
       </div>
