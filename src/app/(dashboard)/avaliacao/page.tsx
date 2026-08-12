@@ -739,9 +739,15 @@ export default function AvaliacaoPage() {
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold text-foreground">{av.funcionario?.full_name ?? 'Colega'}</p>
-              <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-violet-100 text-violet-700">
-                Avaliação de Pares
-              </span>
+              {/* Só é "Avaliação de Pares" de fato quando tipo === 'pares' (sorteio
+                  entre os líderes) — antes essa tag aparecia pra qualquer item de
+                  "Preciso Avaliar", inclusive avaliação padrão de alguém fora do
+                  grupo de líderes, o que confundia o rótulo. */}
+              {av.tipo === 'pares' && (
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-violet-100 text-violet-700">
+                  Avaliação de Pares
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-3 mt-1">
               <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', avalStatusColor[av.status] ?? 'bg-muted text-muted-foreground')}>
