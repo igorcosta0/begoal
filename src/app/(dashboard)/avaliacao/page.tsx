@@ -135,13 +135,16 @@ export default function AvaliacaoPage() {
   const { empresa } = useEmpresaStore()
 
   const [isAdmin, setIsAdmin] = useState(false)
-  // Excluir ciclo (e excluir avaliação avulsa) continua exclusivo de administrador
-  // — regra espelha a RLS (ciclos_avaliacao_delete / avaliacoes_delete).
+  // Excluir avaliação avulsa (dentro de um ciclo) continua exclusivo de
+  // administrador — regra espelha a RLS (avaliacoes_delete via e_admin_do_ciclo,
+  // que só o admin bate direto; líder bate por e_lider_da_empresa mas o botão
+  // desse "X" individual fica reservado a admin mesmo assim).
   const [souAdministrador, setSouAdministrador] = useState(false)
-  // Líder (funcionarios.lider_avaliacao, marcação manual do admin) pode criar
-  // ciclo, ativar/encerrar e montar participantes (selecionar quem entra),
-  // igual administrador — regra espelha a RLS (e_admin_do_ciclo aceita líder
-  // desde a migration 20260815_lider_gerencia_ciclo).
+  // Líder (funcionarios.lider_avaliacao, marcação manual do admin) pode criar,
+  // ativar/encerrar, excluir ciclo e montar participantes (selecionar quem
+  // entra) — igual administrador. Regra espelha a RLS (e_admin_do_ciclo e as
+  // policies de update/delete de ciclos_avaliacao aceitam líder desde as
+  // migrations 20260815_lider_gerencia_ciclo e 20260816_lider_exclui_ciclo).
   const [souLider, setSouLider] = useState(false)
   // Criar ciclo é liberado pra administrador e líder.
   const [podeCriarCiclo, setPodeCriarCiclo] = useState(false)
@@ -943,7 +946,7 @@ export default function AvaliacaoPage() {
                       {ciclo.status === 'rascunho' ? 'Ativar' : 'Encerrar'}
                     </button>
                   )}
-                  {souAdministrador && (
+                  {(souAdministrador || souLider) && (
                     <button
                       onClick={(e) => { e.stopPropagation(); handleDeletarCiclo(ciclo) }}
                       title="Excluir ciclo"
