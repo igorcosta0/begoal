@@ -135,11 +135,13 @@ export default function AvaliacaoPage() {
   const { empresa } = useEmpresaStore()
 
   const [isAdmin, setIsAdmin] = useState(false)
-  // Ativar/encerrar/excluir ciclo continua exclusivo de administrador — regra espelha a RLS.
+  // Excluir ciclo (e excluir avaliação avulsa) continua exclusivo de administrador
+  // — regra espelha a RLS (ciclos_avaliacao_delete / avaliacoes_delete).
   const [souAdministrador, setSouAdministrador] = useState(false)
-  // Líder = cargo contém "líder" OU a pessoa tem pelo menos 1 liderado — é quem
-  // pode criar ciclo e configurar avaliação de pares (administrador também pode,
-  // como via de suporte, mesmo sem ser líder).
+  // Líder (funcionarios.lider_avaliacao, marcação manual do admin) pode criar
+  // ciclo, ativar/encerrar e montar participantes (selecionar quem entra),
+  // igual administrador — regra espelha a RLS (e_admin_do_ciclo aceita líder
+  // desde a migration 20260815_lider_gerencia_ciclo).
   const [souLider, setSouLider] = useState(false)
   // Criar ciclo é liberado pra administrador e líder.
   const [podeCriarCiclo, setPodeCriarCiclo] = useState(false)
@@ -929,7 +931,7 @@ export default function AvaliacaoPage() {
                   <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', cicloStatusColor[ciclo.status])}>
                     {cicloStatusLabel[ciclo.status]}
                   </span>
-                  {souAdministrador && ciclo.status !== 'encerrado' && (
+                  {(souAdministrador || souLider) && ciclo.status !== 'encerrado' && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
