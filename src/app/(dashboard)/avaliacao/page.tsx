@@ -263,19 +263,22 @@ export default function AvaliacaoPage() {
       ])
 
       // 'administrador' e calibradores avulsos (is_calibrador) enxergam TODOS os
-      // funcionários da empresa; todo o resto (inclusive líder) só vê e avalia
-      // seus próprios liderados.
+      // funcionários da empresa; um gestor comum (sem nenhuma das marcações)
+      // só vê e avalia seus próprios liderados.
       const permission = roleRes.data?.permission_level
       const administrador = permission === 'administrador'
       const calibrador = roleRes.data?.is_calibrador === true
-      const todaEmpresa = administrador || calibrador
       const meuFunc = funcRes.data as Funcionario | null
       if (meuFunc) setMeuFuncionario(meuFunc)
 
       // "Líder" não é mais adivinhado por cargo/organograma — é uma marcação
       // manual (funcionarios.lider_avaliacao) que o administrador liga pra quem
-      // realmente participa da avaliação de pares e pode abrir ciclo.
+      // realmente participa da avaliação de pares e pode abrir ciclo. Líder
+      // monta ciclo igual administrador — inclusive marcando/desmarcando
+      // qualquer profissional da empresa, não só os próprios liderados —
+      // então entra em "toda empresa" junto com administrador/calibrador.
       const souLiderAtual = meuFunc?.lider_avaliacao === true
+      const todaEmpresa = administrador || calibrador || souLiderAtual
       const admin = administrador || calibrador || souLiderAtual
 
       setIsAdmin(admin)
