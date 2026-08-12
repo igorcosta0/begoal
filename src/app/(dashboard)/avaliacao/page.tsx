@@ -632,6 +632,12 @@ export default function AvaliacaoPage() {
     }
     if (cicloAtivo?.id === ciclo.id) setCicloAtivo(null)
     fetchCiclos()
+    // O ON DELETE CASCADE já apaga as avaliações desse ciclo no banco, mas o
+    // estado local ("Preciso Avaliar", "Minhas Avaliações") não se atualiza
+    // sozinho — sem isso, quem tinha avaliação nesse ciclo continuava vendo
+    // ela na tela até dar F5.
+    fetchAvaliacoesParaAvaliar()
+    fetchMinhasAvaliacoes()
   }
 
   function abrirAvaliacao(avaliacao: Avaliacao, cicloNome: string) {
