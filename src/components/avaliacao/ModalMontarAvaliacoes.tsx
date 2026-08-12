@@ -118,6 +118,16 @@ export default function ModalMontarAvaliacoes({
                 </div>
               </div>
 
+              {/* Cabeçalho das colunas — "Avaliador" é quem vai preencher a avaliação
+                  dessa pessoa (aparece só pra ele em "Preciso Avaliar"), não precisa
+                  ser o gestor direto no organograma. */}
+              <div className="hidden sm:grid grid-cols-[auto_1fr_1fr_1fr] gap-3 px-3">
+                <span />
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Profissional</span>
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Avaliador</span>
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Vertical</span>
+              </div>
+
               {funcionarios.map((f) => {
                 const linha = linhas[f.id]
                 if (!linha) return null
