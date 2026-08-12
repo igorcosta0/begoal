@@ -118,7 +118,14 @@ export async function createAvaliacao(payload: {
   tipo?: 'padrao' | 'pares'
 }) {
   const supabase = createClient()
-  return supabase.from('avaliacoes').insert(payload).select().single()
+  // Sem .select() de propósito: quem monta o ciclo (líder) pode não ter
+  // permissão de SELECT sobre a linha que acabou de criar — a avaliação é
+  // visível só pro avaliador designado, pelo administrador ou pelo próprio
+  // avaliado, não pra qualquer líder. Encadear .select() faria o Postgres
+  // aplicar a policy de SELECT no retorno do INSERT e devolver erro/vazio
+  // mesmo com o insert já confirmado. Os dois call sites (montagem e sorteio
+  // de pares) só olham `.error`, então não precisam da linha de volta.
+  return supabase.from('avaliacoes').insert(payload)
 }
 
 export async function updateAvaliacao(

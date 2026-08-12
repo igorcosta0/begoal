@@ -135,16 +135,23 @@ export default function AvaliacaoPage() {
   const { empresa } = useEmpresaStore()
 
   const [isAdmin, setIsAdmin] = useState(false)
-  // Excluir avaliação avulsa (dentro de um ciclo) continua exclusivo de
-  // administrador — regra espelha a RLS (avaliacoes_delete via e_admin_do_ciclo,
-  // que só o admin bate direto; líder bate por e_lider_da_empresa mas o botão
-  // desse "X" individual fica reservado a admin mesmo assim).
+  // Ver TODAS as avaliações da empresa (não só a sua, a que você avalia ou a
+  // dos seus liderados) e excluir avaliação avulsa continuam exclusivos de
+  // administrador — regra espelha a RLS (e_admin_do_ciclo só bate pra
+  // permission_level = 'administrador' desde a migration 20260818; antes
+  // disso líder também batia, e isso vazava a avaliação de todo mundo pra
+  // qualquer líder, não só a de quem ele avalia). O "acompanhamento" do líder
+  // sobre o ciclo inteiro fica pra uma etapa futura, com RLS própria.
   const [souAdministrador, setSouAdministrador] = useState(false)
-  // Líder (funcionarios.lider_avaliacao, marcação manual do admin) pode criar,
-  // ativar/encerrar, excluir ciclo e montar participantes (selecionar quem
-  // entra) — igual administrador. Regra espelha a RLS (e_admin_do_ciclo e as
-  // policies de update/delete de ciclos_avaliacao aceitam líder desde as
-  // migrations 20260815_lider_gerencia_ciclo e 20260816_lider_exclui_ciclo).
+  // Líder (funcionarios.lider_avaliacao, marcação manual do admin) pode
+  // criar, ativar/encerrar, excluir ciclo e montar participantes (selecionar
+  // QUALQUER pessoa da empresa, não só os próprios liderados) — igual
+  // administrador. Regra espelha a RLS: ciclos_avaliacao_insert/update/delete
+  // e avaliacoes_insert chamam e_lider_da_empresa() diretamente (migrations
+  // 20260813/20260815/20260816/20260818). Mas ver/editar a avaliação de
+  // alguém que não é o próprio, o avaliado ou liderado direto no organograma
+  // — isso o líder NÃO tem mais (migration 20260818): só quem foi escolhido
+  // como avaliador (e_avaliador_designado, migration 20260817) enxerga.
   const [souLider, setSouLider] = useState(false)
   // Criar ciclo é liberado pra administrador e líder.
   const [podeCriarCiclo, setPodeCriarCiclo] = useState(false)
