@@ -311,10 +311,16 @@ export default function AvaliacaoPage() {
   }, [fetchAvaliacoes])
 
   useEffect(() => {
-    if (meuFuncionario && !isAdmin) {
-      fetchMinhasAvaliacoes()
-      fetchAvaliacoesParaAvaliar()
-    }
+    if (!meuFuncionario) return
+    // "Preciso Avaliar" (avaliação de pares/outras onde EU sou o avaliador
+    // designado) vale pra qualquer um, inclusive líder/admin — um líder
+    // participa do sorteio de pares como avaliador igual todo mundo, então
+    // também precisa saber quem são exatamente os seus X sorteados, sem se
+    // perder na visão geral de todos os pares da empresa. "Minhas Avaliações"
+    // (autoavaliação/resultado) continua só pra quem não é admin/líder — é a
+    // tela cheia deles, o líder já vê isso dentro do ciclo expandido.
+    fetchAvaliacoesParaAvaliar()
+    if (!isAdmin) fetchMinhasAvaliacoes()
   }, [meuFuncionario, isAdmin, fetchMinhasAvaliacoes, fetchAvaliacoesParaAvaliar])
 
   // "Ativar" (rascunho → ativo) e "Adicionar ao ciclo" (ativo, gente sem avaliação)
@@ -697,6 +703,51 @@ export default function AvaliacaoPage() {
     )
   }
 
+  // "Preciso Avaliar" — avaliações (de pares ou não) onde EU sou o avaliador
+  // designado. Reaproveitada tanto na view de funcionário comum quanto na de
+  // admin/líder: um líder participa do sorteio de pares como avaliador igual
+  // todo mundo, e sem isso ele só via a lista geral com os pares de TODOS os
+  // líderes dentro do ciclo (via "Avaliações"), o que dava a impressão de que
+  // o sorteio não estava limitando a quantidade — a quantidade já estava
+  // certa, só não tinha um recorte "isso aqui é seu" pra ele.
+  const precisoAvaliarSection = avaliacoesParaAvaliar.length > 0 && (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <ArrowRightLeft className="w-3.5 h-3.5 text-violet-600" />
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          Preciso Avaliar ({avaliacoesParaAvaliar.length})
+        </p>
+      </div>
+      {avaliacoesParaAvaliar.map((av) => (
+        <div
+          key={av.id}
+          className="bg-card border border-violet-200 rounded-2xl p-4 flex items-center justify-between gap-4"
+        >
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold text-foreground">{av.funcionario?.full_name ?? 'Colega'}</p>
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-violet-100 text-violet-700">
+                Avaliação de Pares
+              </span>
+            </div>
+            <div className="flex items-center gap-3 mt-1">
+              <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', avalStatusColor[av.status] ?? 'bg-muted text-muted-foreground')}>
+                {avalStatusLabel[av.status] ?? av.status}
+              </span>
+              <span className="text-xs text-muted-foreground">{av.ciclo?.nome}</span>
+            </div>
+          </div>
+          <button
+            onClick={() => abrirParaAvaliar(av)}
+            className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm shrink-0"
+          >
+            {av.status === 'pendente' ? 'Avaliar' : 'Ver Avaliação'}
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+
   // ── View do funcionário ───────────────────────────────────────────────────
   if (!isAdmin) {
     return (
@@ -711,43 +762,7 @@ export default function AvaliacaoPage() {
           </div>
         </div>
 
-        {avaliacoesParaAvaliar.length > 0 && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <ArrowRightLeft className="w-3.5 h-3.5 text-violet-600" />
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Preciso Avaliar ({avaliacoesParaAvaliar.length})
-              </p>
-            </div>
-            {avaliacoesParaAvaliar.map((av) => (
-              <div
-                key={av.id}
-                className="bg-card border border-violet-200 rounded-2xl p-4 flex items-center justify-between gap-4"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-foreground">{av.funcionario?.full_name ?? 'Colega'}</p>
-                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-violet-100 text-violet-700">
-                      Avaliação de Pares
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', avalStatusColor[av.status] ?? 'bg-muted text-muted-foreground')}>
-                      {avalStatusLabel[av.status] ?? av.status}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{av.ciclo?.nome}</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => abrirParaAvaliar(av)}
-                  className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm shrink-0"
-                >
-                  {av.status === 'pendente' ? 'Avaliar' : 'Ver Avaliação'}
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+        {precisoAvaliarSection}
 
         {minhasAvaliacoes.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/50 p-16 text-center">
@@ -892,6 +907,11 @@ export default function AvaliacaoPage() {
           {erro}
         </p>
       )}
+
+      {/* Recorte pessoal: só as avaliações que ESTE líder/admin foi sorteado pra
+          fazer, separado da visão geral do ciclo (que mostra os pares de todo
+          mundo) logo abaixo. */}
+      {precisoAvaliarSection}
 
       {/* Lista de ciclos */}
       {ciclos.length === 0 ? (
