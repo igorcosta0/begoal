@@ -86,7 +86,7 @@ export async function getMinhasAvaliacoes(funcionarioId: string) {
   return supabase
     .from('avaliacoes')
     .select(`
-      id, status, vertical, tipo, revelado, media_cultural_auto, media_cultural_gestor, media_cultural_calibragem,
+      id, status, vertical, tipo, revelado, observacoes_gerais, media_cultural_auto, media_cultural_gestor, media_cultural_calibragem,
       media_tecnica_auto, media_tecnica_gestor, media_tecnica_calibragem,
       avaliador:funcionarios!avaliador_id(id, full_name),
       ciclo:ciclos_avaliacao!ciclo_id(id, nome, periodo, ano, status)
@@ -102,7 +102,7 @@ export async function getAvaliacoesParaAvaliar(avaliadorFuncionarioId: string) {
   return supabase
     .from('avaliacoes')
     .select(`
-      id, status, vertical, tipo, revelado,
+      id, status, vertical, tipo, revelado, observacoes_gerais,
       funcionario:funcionarios!funcionario_id(id, full_name, cargo),
       ciclo:ciclos_avaliacao!ciclo_id(id, nome, periodo, ano, status)
     `)

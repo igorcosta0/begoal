@@ -59,6 +59,7 @@ interface MinhaAvaliacao {
   vertical: string | null
   tipo?: 'padrao' | 'pares'
   revelado: boolean
+  observacoes_gerais: string | null
   media_cultural_auto: number | null
   media_cultural_gestor: number | null
   media_cultural_calibragem: number | null
@@ -78,6 +79,7 @@ interface AvaliacaoParaAvaliar {
   vertical: string | null
   tipo?: 'padrao' | 'pares'
   revelado: boolean
+  observacoes_gerais: string | null
   funcionario: { id: string; full_name: string; cargo: string | null } | null
   ciclo: { id: string; nome: string; periodo: number; ano: number; status: string } | null
 }
@@ -653,7 +655,7 @@ export default function AvaliacaoPage() {
         avaliador: avaliacao.avaliador ?? null,
         evidencias_culturais: null,
         evidencias_tecnicas: null,
-        observacoes_gerais: null,
+        observacoes_gerais: avaliacao.observacoes_gerais,
       } as Avaliacao,
       cicloNome: avaliacao.ciclo?.nome ?? '',
       papelAvaliador: false,
@@ -671,7 +673,7 @@ export default function AvaliacaoPage() {
         vertical: avaliacao.vertical,
         tipo: avaliacao.tipo,
         revelado: avaliacao.revelado,
-        observacoes_gerais: null,
+        observacoes_gerais: avaliacao.observacoes_gerais,
         media_cultural_auto: null,
         media_cultural_gestor: null,
         media_cultural_calibragem: null,
