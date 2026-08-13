@@ -173,6 +173,29 @@ export const VERTICAIS_CTZ: Record<
       },
     ],
   },
+  // Cargo distinto de csc_financeiro — critérios de apoio administrativo à
+  // liderança, não financeiros. Baseado na trilha Júnior/Pleno/Senior da
+  // planilha "Adm e Finanças" (referências/Pasta1.xlsx).
+  secretaria_executiva: {
+    label: 'Secretária Executiva',
+    criterios: [
+      {
+        key: 'sec_agenda',
+        label: 'Gestão de Agenda, Documentos e Prazos',
+        descricao: 'Organização e controle de agendas, documentos e prazos administrativos, com autonomia crescente e apoio direto à liderança.',
+      },
+      {
+        key: 'sec_eventos',
+        label: 'Organização de Eventos',
+        descricao: 'Planejamento e execução de eventos internos e corporativos, do apoio operacional ao planejamento completo.',
+      },
+      {
+        key: 'sec_viagens',
+        label: 'Logística de Viagens',
+        descricao: 'Cotação, reserva e gestão de roteiros, custos e fornecedores para viagens da equipe e da liderança.',
+      },
+    ],
+  },
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
