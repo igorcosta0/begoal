@@ -432,7 +432,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
       faltando.push('evidências e exemplos práticos em todos os pilares culturais')
     }
     if (isAdmin && !observacoes.trim()) {
-      faltando.push('observações do gestor')
+      faltando.push(ehParesForm ? 'observações do avaliador' : 'observações do gestor')
     }
 
     if (!ehParesForm && !vertical) {
@@ -869,7 +869,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
 
                   <div>
                     <label className="text-xs font-medium text-foreground">
-                      Observações do Gestor {isAdmin && '*'}
+                      {ehPares ? 'Observações do Avaliador' : 'Observações do Gestor'} {isAdmin && '*'}
                     </label>
                     {!isAdmin && !colaboradorVeGestor ? (
                       <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-2">
