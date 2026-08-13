@@ -772,20 +772,30 @@ export default function AvaliacaoPage() {
     </div>
   )
 
+  // getMinhasAvaliacoes traz TODAS as avaliações onde eu sou o avaliado,
+  // inclusive as "pares" em que um colega me avaliou — mas essas só podem
+  // aparecer pra mim depois de reveladas (mesma regra que já vale pro resto
+  // do modal: colaboradorVeGestor/podeVerMedias exigem `revelado`). Sem esse
+  // filtro, um líder também avaliado por pares (como a Graciela, avaliada
+  // pelo Felipe Marques) via a avaliação de pares listada aqui antes da hora
+  // — mesmo sem conseguir ver as notas dentro do modal, o simples fato de
+  // aparecer na lista já vazava "alguém te avaliou e isso está pendente".
+  const minhasAvaliacoesVisiveis = minhasAvaliacoes.filter((av) => av.tipo !== 'pares' || av.revelado)
+
   // Recorte "sobre mim" também pra admin/líder: eles montam/gerenciam o ciclo,
   // mas também podem ter uma avaliação "padrao" própria (avaliados por outra
   // pessoa) — sem esse card, a única forma de achar a própria avaliação era
   // vasculhar a lista geral do ciclo expandido, que abre tudo em modo gestor
   // (isAdmin=true) e nunca deixava preencher a autoavaliação de verdade.
-  const minhasAvaliacoesSection = minhasAvaliacoes.length > 0 && (
+  const minhasAvaliacoesSection = minhasAvaliacoesVisiveis.length > 0 && (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <UserCheck className="w-3.5 h-3.5 text-primary" />
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          Minha Autoavaliação ({minhasAvaliacoes.length})
+          Minha Autoavaliação ({minhasAvaliacoesVisiveis.length})
         </p>
       </div>
-      {minhasAvaliacoes.map((av) => (
+      {minhasAvaliacoesVisiveis.map((av) => (
         <div
           key={av.id}
           className="bg-card border border-primary/20 rounded-2xl p-4 flex items-center justify-between gap-4"
@@ -832,7 +842,7 @@ export default function AvaliacaoPage() {
 
         {precisoAvaliarSection}
 
-        {minhasAvaliacoes.length === 0 ? (
+        {minhasAvaliacoesVisiveis.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/50 p-16 text-center">
             <p className="text-muted-foreground text-sm">Nenhuma avaliação disponível no momento.</p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -844,7 +854,7 @@ export default function AvaliacaoPage() {
             {avaliacoesParaAvaliar.length > 0 && (
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Sobre mim</p>
             )}
-            {minhasAvaliacoes.map((av) => (
+            {minhasAvaliacoesVisiveis.map((av) => (
               <div
                 key={av.id}
                 className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between gap-4"
