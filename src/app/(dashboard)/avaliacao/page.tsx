@@ -21,7 +21,7 @@ import ModalMontarAvaliacoes, { type LinhaMontagem, type OpcaoAvaliador } from '
 import ModalAvaliacaoPares, { type CandidatoLider } from '@/components/avaliacao/ModalAvaliacaoPares'
 import ModalGerenciarLideres from '@/components/avaliacao/ModalGerenciarLideres'
 import { cn, isEmpresaCTZ } from '@/lib/utils'
-import { LayoutGrid, Plus, ChevronRight, Trash2, Users2, ArrowRightLeft, X, Crown } from 'lucide-react'
+import { LayoutGrid, Plus, ChevronRight, Trash2, Users2, ArrowRightLeft, X, Crown, UserCheck } from 'lucide-react'
 import { VERTICAIS_CTZ } from '@/components/avaliacao/ModalAvaliacao'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
@@ -325,12 +325,15 @@ export default function AvaliacaoPage() {
     // designado) vale pra qualquer um, inclusive líder/admin — um líder
     // participa do sorteio de pares como avaliador igual todo mundo, então
     // também precisa saber quem são exatamente os seus X sorteados, sem se
-    // perder na visão geral de todos os pares da empresa. "Minhas Avaliações"
-    // (autoavaliação/resultado) continua só pra quem não é admin/líder — é a
-    // tela cheia deles, o líder já vê isso dentro do ciclo expandido.
+    // perder na visão geral de todos os pares da empresa.
+    // "Minhas Avaliações" (autoavaliação/resultado) também precisa ser
+    // buscada pra admin/líder: eles também podem ter uma avaliação "padrao"
+    // própria (são avaliados por outra pessoa), e o card só de admin/líder
+    // não mostrava — a visão de "ciclo expandido" abre tudo em modo gestor
+    // (isAdmin=true), então nunca dava pra fazer a autoavaliação de verdade.
     fetchAvaliacoesParaAvaliar()
-    if (!isAdmin) fetchMinhasAvaliacoes()
-  }, [meuFuncionario, isAdmin, fetchMinhasAvaliacoes, fetchAvaliacoesParaAvaliar])
+    fetchMinhasAvaliacoes()
+  }, [meuFuncionario, fetchMinhasAvaliacoes, fetchAvaliacoesParaAvaliar])
 
   // "Ativar" (rascunho → ativo) e "Adicionar ao ciclo" (ativo, gente sem avaliação)
   // agora abrem a montagem em vez de criar avaliações às cegas: busca fresh quem já
@@ -643,7 +646,7 @@ export default function AvaliacaoPage() {
   }
 
   function abrirAvaliacao(avaliacao: Avaliacao, cicloNome: string) {
-    setModalAvaliacao({ open: true, avaliacao, cicloNome, papelAvaliador: false })
+    setModalAvaliacao({ open: true, avaliacao, cicloNome, papelAvaliador: true })
   }
 
   function abrirMinhaAvaliacao(avaliacao: MinhaAvaliacao) {
@@ -763,6 +766,50 @@ export default function AvaliacaoPage() {
             className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm shrink-0"
           >
             {av.status === 'pendente' ? 'Avaliar' : 'Ver Avaliação'}
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+
+  // Recorte "sobre mim" também pra admin/líder: eles montam/gerenciam o ciclo,
+  // mas também podem ter uma avaliação "padrao" própria (avaliados por outra
+  // pessoa) — sem esse card, a única forma de achar a própria avaliação era
+  // vasculhar a lista geral do ciclo expandido, que abre tudo em modo gestor
+  // (isAdmin=true) e nunca deixava preencher a autoavaliação de verdade.
+  const minhasAvaliacoesSection = minhasAvaliacoes.length > 0 && (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <UserCheck className="w-3.5 h-3.5 text-primary" />
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          Minha Autoavaliação ({minhasAvaliacoes.length})
+        </p>
+      </div>
+      {minhasAvaliacoes.map((av) => (
+        <div
+          key={av.id}
+          className="bg-card border border-primary/20 rounded-2xl p-4 flex items-center justify-between gap-4"
+        >
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold text-foreground">{av.ciclo?.nome}</p>
+              {av.tipo === 'pares' && (
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-violet-100 text-violet-700">
+                  Avaliação de Pares
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3 mt-1">
+              <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', avalStatusColor[av.status] ?? 'bg-muted text-muted-foreground')}>
+                {avalStatusLabel[av.status] ?? av.status}
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => abrirMinhaAvaliacao(av)}
+            className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm shrink-0"
+          >
+            {av.status === 'pendente' ? 'Preencher' : 'Ver Avaliação'}
           </button>
         </div>
       ))}
@@ -931,7 +978,9 @@ export default function AvaliacaoPage() {
 
       {/* Recorte pessoal: só as avaliações que ESTE líder/admin foi sorteado pra
           fazer, separado da visão geral do ciclo (que mostra os pares de todo
-          mundo) logo abaixo. */}
+          mundo) logo abaixo — e a própria autoavaliação dele, que também some
+          na visão geral (lá tudo abre em modo gestor). */}
+      {minhasAvaliacoesSection}
       {precisoAvaliarSection}
 
       {/* Lista de ciclos */}
@@ -1167,10 +1216,12 @@ export default function AvaliacaoPage() {
         open={modalAvaliacao.open}
         avaliacao={modalAvaliacao.avaliacao as Avaliacao}
         cicloNome={modalAvaliacao.cicloNome}
-        isAdmin={isAdmin}
+        isAdmin={modalAvaliacao.papelAvaliador}
         onClose={() => setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '', papelAvaliador: false })}
         onSave={() => {
           fetchAvaliacoes()
+          fetchMinhasAvaliacoes()
+          fetchAvaliacoesParaAvaliar()
           setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '', papelAvaliador: false })
         }}
       />
