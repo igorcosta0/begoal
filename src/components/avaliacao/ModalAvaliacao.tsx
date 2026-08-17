@@ -860,7 +860,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                               )}
                             </div>
                             <div>
-                              <p className="text-xs text-muted-foreground mb-1.5">Gestor</p>
+                              <p className="text-xs text-muted-foreground mb-1.5">Avaliador</p>
                               {!isAdmin && !colaboradorVeGestor ? (
                                 <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo de quem preencheu</p>
                               ) : (
@@ -1008,7 +1008,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                               )}
                             </div>
                             <div>
-                              <p className="text-xs text-muted-foreground mb-1.5">Gestor</p>
+                              <p className="text-xs text-muted-foreground mb-1.5">Avaliador</p>
                               {!isAdmin && !colaboradorVeGestor ? (
                                 <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo de quem preencheu</p>
                               ) : (
