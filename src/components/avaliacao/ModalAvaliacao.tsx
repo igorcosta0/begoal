@@ -594,11 +594,13 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
   async function handleAvancarStatus() {
     if (!avaliacao) return
     // gestor_concluida→calibragem e calibragem→finalizada saíram daqui — ver
-    // comentário de podeAvancarStatus.
-    const proximo: Record<string, string> = {
-      pendente: 'auto_concluida',
-      auto_concluida: 'gestor_concluida',
-    }
+    // comentário de podeAvancarStatus. Avaliação de pares não tem etapa de
+    // autoavaliação (o avaliado nunca abre a própria linha, de propósito) —
+    // então pula direto de pendente pra gestor_concluida, empurrada pelo
+    // próprio avaliador (que é o único que sempre mexe nela).
+    const proximo: Record<string, string> = avaliacao.tipo === 'pares'
+      ? { pendente: 'gestor_concluida' }
+      : { pendente: 'auto_concluida', auto_concluida: 'gestor_concluida' }
     const next = proximo[avaliacao.status]
     if (!next) return
 
@@ -681,10 +683,11 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
     finalizada: 'bg-green-100 text-green-700',
   }
 
-  const proximoStatusLabel: Record<string, string> = {
-    pendente: 'Concluir Autoavaliação',
-    auto_concluida: 'Concluir Avaliação do Gestor',
-  }
+  // Avaliação de pares não tem "Autoavaliação" — pendente já vira "Concluir
+  // Avaliação" direto, empurrado pelo avaliador.
+  const proximoStatusLabel: Record<string, string> = ehPares
+    ? { pendente: 'Concluir Avaliação' }
+    : { pendente: 'Concluir Autoavaliação', auto_concluida: 'Concluir Avaliação do Gestor' }
 
   // Calibragem (pedido ago/2026): virou etapa ciclo-inteira, disparada em
   // lote pelo administrador na tela do ciclo ("Iniciar Calibragem"/
@@ -693,9 +696,13 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
   // pendente→auto_concluida (avaliado) e auto_concluida→gestor_concluida
   // (avaliador) — gestor_concluida→calibragem e calibragem→finalizada saíram
   // daqui.
-  const podeAvancarStatus =
-    (!isAdmin && avaliacao.status === 'pendente') ||
-    (isAdmin && avaliacao.status === 'auto_concluida')
+  //
+  // Avaliação de pares não tem etapa de avaliado (ele nunca abre a própria
+  // linha) — então quem empurra o "pendente" é sempre o avaliador
+  // (isAdmin), não o "!isAdmin" que a avaliação comum usa.
+  const podeAvancarStatus = ehPares
+    ? (isAdmin && avaliacao.status === 'pendente')
+    : (!isAdmin && avaliacao.status === 'pendente') || (isAdmin && avaliacao.status === 'auto_concluida')
 
   const podeEditarPdi = ['calibragem', 'finalizada'].includes(avaliacao.status)
 
@@ -738,7 +745,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
               </span>
             )}
             <span className={cn('text-xs px-2 py-1 rounded-full font-medium', statusColor[avaliacao.status] ?? 'bg-muted text-muted-foreground')}>
-              {statusLabel[avaliacao.status] ?? avaliacao.status}
+              {ehPares && avaliacao.status === 'gestor_concluida' ? 'Concluída' : statusLabel[avaliacao.status] ?? avaliacao.status}
             </span>
             <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none ml-1">
               ×

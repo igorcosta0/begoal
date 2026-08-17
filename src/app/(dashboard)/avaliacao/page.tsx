@@ -129,6 +129,15 @@ const avalStatusColor: Record<string, string> = {
   finalizada: 'bg-green-100 text-green-700',
 }
 
+// Avaliação de pares não passa por "Auto Concluída" (não tem autoavaliação)
+// — pula direto de pendente pra 'gestor_concluida' quando o avaliador
+// termina. O rótulo genérico ("Gestor Concluído") não faz sentido nesse
+// contexto, então essa função troca por "Concluída" só pra pares.
+function labelStatusAvaliacao(status: string, tipo?: 'padrao' | 'pares'): string {
+  if (tipo === 'pares' && status === 'gestor_concluida') return 'Concluída'
+  return avalStatusLabel[status] ?? status
+}
+
 // ── Componente ───────────────────────────────────────────────────────────────
 
 export default function AvaliacaoPage() {
@@ -686,7 +695,7 @@ export default function AvaliacaoPage() {
             </div>
             <div className="flex items-center gap-3 mt-1">
               <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', avalStatusColor[av.status] ?? 'bg-muted text-muted-foreground')}>
-                {avalStatusLabel[av.status] ?? av.status}
+                {labelStatusAvaliacao(av.status, av.tipo)}
               </span>
               <span className="text-xs text-muted-foreground">{av.ciclo?.nome}</span>
             </div>
@@ -1107,7 +1116,7 @@ export default function AvaliacaoPage() {
                               </div>
                             )}
                             <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', avalStatusColor[av.status] ?? 'bg-muted text-muted-foreground')}>
-                              {avalStatusLabel[av.status] ?? av.status}
+                              {labelStatusAvaliacao(av.status, av.tipo)}
                             </span>
                             <button
                               onClick={() => abrirAvaliacao(av, ciclo.nome)}
