@@ -9,6 +9,7 @@ import {
   getMinhasAvaliacoes,
   getAvaliacoesParaAvaliar,
   createAvaliacao,
+  updateCiclo,
   updateCicloStatus,
   deleteCicloAvaliacao,
   deleteAvaliacao,
@@ -20,7 +21,7 @@ import ModalNineBox from '@/components/avaliacao/ModalNineBox'
 import ModalMontarAvaliacoes, { type LinhaMontagem, type OpcaoAvaliador, type ParPares } from '@/components/avaliacao/ModalMontarAvaliacoes'
 import ModalGerenciarLideres from '@/components/avaliacao/ModalGerenciarLideres'
 import { cn, isEmpresaCTZ } from '@/lib/utils'
-import { LayoutGrid, Plus, ChevronRight, Trash2, Users2, ArrowRightLeft, X, Crown, UserCheck, Pencil } from 'lucide-react'
+import { LayoutGrid, Plus, ChevronRight, Trash2, Users2, ArrowRightLeft, X, Crown, UserCheck, Pencil, Eye, EyeOff } from 'lucide-react'
 import { VERTICAIS_CTZ } from '@/components/avaliacao/ModalAvaliacao'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
@@ -31,6 +32,9 @@ interface Ciclo {
   periodo: 1 | 2
   ano: number
   status: 'rascunho' | 'ativo' | 'encerrado'
+  // Oculto: admin escondeu o ciclo dos participantes (não mexe no status, só
+  // na visibilidade) — reversível, o ciclo e as avaliações continuam intactos.
+  oculto: boolean
 }
 
 interface Avaliacao {
@@ -500,6 +504,23 @@ export default function AvaliacaoPage() {
     fetchCiclos()
   }
 
+  // Oculto não mexe em status nem apaga nada — só tira o ciclo (e, por
+  // tabela, todas as avaliações dele) da visão de quem não é administrador:
+  // a RLS de ciclos_avaliacao_select bloqueia SELECT do ciclo oculto pra
+  // quem não é admin, e como get_minhas_avaliacoes/get_avaliacoes_para_avaliar
+  // fazem INNER JOIN com ciclos_avaliacao, as avaliações somem junto de
+  // "Minha Auto-Avaliação"/"Devo Avaliar" — sem apagar nada, é só reexibir
+  // (oculto: false de novo) pra voltar tudo do jeito que estava.
+  async function handleToggleOcultarCiclo(ciclo: Ciclo) {
+    setErro('')
+    const { error } = await updateCiclo(ciclo.id, { oculto: !ciclo.oculto })
+    if (error) {
+      setErro(error.message)
+      return
+    }
+    fetchCiclos()
+  }
+
   async function handleDeletarCiclo(ciclo: Ciclo) {
     const confirmado = window.confirm(
       `Excluir o ciclo "${ciclo.nome}"? Todas as avaliações desse ciclo serão apagadas junto. Essa ação não pode ser desfeita.`
@@ -898,6 +919,20 @@ export default function AvaliacaoPage() {
                   <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', cicloStatusColor[ciclo.status])}>
                     {cicloStatusLabel[ciclo.status]}
                   </span>
+                  {ciclo.oculto && (
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-slate-200 text-slate-700" title="Escondido dos participantes — só administrador vê">
+                      Oculto
+                    </span>
+                  )}
+                  {souAdministrador && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleToggleOcultarCiclo(ciclo) }}
+                      title={ciclo.oculto ? 'Reexibir ciclo pros participantes' : 'Ocultar ciclo dos participantes'}
+                      className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {ciclo.oculto ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                    </button>
+                  )}
                   {souAdministrador && ciclo.status !== 'encerrado' && (
                     <button
                       onClick={(e) => {

@@ -40,7 +40,7 @@ export async function getCiclosAvaliacao(clientId: string) {
   const supabase = createClient()
   return supabase
     .from('ciclos_avaliacao')
-    .select('id, nome, periodo, ano, status, created_at')
+    .select('id, nome, periodo, ano, status, oculto, created_at')
     .eq('client_id', clientId)
     .order('ano', { ascending: false })
     .order('periodo', { ascending: false })
@@ -58,7 +58,7 @@ export async function createCicloAvaliacao(payload: {
 
 export async function updateCiclo(
   id: string,
-  payload: { nome?: string; periodo?: number; ano?: number }
+  payload: { nome?: string; periodo?: number; ano?: number; oculto?: boolean }
 ) {
   const supabase = createClient()
   return supabase.from('ciclos_avaliacao').update(payload).eq('id', id)
