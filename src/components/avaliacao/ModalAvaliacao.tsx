@@ -503,11 +503,15 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
     if (!avaliacao) return false
 
     // Cada upsert manda só os campos do lado de quem está salvando (auto +
-    // evidências pro avaliado, gestor + calibragem pro avaliador/admin) —
-    // ver comentário em upsertAvaliacaoCultural/Tecnica: mandar os dois lados
-    // sempre (como era antes) agora reescreveria com null a nota do outro
-    // lado, já que a leitura passou a vir mascarada (migration
-    // 20260821_avaliacao_mascara_notas).
+    // evidências pro avaliado, gestor pro avaliador, calibragem só quando
+    // for administrador de verdade) — ver comentário em
+    // upsertAvaliacaoCultural/Tecnica: mandar campo que a pessoa não pode
+    // ver reescreve ele com null, já que a leitura vem mascarada (migration
+    // 20260821_avaliacao_mascara_notas). Isso vale também pra calibragem: um
+    // avaliador comum reabrindo a própria avaliação depois que o admin já
+    // começou a calibrar SEMPRE tinha scoresC[...].calibragem = null (nunca
+    // consegue ler), e antes disso ia junto no payload — bastava ele clicar
+    // "Salvar" pra apagar a calibragem que o admin já tinha feito.
     const resultadosC = await Promise.all(
       [1, 2, 3, 4].map((pilar) => {
         const score = scoresC[String(pilar)]
@@ -515,7 +519,10 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
           avaliacao.id,
           pilar,
           isAdmin
-            ? { nota_gestor: score?.gestor ?? null, nota_calibragem: score?.calibragem ?? null }
+            ? {
+                nota_gestor: score?.gestor ?? null,
+                ...(souAdministrador ? { nota_calibragem: score?.calibragem ?? null } : {}),
+              }
             : { nota_auto: score?.auto ?? null, observacoes: score?.observacoes || null }
         )
       })
@@ -535,7 +542,10 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
             avaliacao.id,
             c.key,
             isAdmin
-              ? { nota_gestor: score?.gestor ?? null, nota_calibragem: score?.calibragem ?? null }
+              ? {
+                  nota_gestor: score?.gestor ?? null,
+                  ...(souAdministrador ? { nota_calibragem: score?.calibragem ?? null } : {}),
+                }
               : { nota_auto: score?.auto ?? null, observacoes: score?.observacoes || null }
           )
         })
@@ -548,7 +558,9 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
     }
 
     // Mesma lógica na linha-pai: só manda o lado de quem está salvando, pra
-    // não sobrescrever a média do outro lado com null.
+    // não sobrescrever a média do outro lado com null. media_*_calibragem só
+    // entra quando for administrador de verdade — mesmo raciocínio do
+    // upsert acima.
     const payloadBase = {
       vertical: vertical || null,
       ...(statusExtra ? { status: statusExtra } : {}),
@@ -557,9 +569,13 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
       ? {
           observacoes_gerais: observacoes || null,
           media_cultural_gestor: calcMedia([1, 2, 3, 4].map((p) => scoresC[String(p)]?.gestor ?? null)),
-          media_cultural_calibragem: calcMedia([1, 2, 3, 4].map((p) => scoresC[String(p)]?.calibragem ?? null)),
           media_tecnica_gestor: calcMedia(criterios.map((c) => scoresT[c.key]?.gestor ?? null)),
-          media_tecnica_calibragem: calcMedia(criterios.map((c) => scoresT[c.key]?.calibragem ?? null)),
+          ...(souAdministrador
+            ? {
+                media_cultural_calibragem: calcMedia([1, 2, 3, 4].map((p) => scoresC[String(p)]?.calibragem ?? null)),
+                media_tecnica_calibragem: calcMedia(criterios.map((c) => scoresT[c.key]?.calibragem ?? null)),
+              }
+            : {}),
         }
       : {
           media_cultural_auto: calcMedia([1, 2, 3, 4].map((p) => scoresC[String(p)]?.auto ?? null)),
@@ -895,7 +911,9 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1.5">Calibragem</p>
-                              {!souAdministrador ? (
+                              {ehPares ? (
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Não se aplica a pares</p>
+                              ) : !souAdministrador ? (
                                 <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo do administrador</p>
                               ) : !calibragemLiberada ? (
                                 <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Disponível na etapa de Calibragem</p>
