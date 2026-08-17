@@ -145,18 +145,26 @@ export default function AvaliacaoPage() {
   // qualquer líder, não só a de quem ele avalia). O "acompanhamento" do líder
   // sobre o ciclo inteiro fica pra uma etapa futura, com RLS própria.
   const [souAdministrador, setSouAdministrador] = useState(false)
-  // Líder (funcionarios.lider_avaliacao, marcação manual do admin) pode
-  // criar, ativar/encerrar, excluir ciclo e montar participantes (selecionar
-  // QUALQUER pessoa da empresa, não só os próprios liderados) — igual
-  // administrador. Regra espelha a RLS: ciclos_avaliacao_insert/update/delete
-  // e avaliacoes_insert chamam e_lider_da_empresa() diretamente (migrations
-  // 20260813/20260815/20260816/20260818). Mas ver/editar a avaliação de
-  // alguém que não é o próprio, o avaliado ou liderado direto no organograma
-  // — isso o líder NÃO tem mais (migration 20260818): só quem foi escolhido
-  // como avaliador (e_avaliador_designado, migration 20260817) enxerga.
+  // Líder (funcionarios.lider_avaliacao, marcação manual do admin) NÃO cria
+  // mais ciclo nem gerencia ele (ativar/encerrar/excluir/montar
+  // participantes) — deixar isso na mão do líder não funcionou na prática e
+  // virou exclusivo de administrador (migration
+  // 20260820_ciclo_avaliacao_admin_only). O que sobra pro líder é a
+  // Avaliação de Pares (sorteio entre líderes, deixado de fora dessa mudança
+  // de propósito) e, como qualquer um, ver/editar a avaliação onde ele é o
+  // próprio, o avaliado ou foi designado avaliador (e_avaliador_designado,
+  // migration 20260817).
   const [souLider, setSouLider] = useState(false)
-  // Criar ciclo é liberado pra administrador e líder.
+  // Criar ciclo é exclusivo de administrador (líder perdeu esse acesso —
+  // migration 20260820_ciclo_avaliacao_admin_only).
   const [podeCriarCiclo, setPodeCriarCiclo] = useState(false)
+  // Exceção pontual (ago/2026): só a conta do Igor Costa pode ter mais de 1
+  // ciclo aberto ao mesmo tempo, pra não precisar excluir o ciclo que a
+  // líder já tinha criado antes da criação de ciclo virar admin-only.
+  // Espelha o trigger checar_ciclo_unico_aberto() (mesma migration), que já
+  // libera isso no banco por e-mail — aqui é só pra não esconder o botão
+  // "Novo Ciclo" da tela dele.
+  const [podeIgnorarLimiteCiclo, setPodeIgnorarLimiteCiclo] = useState(false)
   // Administrador e calibrador enxergam todos os funcionários da empresa; gestor comum
   // vê somente seus próprios liderados (definidos pelo campo "gestor_id" de cada funcionário).
   const [veTodaEmpresa, setVeTodaEmpresa] = useState(false)
@@ -293,7 +301,8 @@ export default function AvaliacaoPage() {
       setIsAdmin(admin)
       setSouAdministrador(administrador)
       setSouLider(souLiderAtual)
-      setPodeCriarCiclo(administrador || souLiderAtual)
+      setPodeCriarCiclo(administrador)
+      setPodeIgnorarLimiteCiclo(user.email?.toLowerCase() === 'igorecosta1@gmail.com')
       setVeTodaEmpresa(todaEmpresa)
 
       await fetchCiclos()
@@ -466,7 +475,6 @@ export default function AvaliacaoPage() {
     if (meuFuncionario && selecionados[meuFuncionario.id] !== undefined) {
       const novoSouLider = selecionados[meuFuncionario.id]
       setSouLider(novoSouLider)
-      setPodeCriarCiclo(souAdministrador || novoSouLider)
       setMeuFuncionario({ ...meuFuncionario, lider_avaliacao: novoSouLider })
     }
 
@@ -698,7 +706,9 @@ export default function AvaliacaoPage() {
 
   // Só pode existir 1 ciclo em aberto (rascunho ou ativo) por vez — evita criar
   // vários e confundir quem está avaliando em qual. Ciclos encerrados não contam:
-  // uma vez fechado, dá pra abrir o próximo normalmente.
+  // uma vez fechado, dá pra abrir o próximo normalmente. Exceção: a conta do
+  // Igor Costa ignora essa trava (podeIgnorarLimiteCiclo) — ver o trigger
+  // checar_ciclo_unico_aberto() no banco.
   const existeCicloEmAberto = ciclos.some((c) => c.status !== 'encerrado')
 
   if (loading) {
@@ -960,7 +970,7 @@ export default function AvaliacaoPage() {
           </button>
         )}
         {podeCriarCiclo && (
-          existeCicloEmAberto ? (
+          existeCicloEmAberto && !podeIgnorarLimiteCiclo ? (
             <p
               className="text-xs text-muted-foreground max-w-[220px] text-right"
               title="Só dá pra ter 1 ciclo em rascunho/ativo por vez — encerre o atual pra liberar a criação de outro."
@@ -1037,7 +1047,7 @@ export default function AvaliacaoPage() {
                   <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', cicloStatusColor[ciclo.status])}>
                     {cicloStatusLabel[ciclo.status]}
                   </span>
-                  {(souAdministrador || souLider) && ciclo.status !== 'encerrado' && (
+                  {souAdministrador && ciclo.status !== 'encerrado' && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
@@ -1049,7 +1059,7 @@ export default function AvaliacaoPage() {
                       {ciclo.status === 'rascunho' ? 'Ativar' : 'Encerrar'}
                     </button>
                   )}
-                  {(souAdministrador || souLider) && (
+                  {souAdministrador && (
                     <button
                       onClick={(e) => { e.stopPropagation(); handleDeletarCiclo(ciclo) }}
                       title="Excluir ciclo"
@@ -1071,7 +1081,7 @@ export default function AvaliacaoPage() {
                       {funcionariosSemAvaliacao.length > 0 && ` · ${funcionariosSemAvaliacao.length} funcionário(s) sem avaliação`}
                     </p>
                     <div className="flex items-center gap-2">
-                      {ciclo.status === 'ativo' && funcionariosSemAvaliacao.length > 0 && (
+                      {souAdministrador && ciclo.status === 'ativo' && funcionariosSemAvaliacao.length > 0 && (
                         <button
                           onClick={() => abrirMontagem(ciclo, false)}
                           className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground"
@@ -1182,7 +1192,7 @@ export default function AvaliacaoPage() {
                         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                           Sem avaliação neste ciclo
                         </p>
-                        {ciclo.status === 'ativo' && (
+                        {souAdministrador && ciclo.status === 'ativo' && (
                           <button
                             onClick={() => abrirMontagem(ciclo, false)}
                             className="text-xs text-primary hover:underline font-medium"
