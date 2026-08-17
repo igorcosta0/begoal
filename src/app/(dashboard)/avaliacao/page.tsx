@@ -116,13 +116,6 @@ const avalStatusLabel: Record<string, string> = {
   finalizada: 'Finalizada',
 }
 
-function resultadoFinal(av: { media_cultural_gestor: number | null; media_cultural_calibragem: number | null; media_tecnica_gestor: number | null; media_tecnica_calibragem: number | null }) {
-  const cultural = av.media_cultural_calibragem ?? av.media_cultural_gestor
-  const tecnica = av.media_tecnica_calibragem ?? av.media_tecnica_gestor
-  const percentual = cultural !== null && tecnica !== null ? Math.round(((cultural + tecnica) / 2 / 5) * 100) : null
-  return { cultural, tecnica, percentual }
-}
-
 const avalStatusColor: Record<string, string> = {
   pendente: 'bg-yellow-100 text-yellow-700',
   auto_concluida: 'bg-blue-100 text-blue-700',
@@ -783,14 +776,13 @@ export default function AvaliacaoPage() {
   )
 
   // getMinhasAvaliacoes traz TODAS as avaliações onde eu sou o avaliado,
-  // inclusive as "pares" em que um colega me avaliou — mas essas só podem
-  // aparecer pra mim depois de reveladas (mesma regra que já vale pro resto
-  // do modal: colaboradorVeGestor/podeVerMedias exigem `revelado`). Sem esse
-  // filtro, um líder também avaliado por pares (como a Graciela, avaliada
-  // pelo Felipe Marques) via a avaliação de pares listada aqui antes da hora
-  // — mesmo sem conseguir ver as notas dentro do modal, o simples fato de
-  // aparecer na lista já vazava "alguém te avaliou e isso está pendente".
-  const minhasAvaliacoesVisiveis = minhasAvaliacoes.filter((av) => av.tipo !== 'pares' || av.revelado)
+  // inclusive as "pares" em que um colega me avaliou — mas essas nunca
+  // aparecem pra mim (pedido: cada usuário só vê as notas que dá, nunca as
+  // que recebe — sem exceção, nem depois de qualquer etapa). Mesmo sem
+  // mostrar nota nenhuma, o simples fato de aparecer na lista já vazaria
+  // "alguém te avaliou e isso está pendente/concluído", então a linha inteira
+  // fica de fora, não só a nota.
+  const minhasAvaliacoesVisiveis = minhasAvaliacoes.filter((av) => av.tipo !== 'pares')
 
   // Recorte "sobre mim" também pra admin/líder: eles montam/gerenciam o ciclo,
   // mas também podem ter uma avaliação "padrao" própria (avaliados por outra
@@ -850,8 +842,6 @@ export default function AvaliacaoPage() {
           </div>
         </div>
 
-        {precisoAvaliarSection}
-
         {minhasAvaliacoesVisiveis.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/50 p-16 text-center">
             <p className="text-muted-foreground text-sm">Nenhuma avaliação disponível no momento.</p>
@@ -903,28 +893,8 @@ export default function AvaliacaoPage() {
                       )}
                     </div>
                   )}
-                  {av.revelado && (() => {
-                    const { cultural, tecnica, percentual } = resultadoFinal(av)
-                    return (
-                      <div className="flex gap-4 mt-2">
-                        {cultural !== null && (
-                          <span className="text-xs text-muted-foreground">
-                            Cultural (final): <strong className="text-foreground">{cultural.toFixed(1)}</strong>
-                          </span>
-                        )}
-                        {tecnica !== null && (
-                          <span className="text-xs text-muted-foreground">
-                            Técnica (final): <strong className="text-foreground">{tecnica.toFixed(1)}</strong>
-                          </span>
-                        )}
-                        {percentual !== null && (
-                          <span className="text-xs text-muted-foreground">
-                            Resultado: <strong className="text-foreground">{percentual}%</strong>
-                          </span>
-                        )}
-                      </div>
-                    )
-                  })()}
+                  {/* Nota do gestor/calibragem e resultado final NUNCA aparecem aqui —
+                      cada usuário só vê a nota que dá, nunca a que recebe. */}
                 </div>
                 <button
                   onClick={() => abrirMinhaAvaliacao(av)}
@@ -937,11 +907,14 @@ export default function AvaliacaoPage() {
           </div>
         )}
 
+        {precisoAvaliarSection}
+
         <ModalAvaliacao
           open={modalAvaliacao.open}
           avaliacao={modalAvaliacao.avaliacao as Avaliacao}
           cicloNome={modalAvaliacao.cicloNome}
           isAdmin={modalAvaliacao.papelAvaliador}
+          souAdministrador={souAdministrador}
           onClose={() => setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '', papelAvaliador: false })}
           onSave={() => { fetchMinhasAvaliacoes(); fetchAvaliacoesParaAvaliar(); setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '', papelAvaliador: false }) }}
         />
@@ -1240,6 +1213,7 @@ export default function AvaliacaoPage() {
         avaliacao={modalAvaliacao.avaliacao as Avaliacao}
         cicloNome={modalAvaliacao.cicloNome}
         isAdmin={modalAvaliacao.papelAvaliador}
+        souAdministrador={souAdministrador}
         onClose={() => setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '', papelAvaliador: false })}
         onSave={() => {
           fetchAvaliacoes()

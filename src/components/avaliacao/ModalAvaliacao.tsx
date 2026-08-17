@@ -361,17 +361,22 @@ interface Props {
   avaliacao: Avaliacao | null
   cicloNome: string
   isAdmin: boolean
+  // Administrador de verdade da empresa (não confundir com `isAdmin`, que é só
+  // o "papel" nesta avaliação específica — avaliador vs avaliado). Só quem tem
+  // esse flag enxerga os dois lados sempre; todo o resto (avaliado/avaliador
+  // comuns) só vê a nota que ele mesmo deu, nunca a que recebeu — sem exceção
+  // de etapa/calibragem nem de "revelar".
+  souAdministrador?: boolean
   onClose: () => void
   onSave: () => void
 }
 
 // ── Componente principal ─────────────────────────────────────────────────────
 
-export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, onClose, onSave }: Props) {
+export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, souAdministrador, onClose, onSave }: Props) {
   const [activeTab, setActiveTab] = useState<'cultural' | 'tecnica' | 'pdi'>('cultural')
   const [vertical, setVertical] = useState('')
   const [observacoes, setObservacoes] = useState('')
-  const [revelado, setRevelado] = useState(false)
   const [scoresC, setScoresC] = useState<ScoresC>({
     '1': { auto: null, gestor: null, calibragem: null, observacoes: '' },
     '2': { auto: null, gestor: null, calibragem: null, observacoes: '' },
@@ -390,7 +395,6 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
     if (open && avaliacao) {
       setVertical(avaliacao.vertical ?? '')
       setObservacoes(avaliacao.observacoes_gerais ?? '')
-      setRevelado(avaliacao.revelado ?? false)
       setActiveTab('cultural')
       setErro('')
       loadData(avaliacao.id)
@@ -551,7 +555,6 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
     }
     const payloadLado = isAdmin
       ? {
-          revelado,
           observacoes_gerais: observacoes || null,
           media_cultural_gestor: calcMedia([1, 2, 3, 4].map((p) => scoresC[String(p)]?.gestor ?? null)),
           media_cultural_calibragem: calcMedia([1, 2, 3, 4].map((p) => scoresC[String(p)]?.calibragem ?? null)),
@@ -691,12 +694,14 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
 
   const podeEditarPdi = ['calibragem', 'finalizada'].includes(avaliacao.status)
 
-  // Gestor só vê a autoavaliação do colaborador a partir da Calibragem (antes disso avalia às cegas).
-  const gestorVeAuto = isAdmin && ['calibragem', 'finalizada'].includes(avaliacao.status)
-  // Colaborador só vê a nota do gestor/calibragem e o resultado final depois que o gestor marcar "revelar".
-  const colaboradorVeGestor = !isAdmin && revelado
-  const podeRevelar = isAdmin && ['calibragem', 'finalizada'].includes(avaliacao.status)
-  const podeVerMedias = isAdmin || revelado
+  // Cada usuário só vê a nota que ELE deu, nunca a que recebeu — sem exceção
+  // de etapa/calibragem nem de "revelar" (isso existia antes e foi removido de
+  // propósito). Só administrador de verdade da empresa (souAdministrador, não
+  // confundir com `isAdmin` = papel de avaliador nesta avaliação) enxerga os
+  // dois lados sempre, como auditor.
+  const gestorVeAuto = !!souAdministrador
+  const colaboradorVeGestor = !!souAdministrador
+  const podeVerMedias = isAdmin || !!souAdministrador
 
   // Calibragem é uma etapa própria: só fica visível/editável depois de "Iniciar Calibragem"
   // (status === 'calibragem'); antes disso o gestor não pode preenchê-la junto com a própria nota.
@@ -812,7 +817,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                             </label>
                             {isAdmin && !gestorVeAuto ? (
                               <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-1.5">
-                                Oculto até a Calibragem.
+                                Oculto — autoavaliação é exclusiva de quem preencheu.
                               </p>
                             ) : (
                               <textarea
@@ -839,7 +844,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                             <div>
                               <p className="text-xs text-muted-foreground mb-1.5">Auto</p>
                               {isAdmin && !gestorVeAuto ? (
-                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a Calibragem</p>
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo de quem preencheu</p>
                               ) : (
                                 <div className="flex gap-1">
                                   {([1, 2, 3, 4, 5] as const).map((v) => (
@@ -857,7 +862,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                             <div>
                               <p className="text-xs text-muted-foreground mb-1.5">Gestor</p>
                               {!isAdmin && !colaboradorVeGestor ? (
-                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a revelação</p>
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo de quem preencheu</p>
                               ) : (
                                 <div className="flex gap-1">
                                   {([1, 2, 3, 4, 5] as const).map((v) => (
@@ -877,7 +882,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                               {isAdmin && !calibragemLiberada ? (
                                 <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Disponível na etapa de Calibragem</p>
                               ) : !isAdmin && !colaboradorVeGestor ? (
-                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a revelação</p>
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo de quem preencheu</p>
                               ) : (
                                 <div className="flex gap-1">
                                   {([1, 2, 3, 4, 5] as const).map((v) => (
@@ -904,7 +909,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                     </label>
                     {!isAdmin && !colaboradorVeGestor ? (
                       <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-2">
-                        Oculto até a revelação da avaliação.
+                        Oculto — nota do avaliador é exclusiva de quem preencheu.
                       </p>
                     ) : (
                       <textarea
@@ -956,11 +961,11 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                             <label className="text-xs text-muted-foreground">Evidências e Exemplos Práticos</label>
                             {isAdmin && !gestorVeAuto ? (
                               <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-1.5">
-                                Oculto até a Calibragem.
+                                Oculto — autoavaliação é exclusiva de quem preencheu.
                               </p>
                             ) : !isAdmin && !colaboradorVeGestor ? (
                               <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-1.5">
-                                Oculto até a revelação da avaliação.
+                                Oculto — nota do avaliador é exclusiva de quem preencheu.
                               </p>
                             ) : (
                               <textarea
@@ -987,7 +992,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                             <div>
                               <p className="text-xs text-muted-foreground mb-1.5">Auto</p>
                               {isAdmin && !gestorVeAuto ? (
-                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a Calibragem</p>
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo de quem preencheu</p>
                               ) : (
                                 <div className="flex gap-1">
                                   {([1, 2, 3, 4, 5] as const).map((v) => (
@@ -1005,7 +1010,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                             <div>
                               <p className="text-xs text-muted-foreground mb-1.5">Gestor</p>
                               {!isAdmin && !colaboradorVeGestor ? (
-                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a revelação</p>
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo de quem preencheu</p>
                               ) : (
                                 <div className="flex gap-1">
                                   {([1, 2, 3, 4, 5] as const).map((v) => (
@@ -1025,7 +1030,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                               {isAdmin && !calibragemLiberada ? (
                                 <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Disponível na etapa de Calibragem</p>
                               ) : !isAdmin && !colaboradorVeGestor ? (
-                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto até a revelação</p>
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo de quem preencheu</p>
                               ) : (
                                 <div className="flex gap-1">
                                   {([1, 2, 3, 4, 5] as const).map((v) => (
@@ -1052,7 +1057,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                     </label>
                     {!isAdmin && !colaboradorVeGestor ? (
                       <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-2">
-                        Oculto até a revelação da avaliação.
+                        Oculto — nota do avaliador é exclusiva de quem preencheu.
                       </p>
                     ) : (
                       <textarea
@@ -1207,18 +1212,6 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
           </p>
         )}
 
-        {/* Revelar avaliação ao colaborador */}
-        {podeRevelar && (
-          <label className="flex items-center gap-2 px-5 pt-3 text-xs text-muted-foreground shrink-0">
-            <input
-              type="checkbox"
-              checked={revelado}
-              onChange={(e) => setRevelado(e.target.checked)}
-              className="rounded border-input"
-            />
-            Revelar avaliação ao colaborador
-          </label>
-        )}
 
         {/* Médias resumo */}
         {podeVerMedias &&
