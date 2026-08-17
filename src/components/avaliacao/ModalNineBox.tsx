@@ -5,8 +5,12 @@ import { cn } from '@/lib/utils'
 interface AvaliacaoNineBox {
   id: string
   funcionario?: { full_name: string } | null
-  media_cultural_gestor: number | null
-  media_tecnica_gestor: number | null
+  // Nota FINAL calibrada (media_*_calibragem) — não é mais a nota do gestor.
+  // O Nine Box só faz sentido depois da Calibragem (pedido ago/2026): antes
+  // disso a nota ainda pode mudar, então a matriz fica incompleta de
+  // propósito até lá.
+  media_cultural_final: number | null
+  media_tecnica_final: number | null
 }
 
 interface Props {
@@ -56,10 +60,10 @@ export default function ModalNineBox({ open, avaliacoes, onClose }: Props) {
   if (!open) return null
 
   const comScores = avaliacoes.filter(
-    (a) => a.media_cultural_gestor !== null && a.media_tecnica_gestor !== null
+    (a) => a.media_cultural_final !== null && a.media_tecnica_final !== null
   )
   const semScores = avaliacoes.filter(
-    (a) => a.media_cultural_gestor === null || a.media_tecnica_gestor === null
+    (a) => a.media_cultural_final === null || a.media_tecnica_final === null
   )
 
   return (
@@ -70,7 +74,7 @@ export default function ModalNineBox({ open, avaliacoes, onClose }: Props) {
         <div className="flex items-center justify-between p-5 border-b border-border shrink-0">
           <div>
             <h2 className="text-base font-semibold text-foreground">Matriz Nine Box</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Calibração: Alinhamento Cultural × Performance Técnica (notas do gestor)</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Alinhamento Cultural × Performance Técnica — nota final calibrada</p>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none">
             ×
@@ -115,7 +119,7 @@ export default function ModalNineBox({ open, avaliacoes, onClose }: Props) {
                   </div>
                   {QUADRANTES[rowIdx].map((quadrante, colIdx) => {
                     const funcionariosNaBox = comScores.filter((a) => {
-                      const pos = getQuadrante(a.media_cultural_gestor, a.media_tecnica_gestor)
+                      const pos = getQuadrante(a.media_cultural_final, a.media_tecnica_final)
                       return pos && pos[0] === rowIdx && pos[1] === colIdx
                     })
                     return (
@@ -167,7 +171,7 @@ export default function ModalNineBox({ open, avaliacoes, onClose }: Props) {
           {semScores.length > 0 && (
             <div className="mt-5 border border-border rounded-lg p-3">
               <p className="text-xs font-medium text-muted-foreground mb-2">
-                Aguardando avaliação do gestor ({semScores.length}):
+                Aguardando calibragem ({semScores.length}):
               </p>
               <div className="flex flex-wrap gap-2">
                 {semScores.map((a) => (

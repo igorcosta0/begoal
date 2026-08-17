@@ -64,6 +64,30 @@ export async function updateCiclo(
   return supabase.from('ciclos_avaliacao').update(payload).eq('id', id)
 }
 
+// Calibragem (pedido ago/2026): etapa ciclo-inteira, só administrador —
+// avança/fecha TODAS as avaliações comuns (tipo='padrao') elegíveis do ciclo
+// de uma vez, em vez de uma por uma. Pares fica de fora (nunca tem
+// autoavaliação, então nunca "está pronta" pra calibragem).
+export async function iniciarCalibragemCiclo(cicloId: string) {
+  const supabase = createClient()
+  return supabase
+    .from('avaliacoes')
+    .update({ status: 'calibragem' })
+    .eq('ciclo_id', cicloId)
+    .eq('tipo', 'padrao')
+    .eq('status', 'gestor_concluida')
+}
+
+export async function finalizarCalibragemCiclo(cicloId: string) {
+  const supabase = createClient()
+  return supabase
+    .from('avaliacoes')
+    .update({ status: 'finalizada' })
+    .eq('ciclo_id', cicloId)
+    .eq('tipo', 'padrao')
+    .eq('status', 'calibragem')
+}
+
 export async function updateCicloStatus(id: string, status: string) {
   const supabase = createClient()
   return supabase.from('ciclos_avaliacao').update({ status }).eq('id', id).select().single()

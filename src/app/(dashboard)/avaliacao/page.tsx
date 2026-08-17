@@ -13,6 +13,8 @@ import {
   updateCicloStatus,
   deleteCicloAvaliacao,
   deleteAvaliacao,
+  iniciarCalibragemCiclo,
+  finalizarCalibragemCiclo,
 } from '@/lib/queries/avaliacao'
 import { getFuncionariosByEmpresa } from '@/lib/queries/okr'
 import ModalCriarCiclo from '@/components/avaliacao/ModalCriarCiclo'
@@ -521,6 +523,26 @@ export default function AvaliacaoPage() {
     fetchCiclos()
   }
 
+  async function handleIniciarCalibragem(ciclo: Ciclo) {
+    setErro('')
+    const { error } = await iniciarCalibragemCiclo(ciclo.id)
+    if (error) {
+      setErro(error.message)
+      return
+    }
+    if (cicloAtivo?.id === ciclo.id) fetchAvaliacoes()
+  }
+
+  async function handleFinalizarCalibragem(ciclo: Ciclo) {
+    setErro('')
+    const { error } = await finalizarCalibragemCiclo(ciclo.id)
+    if (error) {
+      setErro(error.message)
+      return
+    }
+    if (cicloAtivo?.id === ciclo.id) fetchAvaliacoes()
+  }
+
   async function handleDeletarCiclo(ciclo: Ciclo) {
     const confirmado = window.confirm(
       `Excluir o ciclo "${ciclo.nome}"? Todas as avaliações desse ciclo serão apagadas junto. Essa ação não pode ser desfeita.`
@@ -592,6 +614,15 @@ export default function AvaliacaoPage() {
 
   const funcionariosComAvaliacao = new Set(avaliacoes.map((a) => a.funcionario?.id))
   const funcionariosSemAvaliacao = funcionarios.filter((f) => !funcionariosComAvaliacao.has(f.id))
+
+  // Calibragem (pedido ago/2026): etapa ciclo-inteira, só admin, só avaliação
+  // comum — pares nunca tem autoavaliação, então nunca cumpriria a condição
+  // "todo mundo com auto + gestor concluídos" e ficaria fora de propósito.
+  const avaliacoesComuns = avaliacoes.filter((a) => a.tipo !== 'pares')
+  const todosProntosParaCalibragem =
+    avaliacoesComuns.length > 0 && avaliacoesComuns.every((a) => ['gestor_concluida', 'calibragem', 'finalizada'].includes(a.status))
+  const existeAlgumParaIniciarCalibragem = avaliacoesComuns.some((a) => a.status === 'gestor_concluida')
+  const existeAlgumEmCalibragem = avaliacoesComuns.some((a) => a.status === 'calibragem')
 
   // Só pode existir 1 ciclo em aberto (rascunho ou ativo) por vez — evita criar
   // vários e confundir quem está avaliando em qual. Ciclos encerrados não contam:
@@ -985,13 +1016,41 @@ export default function AvaliacaoPage() {
                           Adicionar ao ciclo
                         </button>
                       )}
-                      <button
-                        onClick={() => setModalNineBox(true)}
-                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground"
-                      >
-                        <LayoutGrid className="w-3.5 h-3.5" />
-                        Nine Box
-                      </button>
+                      {/* Calibragem: etapa ciclo-inteira, só administrador. "Iniciar"
+                          só libera quando TODA avaliação comum já passou de auto+gestor
+                          (não trava por causa de quem ainda não concluiu — só desabilita
+                          até lá); "Finalizar" fecha quem já está em calibragem. */}
+                      {souAdministrador && existeAlgumParaIniciarCalibragem && (
+                        <button
+                          onClick={() => handleIniciarCalibragem(ciclo)}
+                          disabled={!todosProntosParaCalibragem}
+                          title={!todosProntosParaCalibragem ? 'Só libera quando todo mundo da avaliação comum tiver concluído a etapa do avaliador' : undefined}
+                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                        >
+                          <ArrowRightLeft className="w-3.5 h-3.5" />
+                          Iniciar Calibragem
+                        </button>
+                      )}
+                      {souAdministrador && existeAlgumEmCalibragem && (
+                        <button
+                          onClick={() => handleFinalizarCalibragem(ciclo)}
+                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground"
+                        >
+                          <ArrowRightLeft className="w-3.5 h-3.5" />
+                          Finalizar Calibragem
+                        </button>
+                      )}
+                      {/* Nine Box usa a nota final calibrada — só quem viu a calibragem
+                          (administrador) enxerga algo útil aqui, por isso virou admin-only. */}
+                      {souAdministrador && (
+                        <button
+                          onClick={() => setModalNineBox(true)}
+                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground"
+                        >
+                          <LayoutGrid className="w-3.5 h-3.5" />
+                          Nine Box
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -1139,8 +1198,8 @@ export default function AvaliacaoPage() {
         avaliacoes={avaliacoes.filter((a) => a.tipo !== 'pares').map((a) => ({
           id: a.id,
           funcionario: a.funcionario,
-          media_cultural_gestor: a.media_cultural_gestor,
-          media_tecnica_gestor: a.media_tecnica_gestor,
+          media_cultural_final: a.media_cultural_calibragem,
+          media_tecnica_final: a.media_tecnica_calibragem,
         }))}
         onClose={() => setModalNineBox(false)}
       />

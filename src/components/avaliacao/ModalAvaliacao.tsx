@@ -481,7 +481,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
     }
 
     const emEtapaCalibragem = avaliacao ? ['calibragem', 'finalizada'].includes(avaliacao.status) : false
-    if (isAdmin && emEtapaCalibragem) {
+    if (souAdministrador && emEtapaCalibragem) {
       const pilaresCalibragemFaltando = [1, 2, 3, 4].some((p) => scoresC[String(p)]?.calibragem == null)
       if (pilaresCalibragemFaltando) {
         faltando.push('nota de calibragem em todos os pilares culturais')
@@ -593,11 +593,11 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
 
   async function handleAvancarStatus() {
     if (!avaliacao) return
+    // gestor_concluida→calibragem e calibragem→finalizada saíram daqui — ver
+    // comentário de podeAvancarStatus.
     const proximo: Record<string, string> = {
       pendente: 'auto_concluida',
       auto_concluida: 'gestor_concluida',
-      gestor_concluida: 'calibragem',
-      calibragem: 'finalizada',
     }
     const next = proximo[avaliacao.status]
     if (!next) return
@@ -684,13 +684,18 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
   const proximoStatusLabel: Record<string, string> = {
     pendente: 'Concluir Autoavaliação',
     auto_concluida: 'Concluir Avaliação do Gestor',
-    gestor_concluida: 'Iniciar Calibragem',
-    calibragem: 'Finalizar',
   }
 
+  // Calibragem (pedido ago/2026): virou etapa ciclo-inteira, disparada em
+  // lote pelo administrador na tela do ciclo ("Iniciar Calibragem"/
+  // "Finalizar Calibragem" — ver avaliacao/page.tsx), não mais avaliação por
+  // avaliação daqui de dentro. Por isso esse botão só cobre mais
+  // pendente→auto_concluida (avaliado) e auto_concluida→gestor_concluida
+  // (avaliador) — gestor_concluida→calibragem e calibragem→finalizada saíram
+  // daqui.
   const podeAvancarStatus =
     (!isAdmin && avaliacao.status === 'pendente') ||
-    (isAdmin && ['auto_concluida', 'gestor_concluida', 'calibragem'].includes(avaliacao.status))
+    (isAdmin && avaliacao.status === 'auto_concluida')
 
   const podeEditarPdi = ['calibragem', 'finalizada'].includes(avaliacao.status)
 
@@ -703,10 +708,14 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
   const colaboradorVeGestor = !!souAdministrador
   const podeVerMedias = isAdmin || !!souAdministrador
 
-  // Calibragem é uma etapa própria: só fica visível/editável depois de "Iniciar Calibragem"
-  // (status === 'calibragem'); antes disso o gestor não pode preenchê-la junto com a própria nota.
+  // Calibragem (pedido ago/2026): não é mais "o mesmo avaliador, numa etapa
+  // posterior" — é exclusiva do administrador de verdade. Nem o avaliador
+  // original que preencheu a nota do gestor enxerga a nota de calibragem
+  // agora; só quem tem souAdministrador. calibragemLiberada continua
+  // controlando SÓ o "ainda não chegou a etapa" pro administrador — pra
+  // qualquer outra pessoa a seção de calibragem fica oculta, ponto.
   const calibragemLiberada = ['calibragem', 'finalizada'].includes(avaliacao.status)
-  const podeEditarCalibragem = isAdmin && avaliacao.status === 'calibragem'
+  const podeEditarCalibragem = !!souAdministrador && avaliacao.status === 'calibragem'
 
   const notaFinalCultural = avaliacao.media_cultural_calibragem ?? avaliacao.media_cultural_gestor
   const notaFinalTecnica = avaliacao.media_tecnica_calibragem ?? avaliacao.media_tecnica_gestor
@@ -879,10 +888,10 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1.5">Calibragem</p>
-                              {isAdmin && !calibragemLiberada ? (
+                              {!souAdministrador ? (
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo do administrador</p>
+                              ) : !calibragemLiberada ? (
                                 <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Disponível na etapa de Calibragem</p>
-                              ) : !isAdmin && !colaboradorVeGestor ? (
-                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo de quem preencheu</p>
                               ) : (
                                 <div className="flex gap-1">
                                   {([1, 2, 3, 4, 5] as const).map((v) => (
@@ -1027,10 +1036,10 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1.5">Calibragem</p>
-                              {isAdmin && !calibragemLiberada ? (
+                              {!souAdministrador ? (
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo do administrador</p>
+                              ) : !calibragemLiberada ? (
                                 <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Disponível na etapa de Calibragem</p>
-                              ) : !isAdmin && !colaboradorVeGestor ? (
-                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo de quem preencheu</p>
                               ) : (
                                 <div className="flex gap-1">
                                   {([1, 2, 3, 4, 5] as const).map((v) => (
