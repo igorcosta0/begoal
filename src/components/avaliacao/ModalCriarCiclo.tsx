@@ -1,30 +1,46 @@
 'use client'
 
-import { useState } from 'react'
-import { createCicloAvaliacao } from '@/lib/queries/avaliacao'
+import { useEffect, useState } from 'react'
+import { createCicloAvaliacao, updateCiclo } from '@/lib/queries/avaliacao'
+
+interface CicloEditavel {
+  id: string
+  nome: string
+  periodo: 1 | 2
+  ano: number
+}
 
 interface Props {
   open: boolean
   clientId: string
+  /** Presente = modo edição (altera nome/período/ano de um ciclo já criado); ausente = criar novo. */
+  ciclo?: CicloEditavel | null
   onClose: () => void
   onSave: () => void
 }
 
 const ANO_ATUAL = new Date().getFullYear()
 
-export default function ModalCriarCiclo({ open, clientId, onClose, onSave }: Props) {
+export default function ModalCriarCiclo({ open, clientId, ciclo, onClose, onSave }: Props) {
+  const editando = !!ciclo
   const [nome, setNome] = useState('')
   const [periodo, setPeriodo] = useState<1 | 2>(1)
   const [ano, setAno] = useState(ANO_ATUAL)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  useEffect(() => {
+    if (!open) return
+    setNome(ciclo?.nome ?? '')
+    setPeriodo(ciclo?.periodo ?? 1)
+    setAno(ciclo?.ano ?? ANO_ATUAL)
+    setError('')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, ciclo?.id])
+
   if (!open) return null
 
   function handleClose() {
-    setNome('')
-    setPeriodo(1)
-    setAno(ANO_ATUAL)
     setError('')
     onClose()
   }
@@ -34,7 +50,9 @@ export default function ModalCriarCiclo({ open, clientId, onClose, onSave }: Pro
     setLoading(true)
     setError('')
     const nomeGerado = nome.trim() || `${periodo}º Semestre ${ano}`
-    const { error: err } = await createCicloAvaliacao({ client_id: clientId, nome: nomeGerado, periodo, ano })
+    const { error: err } = editando && ciclo
+      ? await updateCiclo(ciclo.id, { nome: nomeGerado, periodo, ano })
+      : await createCicloAvaliacao({ client_id: clientId, nome: nomeGerado, periodo, ano })
     setLoading(false)
     if (err) {
       setError(err.message)
@@ -48,7 +66,9 @@ export default function ModalCriarCiclo({ open, clientId, onClose, onSave }: Pro
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
       <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
-        <h2 className="text-base font-semibold text-foreground mb-4">Novo Ciclo de Avaliação</h2>
+        <h2 className="text-base font-semibold text-foreground mb-4">
+          {editando ? 'Editar Ciclo de Avaliação' : 'Novo Ciclo de Avaliação'}
+        </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -108,7 +128,7 @@ export default function ModalCriarCiclo({ open, clientId, onClose, onSave }: Pro
               disabled={loading}
               className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60"
             >
-              {loading ? 'Criando...' : 'Criar Ciclo'}
+              {loading ? 'Salvando...' : editando ? 'Salvar Alterações' : 'Criar Ciclo'}
             </button>
           </div>
         </form>

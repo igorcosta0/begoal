@@ -20,7 +20,7 @@ import ModalNineBox from '@/components/avaliacao/ModalNineBox'
 import ModalMontarAvaliacoes, { type LinhaMontagem, type OpcaoAvaliador, type ParPares } from '@/components/avaliacao/ModalMontarAvaliacoes'
 import ModalGerenciarLideres from '@/components/avaliacao/ModalGerenciarLideres'
 import { cn, isEmpresaCTZ } from '@/lib/utils'
-import { LayoutGrid, Plus, ChevronRight, Trash2, Users2, ArrowRightLeft, X, Crown, UserCheck } from 'lucide-react'
+import { LayoutGrid, Plus, ChevronRight, Trash2, Users2, ArrowRightLeft, X, Crown, UserCheck, Pencil } from 'lucide-react'
 import { VERTICAIS_CTZ } from '@/components/avaliacao/ModalAvaliacao'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
@@ -172,7 +172,7 @@ export default function AvaliacaoPage() {
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
 
-  const [modalCriarCiclo, setModalCriarCiclo] = useState(false)
+  const [modalCriarCiclo, setModalCriarCiclo] = useState<{ open: boolean; ciclo: Ciclo | null }>({ open: false, ciclo: null })
   const [modalAvaliacao, setModalAvaliacao] = useState<{
     open: boolean
     avaliacao: Avaliacao | MinhaAvaliacao | null
@@ -830,7 +830,7 @@ export default function AvaliacaoPage() {
             </p>
           ) : (
             <button
-              onClick={() => setModalCriarCiclo(true)}
+              onClick={() => setModalCriarCiclo({ open: true, ciclo: null })}
               className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
             >
               <Plus className="w-4 h-4" />
@@ -862,7 +862,7 @@ export default function AvaliacaoPage() {
           </p>
           {podeCriarCiclo && (
             <button
-              onClick={() => setModalCriarCiclo(true)}
+              onClick={() => setModalCriarCiclo({ open: true, ciclo: null })}
               className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
             >
               Criar primeiro ciclo
@@ -908,6 +908,15 @@ export default function AvaliacaoPage() {
                       className="text-xs px-3 py-1 border border-border rounded-md hover:bg-accent transition-colors text-muted-foreground"
                     >
                       {ciclo.status === 'rascunho' ? 'Ativar' : 'Encerrar'}
+                    </button>
+                  )}
+                  {souAdministrador && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setModalCriarCiclo({ open: true, ciclo }) }}
+                      title="Editar ciclo"
+                      className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
                     </button>
                   )}
                   {souAdministrador && (
@@ -1068,9 +1077,10 @@ export default function AvaliacaoPage() {
 
       {/* Modals */}
       <ModalCriarCiclo
-        open={modalCriarCiclo}
+        open={modalCriarCiclo.open}
         clientId={empresa?.id ?? ''}
-        onClose={() => setModalCriarCiclo(false)}
+        ciclo={modalCriarCiclo.ciclo}
+        onClose={() => setModalCriarCiclo({ open: false, ciclo: null })}
         onSave={() => { fetchCiclos() }}
       />
 

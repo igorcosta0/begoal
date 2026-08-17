@@ -56,6 +56,14 @@ export async function createCicloAvaliacao(payload: {
   return supabase.from('ciclos_avaliacao').insert(payload).select().single()
 }
 
+export async function updateCiclo(
+  id: string,
+  payload: { nome?: string; periodo?: number; ano?: number }
+) {
+  const supabase = createClient()
+  return supabase.from('ciclos_avaliacao').update(payload).eq('id', id)
+}
+
 export async function updateCicloStatus(id: string, status: string) {
   const supabase = createClient()
   return supabase.from('ciclos_avaliacao').update({ status }).eq('id', id).select().single()
