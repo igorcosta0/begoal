@@ -743,7 +743,7 @@ export default function AvaliacaoPage() {
       <div className="flex items-center gap-2">
         <ArrowRightLeft className="w-3.5 h-3.5 text-violet-600" />
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          Preciso Avaliar ({avaliacoesParaAvaliar.length})
+          Devo Avaliar ({avaliacoesParaAvaliar.length})
         </p>
       </div>
       {avaliacoesParaAvaliar.map((av) => (
@@ -802,7 +802,7 @@ export default function AvaliacaoPage() {
       <div className="flex items-center gap-2">
         <UserCheck className="w-3.5 h-3.5 text-primary" />
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          Minha Autoavaliação ({minhasAvaliacoesVisiveis.length})
+          Minha Auto-Avaliação ({minhasAvaliacoesVisiveis.length})
         </p>
       </div>
       {minhasAvaliacoesVisiveis.map((av) => (
@@ -861,9 +861,12 @@ export default function AvaliacaoPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {avaliacoesParaAvaliar.length > 0 && (
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Sobre mim</p>
-            )}
+            <div className="flex items-center gap-2">
+              <UserCheck className="w-3.5 h-3.5 text-primary" />
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Minha Auto-Avaliação ({minhasAvaliacoesVisiveis.length})
+              </p>
+            </div>
             {minhasAvaliacoesVisiveis.map((av) => (
               <div
                 key={av.id}

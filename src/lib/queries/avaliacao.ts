@@ -66,48 +66,77 @@ export async function deleteCicloAvaliacao(id: string) {
   return supabase.from('ciclos_avaliacao').delete().eq('id', id)
 }
 
+// Leituras abaixo passam por funções do banco (get_avaliacoes_por_ciclo,
+// get_minhas_avaliacoes, get_avaliacoes_para_avaliar — migration
+// 20260821_avaliacao_mascara_notas) em vez de select direto na tabela: a nota
+// do lado errado (auto pro avaliador antes da Calibragem, gestor/calibragem
+// pro avaliado antes de "revelar") volta null desde o banco, não só escondida
+// na tela — RLS de avaliacoes_select continua sendo quem decide se a LINHA
+// aparece; essas funções só mascaram COLUNA por cima disso.
+
 export async function getAvaliacoesByCiclo(cicloId: string) {
   const supabase = createClient()
-  return supabase
-    .from('avaliacoes')
-    .select(`
-      id, status, vertical, tipo, revelado, media_cultural_auto, media_cultural_gestor, media_cultural_calibragem,
-      media_tecnica_auto, media_tecnica_gestor, media_tecnica_calibragem,
-      evidencias_culturais, evidencias_tecnicas, observacoes_gerais,
-      funcionario:funcionarios!funcionario_id(id, full_name, cargo),
-      avaliador:funcionarios!avaliador_id(id, full_name)
-    `)
-    .eq('ciclo_id', cicloId)
-    .order('created_at')
+  const { data, error } = await supabase.rpc('get_avaliacoes_por_ciclo', { p_ciclo_id: cicloId })
+  if (error || !data) return { data, error }
+  const shaped = data.map((row: any) => ({
+    id: row.id,
+    status: row.status,
+    vertical: row.vertical,
+    tipo: row.tipo,
+    revelado: row.revelado,
+    media_cultural_auto: row.media_cultural_auto,
+    media_cultural_gestor: row.media_cultural_gestor,
+    media_cultural_calibragem: row.media_cultural_calibragem,
+    media_tecnica_auto: row.media_tecnica_auto,
+    media_tecnica_gestor: row.media_tecnica_gestor,
+    media_tecnica_calibragem: row.media_tecnica_calibragem,
+    observacoes_gerais: row.observacoes_gerais,
+    funcionario: row.funcionario_id ? { id: row.funcionario_id, full_name: row.funcionario_nome, cargo: row.funcionario_cargo } : null,
+    avaliador: row.avaliador_id ? { id: row.avaliador_id, full_name: row.avaliador_nome } : null,
+  }))
+  return { data: shaped, error: null }
 }
 
 export async function getMinhasAvaliacoes(funcionarioId: string) {
   const supabase = createClient()
-  return supabase
-    .from('avaliacoes')
-    .select(`
-      id, status, vertical, tipo, revelado, observacoes_gerais, media_cultural_auto, media_cultural_gestor, media_cultural_calibragem,
-      media_tecnica_auto, media_tecnica_gestor, media_tecnica_calibragem,
-      avaliador:funcionarios!avaliador_id(id, full_name),
-      ciclo:ciclos_avaliacao!ciclo_id(id, nome, periodo, ano, status)
-    `)
-    .eq('funcionario_id', funcionarioId)
-    .order('created_at', { ascending: false })
+  const { data, error } = await supabase.rpc('get_minhas_avaliacoes', { p_funcionario_id: funcionarioId })
+  if (error || !data) return { data, error }
+  const shaped = data.map((row: any) => ({
+    id: row.id,
+    status: row.status,
+    vertical: row.vertical,
+    tipo: row.tipo,
+    revelado: row.revelado,
+    observacoes_gerais: row.observacoes_gerais,
+    media_cultural_auto: row.media_cultural_auto,
+    media_cultural_gestor: row.media_cultural_gestor,
+    media_cultural_calibragem: row.media_cultural_calibragem,
+    media_tecnica_auto: row.media_tecnica_auto,
+    media_tecnica_gestor: row.media_tecnica_gestor,
+    media_tecnica_calibragem: row.media_tecnica_calibragem,
+    avaliador: row.avaliador_id ? { id: row.avaliador_id, full_name: row.avaliador_nome } : null,
+    ciclo: row.ciclo_id ? { id: row.ciclo_id, nome: row.ciclo_nome, periodo: row.ciclo_periodo, ano: row.ciclo_ano, status: row.ciclo_status } : null,
+  }))
+  return { data: shaped, error: null }
 }
 
 // Avaliações onde a pessoa é a AVALIADORA (não a avaliada) — é daqui que vem a
-// lista "Preciso Avaliar" de quem recebeu avaliações de pares pra preencher.
+// lista "Devo Avaliar" de quem recebeu avaliações de pares pra preencher.
 export async function getAvaliacoesParaAvaliar(avaliadorFuncionarioId: string) {
   const supabase = createClient()
-  return supabase
-    .from('avaliacoes')
-    .select(`
-      id, status, vertical, tipo, revelado, observacoes_gerais,
-      funcionario:funcionarios!funcionario_id(id, full_name, cargo),
-      ciclo:ciclos_avaliacao!ciclo_id(id, nome, periodo, ano, status)
-    `)
-    .eq('avaliador_id', avaliadorFuncionarioId)
-    .order('created_at', { ascending: false })
+  const { data, error } = await supabase.rpc('get_avaliacoes_para_avaliar', { p_avaliador_funcionario_id: avaliadorFuncionarioId })
+  if (error || !data) return { data, error }
+  const shaped = data.map((row: any) => ({
+    id: row.id,
+    status: row.status,
+    vertical: row.vertical,
+    tipo: row.tipo,
+    revelado: row.revelado,
+    observacoes_gerais: row.observacoes_gerais,
+    funcionario: row.funcionario_id ? { id: row.funcionario_id, full_name: row.funcionario_nome, cargo: row.funcionario_cargo } : null,
+    ciclo: row.ciclo_id ? { id: row.ciclo_id, nome: row.ciclo_nome, periodo: row.ciclo_periodo, ano: row.ciclo_ano, status: row.ciclo_status } : null,
+  }))
+  return { data: shaped, error: null }
 }
 
 export async function createAvaliacao(payload: {
@@ -147,7 +176,13 @@ export async function updateAvaliacao(
   }
 ) {
   const supabase = createClient()
-  return supabase.from('avaliacoes').update(payload).eq('id', id).select().single()
+  // Sem .select() de propósito, igual createAvaliacao acima: a resposta crua
+  // devolveria a linha inteira sem o mascaramento de get_minhas_avaliacoes/
+  // get_avaliacoes_por_ciclo (migration 20260821_avaliacao_mascara_notas), o
+  // que vazaria pela aba de rede do navegador a nota que ainda não devia
+  // aparecer pro lado errado — e quem chama isso (ModalAvaliacao) só olha
+  // `.error` mesmo.
+  return supabase.from('avaliacoes').update(payload).eq('id', id)
 }
 
 export async function deleteAvaliacao(id: string) {
@@ -157,66 +192,53 @@ export async function deleteAvaliacao(id: string) {
 
 export async function getAvaliacaoCultural(avaliacaoId: string) {
   const supabase = createClient()
-  return supabase
-    .from('avaliacoes_cultural')
-    .select('id, pilar, nota_auto, nota_gestor, nota_calibragem, observacoes')
-    .eq('avaliacao_id', avaliacaoId)
+  return supabase.rpc('get_avaliacao_cultural', { p_avaliacao_id: avaliacaoId })
 }
 
+// `campos` é parcial de propósito: manda só as colunas do lado de quem está
+// salvando (auto+observacoes pro avaliado, gestor+calibragem pro
+// avaliador/admin). Como a leitura (getAvaliacaoCultural) agora devolve null
+// pro lado que a pessoa ainda não pode ver, um upsert que reenviasse TODOS os
+// campos (como antes) reescreveria a nota do outro lado com null — upsert só
+// toca a coluna que está no objeto, então omitir a chave é o que preserva o
+// valor já salvo no banco.
 export async function upsertAvaliacaoCultural(
   avaliacaoId: string,
   pilar: number,
-  notaAuto: number | null,
-  notaGestor: number | null,
-  notaCalibragem: number | null,
-  observacoes?: string | null
+  campos: {
+    nota_auto?: number | null
+    nota_gestor?: number | null
+    nota_calibragem?: number | null
+    observacoes?: string | null
+  }
 ) {
   const supabase = createClient()
   return supabase
     .from('avaliacoes_cultural')
-    .upsert(
-      {
-        avaliacao_id: avaliacaoId,
-        pilar,
-        nota_auto: notaAuto,
-        nota_gestor: notaGestor,
-        nota_calibragem: notaCalibragem,
-        observacoes: observacoes ?? null,
-      },
-      { onConflict: 'avaliacao_id,pilar' }
-    )
+    .upsert({ avaliacao_id: avaliacaoId, pilar, ...campos }, { onConflict: 'avaliacao_id,pilar' })
 }
 
 export async function getAvaliacaoTecnica(avaliacaoId: string) {
   const supabase = createClient()
-  return supabase
-    .from('avaliacoes_tecnica')
-    .select('id, criterio_key, nota_auto, nota_gestor, nota_calibragem, observacoes')
-    .eq('avaliacao_id', avaliacaoId)
+  return supabase.rpc('get_avaliacao_tecnica', { p_avaliacao_id: avaliacaoId })
 }
 
+// Mesmo cuidado de upsertAvaliacaoCultural acima: `campos` parcial, só o
+// lado de quem está salvando.
 export async function upsertAvaliacaoTecnica(
   avaliacaoId: string,
   criterioKey: string,
-  notaAuto: number | null,
-  notaGestor: number | null,
-  notaCalibragem: number | null,
-  observacoes?: string | null
+  campos: {
+    nota_auto?: number | null
+    nota_gestor?: number | null
+    nota_calibragem?: number | null
+    observacoes?: string | null
+  }
 ) {
   const supabase = createClient()
   return supabase
     .from('avaliacoes_tecnica')
-    .upsert(
-      {
-        avaliacao_id: avaliacaoId,
-        criterio_key: criterioKey,
-        nota_auto: notaAuto,
-        nota_gestor: notaGestor,
-        nota_calibragem: notaCalibragem,
-        observacoes: observacoes ?? null,
-      },
-      { onConflict: 'avaliacao_id,criterio_key' }
-    )
+    .upsert({ avaliacao_id: avaliacaoId, criterio_key: criterioKey, ...campos }, { onConflict: 'avaliacao_id,criterio_key' })
 }
 
 export async function getPdiItems(avaliacaoId: string) {

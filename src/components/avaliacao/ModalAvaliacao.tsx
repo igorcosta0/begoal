@@ -411,7 +411,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
       '3': { auto: null, gestor: null, calibragem: null, observacoes: '' },
       '4': { auto: null, gestor: null, calibragem: null, observacoes: '' },
     }
-    cultural.data?.forEach((row) => {
+    cultural.data?.forEach((row: { pilar: number; nota_auto: number | null; nota_gestor: number | null; nota_calibragem: number | null; observacoes: string | null }) => {
       newScoresC[String(row.pilar)] = {
         auto: row.nota_auto,
         gestor: row.nota_gestor,
@@ -422,7 +422,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
     setScoresC(newScoresC)
 
     const newScoresT: ScoresT = {}
-    tecnica.data?.forEach((row) => {
+    tecnica.data?.forEach((row: { criterio_key: string; nota_auto: number | null; nota_gestor: number | null; nota_calibragem: number | null; observacoes: string | null }) => {
       newScoresT[row.criterio_key] = {
         auto: row.nota_auto,
         gestor: row.nota_gestor,
@@ -498,17 +498,23 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
   async function persistirCampos(statusExtra?: string): Promise<boolean> {
     if (!avaliacao) return false
 
+    // Cada upsert manda só os campos do lado de quem está salvando (auto +
+    // evidências pro avaliado, gestor + calibragem pro avaliador/admin) —
+    // ver comentário em upsertAvaliacaoCultural/Tecnica: mandar os dois lados
+    // sempre (como era antes) agora reescreveria com null a nota do outro
+    // lado, já que a leitura passou a vir mascarada (migration
+    // 20260821_avaliacao_mascara_notas).
     const resultadosC = await Promise.all(
-      [1, 2, 3, 4].map((pilar) =>
-        upsertAvaliacaoCultural(
+      [1, 2, 3, 4].map((pilar) => {
+        const score = scoresC[String(pilar)]
+        return upsertAvaliacaoCultural(
           avaliacao.id,
           pilar,
-          scoresC[String(pilar)]?.auto ?? null,
-          scoresC[String(pilar)]?.gestor ?? null,
-          scoresC[String(pilar)]?.calibragem ?? null,
-          scoresC[String(pilar)]?.observacoes || null
+          isAdmin
+            ? { nota_gestor: score?.gestor ?? null, nota_calibragem: score?.calibragem ?? null }
+            : { nota_auto: score?.auto ?? null, observacoes: score?.observacoes || null }
         )
-      )
+      })
     )
     const erroC = resultadosC.find((r) => r.error)?.error
     if (erroC) {
@@ -519,16 +525,16 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
     const criterios = avaliacao.tipo !== 'pares' && vertical ? (VERTICAIS_CTZ[vertical]?.criterios ?? []) : []
     if (criterios.length) {
       const resultadosT = await Promise.all(
-        criterios.map((c) =>
-          upsertAvaliacaoTecnica(
+        criterios.map((c) => {
+          const score = scoresT[c.key]
+          return upsertAvaliacaoTecnica(
             avaliacao.id,
             c.key,
-            scoresT[c.key]?.auto ?? null,
-            scoresT[c.key]?.gestor ?? null,
-            scoresT[c.key]?.calibragem ?? null,
-            scoresT[c.key]?.observacoes || null
+            isAdmin
+              ? { nota_gestor: score?.gestor ?? null, nota_calibragem: score?.calibragem ?? null }
+              : { nota_auto: score?.auto ?? null, observacoes: score?.observacoes || null }
           )
-        )
+        })
       )
       const erroT = resultadosT.find((r) => r.error)?.error
       if (erroT) {
@@ -537,25 +543,27 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
       }
     }
 
-    const cAuto = calcMedia([1, 2, 3, 4].map((p) => scoresC[String(p)]?.auto ?? null))
-    const cGestor = calcMedia([1, 2, 3, 4].map((p) => scoresC[String(p)]?.gestor ?? null))
-    const cCalibragem = calcMedia([1, 2, 3, 4].map((p) => scoresC[String(p)]?.calibragem ?? null))
-    const tAuto = calcMedia(criterios.map((c) => scoresT[c.key]?.auto ?? null))
-    const tGestor = calcMedia(criterios.map((c) => scoresT[c.key]?.gestor ?? null))
-    const tCalibragem = calcMedia(criterios.map((c) => scoresT[c.key]?.calibragem ?? null))
-
-    const { error: erroUpdate } = await updateAvaliacao(avaliacao.id, {
+    // Mesma lógica na linha-pai: só manda o lado de quem está salvando, pra
+    // não sobrescrever a média do outro lado com null.
+    const payloadBase = {
       vertical: vertical || null,
-      revelado,
-      observacoes_gerais: observacoes || null,
-      media_cultural_auto: cAuto,
-      media_cultural_gestor: cGestor,
-      media_cultural_calibragem: cCalibragem,
-      media_tecnica_auto: tAuto,
-      media_tecnica_gestor: tGestor,
-      media_tecnica_calibragem: tCalibragem,
       ...(statusExtra ? { status: statusExtra } : {}),
-    })
+    }
+    const payloadLado = isAdmin
+      ? {
+          revelado,
+          observacoes_gerais: observacoes || null,
+          media_cultural_gestor: calcMedia([1, 2, 3, 4].map((p) => scoresC[String(p)]?.gestor ?? null)),
+          media_cultural_calibragem: calcMedia([1, 2, 3, 4].map((p) => scoresC[String(p)]?.calibragem ?? null)),
+          media_tecnica_gestor: calcMedia(criterios.map((c) => scoresT[c.key]?.gestor ?? null)),
+          media_tecnica_calibragem: calcMedia(criterios.map((c) => scoresT[c.key]?.calibragem ?? null)),
+        }
+      : {
+          media_cultural_auto: calcMedia([1, 2, 3, 4].map((p) => scoresC[String(p)]?.auto ?? null)),
+          media_tecnica_auto: calcMedia(criterios.map((c) => scoresT[c.key]?.auto ?? null)),
+        }
+
+    const { error: erroUpdate } = await updateAvaliacao(avaliacao.id, { ...payloadBase, ...payloadLado })
 
     if (erroUpdate) {
       setErro(erroUpdate.message)
@@ -967,8 +975,9 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, on
                                   }))
                                 }
                                 rows={2}
+                                disabled={isAdmin}
                                 placeholder="Descreva exemplos concretos que justifiquem as notas..."
-                                className="mt-1 w-full px-3 py-1.5 text-xs rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                                className="mt-1 w-full px-3 py-1.5 text-xs rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
                               />
                             )}
                           </div>
