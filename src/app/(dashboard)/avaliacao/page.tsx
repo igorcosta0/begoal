@@ -17,8 +17,7 @@ import { getFuncionariosByEmpresa } from '@/lib/queries/okr'
 import ModalCriarCiclo from '@/components/avaliacao/ModalCriarCiclo'
 import ModalAvaliacao from '@/components/avaliacao/ModalAvaliacao'
 import ModalNineBox from '@/components/avaliacao/ModalNineBox'
-import ModalMontarAvaliacoes, { type LinhaMontagem, type OpcaoAvaliador } from '@/components/avaliacao/ModalMontarAvaliacoes'
-import ModalAvaliacaoPares, { type CandidatoLider } from '@/components/avaliacao/ModalAvaliacaoPares'
+import ModalMontarAvaliacoes, { type LinhaMontagem, type OpcaoAvaliador, type ParPares } from '@/components/avaliacao/ModalMontarAvaliacoes'
 import ModalGerenciarLideres from '@/components/avaliacao/ModalGerenciarLideres'
 import { cn, isEmpresaCTZ } from '@/lib/utils'
 import { LayoutGrid, Plus, ChevronRight, Trash2, Users2, ArrowRightLeft, X, Crown, UserCheck } from 'lucide-react'
@@ -139,14 +138,15 @@ export default function AvaliacaoPage() {
   // sobre o ciclo inteiro fica pra uma etapa futura, com RLS própria.
   const [souAdministrador, setSouAdministrador] = useState(false)
   // Líder (funcionarios.lider_avaliacao, marcação manual do admin) NÃO cria
-  // mais ciclo nem gerencia ele (ativar/encerrar/excluir/montar
-  // participantes) — deixar isso na mão do líder não funcionou na prática e
-  // virou exclusivo de administrador (migration
-  // 20260820_ciclo_avaliacao_admin_only). O que sobra pro líder é a
-  // Avaliação de Pares (sorteio entre líderes, deixado de fora dessa mudança
-  // de propósito) e, como qualquer um, ver/editar a avaliação onde ele é o
-  // próprio, o avaliado ou foi designado avaliador (e_avaliador_designado,
-  // migration 20260817).
+  // nem gerencia ciclo (isso virou admin-only — migration
+  // 20260820_ciclo_avaliacao_admin_only) e também não monta mais a Avaliação
+  // de Pares sozinho: ela agora é escolhida a dedo pelo administrador, junto
+  // com a montagem da avaliação comum (dentro de ModalMontarAvaliacoes). O
+  // que sobra pro líder é só ser candidato a avaliado/avaliador nesse sorteio
+  // manual e, como qualquer um, ver/editar a avaliação onde ele é o próprio,
+  // o avaliado ou foi designado avaliador (e_avaliador_designado, migration
+  // 20260817) — por isso não entra mais em "toda empresa"/isAdmin, só usa a
+  // visão de funcionário comum.
   const [souLider, setSouLider] = useState(false)
   // Criar ciclo é exclusivo de administrador (líder perdeu esse acesso —
   // migration 20260820_ciclo_avaliacao_admin_only).
@@ -185,16 +185,11 @@ export default function AvaliacaoPage() {
     ciclo: Ciclo | null
     ativarAoConfirmar: boolean
     funcionariosAlvo: Funcionario[]
-    confirmando: boolean
-    erro: string | null
-  }>({ open: false, ciclo: null, ativarAoConfirmar: false, funcionariosAlvo: [], confirmando: false, erro: null })
-  const [modalPares, setModalPares] = useState<{
-    open: boolean
-    ciclo: Ciclo | null
     lideres: Funcionario[]
+    paresExistentes: ParPares[]
     confirmando: boolean
     erro: string | null
-  }>({ open: false, ciclo: null, lideres: [], confirmando: false, erro: null })
+  }>({ open: false, ciclo: null, ativarAoConfirmar: false, funcionariosAlvo: [], lideres: [], paresExistentes: [], confirmando: false, erro: null })
   const [modalLideres, setModalLideres] = useState<{
     open: boolean
     abrindo: boolean
@@ -282,14 +277,15 @@ export default function AvaliacaoPage() {
       if (meuFunc) setMeuFuncionario(meuFunc)
 
       // "Líder" não é mais adivinhado por cargo/organograma — é uma marcação
-      // manual (funcionarios.lider_avaliacao) que o administrador liga pra quem
-      // realmente participa da avaliação de pares e pode abrir ciclo. Líder
-      // monta ciclo igual administrador — inclusive marcando/desmarcando
-      // qualquer profissional da empresa, não só os próprios liderados —
-      // então entra em "toda empresa" junto com administrador/calibrador.
+      // manual (funcionarios.lider_avaliacao) que o administrador liga pra
+      // quem realmente participa da Avaliação de Pares (como candidato a
+      // avaliado/avaliador, escolhido à mão pelo admin na montagem do ciclo).
+      // Líder não tem mais nenhuma ação de gestão do ciclo (isso virou
+      // admin-only) nem visão "empresa toda" — pra ele o módulo é igual ao de
+      // qualquer funcionário comum: autoavaliação + "Devo Avaliar".
       const souLiderAtual = meuFunc?.lider_avaliacao === true
-      const todaEmpresa = administrador || calibrador || souLiderAtual
-      const admin = administrador || calibrador || souLiderAtual
+      const todaEmpresa = administrador || calibrador
+      const admin = administrador || calibrador
 
       setIsAdmin(admin)
       setSouAdministrador(administrador)
@@ -341,24 +337,39 @@ export default function AvaliacaoPage() {
   // agora abrem a montagem em vez de criar avaliações às cegas: busca fresh quem já
   // tem avaliação NESTE ciclo (não dá pra confiar no estado `avaliacoes`, que é do
   // ciclo expandido no acordeão, que pode ser um ciclo diferente do que foi clicado).
+  // Também busca fresh os líderes da empresa (pool da Avaliação de Pares) e
+  // os pares (avaliado, avaliador) que já existem neste ciclo — pra montar
+  // tudo (comum + pares) num modal só.
   async function abrirMontagem(ciclo: Ciclo, ativarAoConfirmar: boolean) {
     setErro('')
+    if (!empresa) return
     const supabase = createClient()
-    const { data: existentes, error } = await supabase
-      .from('avaliacoes')
-      .select('funcionario_id')
-      .eq('ciclo_id', ciclo.id)
-      .eq('tipo', 'padrao')
+    const [{ data: existentes, error: erroExistentes }, { data: lideresData, error: erroLideres }, { data: paresData, error: erroPares }] = await Promise.all([
+      supabase.from('avaliacoes').select('funcionario_id').eq('ciclo_id', ciclo.id).eq('tipo', 'padrao'),
+      supabase.from('funcionarios').select('id, full_name, cargo').eq('client_id', empresa.id).eq('status', 'Ativo').eq('lider_avaliacao', true).order('full_name'),
+      supabase.from('avaliacoes').select('funcionario_id, avaliador_id').eq('ciclo_id', ciclo.id).eq('tipo', 'pares'),
+    ])
+    const error = erroExistentes || erroLideres || erroPares
     if (error) {
       setErro(error.message)
       return
     }
     const jaTem = new Set((existentes ?? []).map((a) => a.funcionario_id))
     const alvo = funcionarios.filter((f) => !jaTem.has(f.id))
-    setModalMontar({ open: true, ciclo, ativarAoConfirmar, funcionariosAlvo: alvo, confirmando: false, erro: null })
+    const paresExistentes = (paresData ?? []).map((p) => ({ funcionario_id: p.funcionario_id, avaliador_id: p.avaliador_id as string })).filter((p) => !!p.avaliador_id)
+    setModalMontar({
+      open: true,
+      ciclo,
+      ativarAoConfirmar,
+      funcionariosAlvo: alvo,
+      lideres: (lideresData ?? []) as unknown as Funcionario[],
+      paresExistentes,
+      confirmando: false,
+      erro: null,
+    })
   }
 
-  async function handleConfirmarMontagem(linhas: LinhaMontagem[]) {
+  async function handleConfirmarMontagem(linhas: LinhaMontagem[], pares: ParPares[]) {
     const { ciclo, ativarAoConfirmar } = modalMontar
     if (!ciclo) return
     setModalMontar((prev) => ({ ...prev, confirmando: true, erro: null }))
@@ -390,30 +401,23 @@ export default function AvaliacaoPage() {
       }
     }
 
-    setModalMontar({ open: false, ciclo: null, ativarAoConfirmar: false, funcionariosAlvo: [], confirmando: false, erro: null })
+    // Avaliação de pares: sem vertical (só Alinhamento Cultural) e sem
+    // autoavaliação — funcionario_id é só quem RECEBE a nota do colega.
+    if (pares.length > 0) {
+      const resultadosPares = await Promise.all(
+        pares.map((p) => createAvaliacao({ ciclo_id: ciclo.id, funcionario_id: p.funcionario_id, avaliador_id: p.avaliador_id, tipo: 'pares' }))
+      )
+      const erroPares = resultadosPares.find((r) => r.error)?.error
+      if (erroPares) {
+        setModalMontar((prev) => ({ ...prev, confirmando: false, erro: erroPares.message }))
+        return
+      }
+    }
+
+    setModalMontar({ open: false, ciclo: null, ativarAoConfirmar: false, funcionariosAlvo: [], lideres: [], paresExistentes: [], confirmando: false, erro: null })
     fetchCiclos()
     if (cicloAtivo?.id === ciclo.id) fetchAvaliacoes()
-  }
-
-  // Busca fresh quem está marcado como líder (funcionarios.lider_avaliacao) na
-  // empresa toda — quem abre isso pode ser um líder comum, que só tem os
-  // próprios liderados no estado `funcionarios`.
-  async function abrirModalPares(ciclo: Ciclo) {
-    setErro('')
-    if (!empresa) return
-    const supabase = createClient()
-    const { data, error } = await supabase
-      .from('funcionarios')
-      .select('id, full_name, cargo')
-      .eq('client_id', empresa.id)
-      .eq('status', 'Ativo')
-      .eq('lider_avaliacao', true)
-      .order('full_name')
-    if (error) {
-      setErro(error.message)
-      return
-    }
-    setModalPares({ open: true, ciclo, lideres: (data ?? []) as unknown as Funcionario[], confirmando: false, erro: null })
+    fetchAvaliacoesParaAvaliar()
   }
 
   // Lista TODOS os funcionários (marcados ou não) pra tela de gerenciar quem
@@ -472,135 +476,6 @@ export default function AvaliacaoPage() {
     }
 
     setModalLideres({ open: false, abrindo: false, funcionarios: [], salvando: false, erro: null })
-  }
-
-  // Grupos de líderes com verticais/trabalho relacionado (pedido ago/2026): o
-  // sorteio prioriza pares dentro do mesmo grupo, só cruzando pra fora quando o
-  // grupo é pequeno demais pra cobrir a quantidade pedida, ou a pessoa não
-  // pertence a nenhum grupo (ex.: sócios/CEO). É matching por trecho do nome, em
-  // minúsculo — ajuste aqui se a composição dos grupos mudar.
-  const GRUPOS_LIDERES: string[][] = [
-    ['graciela', 'felipe marques', 'felipe bet ross'],
-    ['guilherme', 'filipe bossoni finato', 'jean patrick'],
-  ]
-
-  function grupoDoLider(nomeCompleto: string): number {
-    const nome = nomeCompleto.toLowerCase()
-    return GRUPOS_LIDERES.findIndex((apelidos) => apelidos.some((apelido) => nome.includes(apelido)))
-  }
-
-  function embaralhar<T>(itens: T[]): T[] {
-    const copia = [...itens]
-    for (let i = copia.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[copia[i], copia[j]] = [copia[j], copia[i]]
-    }
-    return copia
-  }
-
-  // Circula uma lista já embaralhada e devolve pares avaliador→avaliado com
-  // offsets 1..k (grafo k-regular: todo mundo avalia k e é avaliado por k dentro
-  // dessa lista), sem duplicar uma chave já presente em `usados`.
-  function circularPares(
-    itens: CandidatoLider[],
-    quantidade: number,
-    usados: Set<string>
-  ): { funcionario_id: string; avaliador_id: string }[] {
-    const n = itens.length
-    const k = Math.min(quantidade, Math.max(n - 1, 0))
-    const pares: { funcionario_id: string; avaliador_id: string }[] = []
-    for (let i = 0; i < n; i++) {
-      for (let offset = 1; offset <= k; offset++) {
-        const avaliador = itens[i]
-        const avaliado = itens[(i + offset) % n]
-        const chave = `${avaliado.id}:${avaliador.id}`
-        if (usados.has(chave)) continue
-        usados.add(chave)
-        pares.push({ funcionario_id: avaliado.id, avaliador_id: avaliador.id })
-      }
-    }
-    return pares
-  }
-
-  // Sorteia a distribuição em duas passadas:
-  //   1) dentro de cada grupo (verticais relacionadas) — é a distribuição
-  //      preferida, e com grupos de 3 e quantidade=2 já fecha a conta sozinha;
-  //   2) quem sobrou sem cota completa (grupo pequeno demais pra cobrir a
-  //      quantidade pedida, ou fora de qualquer grupo — ex.: sócios/CEO) fecha
-  //      o que falta sorteando entre todo mundo. Só a passada 1 garante que quem
-  //      avalia X colegas também é avaliado X vezes; na passada 2 isso é
-  //      best-effort — é o preço de resolver a sobra pequena.
-  function sortearPares(lideres: CandidatoLider[], quantidade: number) {
-    const usados = new Set<string>()
-    const pares: { funcionario_id: string; avaliador_id: string }[] = []
-    const atendidos = new Map<string, number>(lideres.map((l) => [l.id, 0]))
-
-    const grupos = new Map<number, CandidatoLider[]>()
-    for (const l of lideres) {
-      const g = grupoDoLider(l.full_name)
-      if (g === -1) continue
-      grupos.set(g, [...(grupos.get(g) ?? []), l])
-    }
-
-    for (const membros of Array.from(grupos.values())) {
-      for (const p of circularPares(embaralhar(membros), quantidade, usados)) {
-        pares.push(p)
-        atendidos.set(p.avaliador_id, (atendidos.get(p.avaliador_id) ?? 0) + 1)
-      }
-    }
-
-    for (const avaliador of embaralhar(lideres)) {
-      let faltam = quantidade - (atendidos.get(avaliador.id) ?? 0)
-      if (faltam <= 0) continue
-      for (const candidato of embaralhar(lideres.filter((c) => c.id !== avaliador.id))) {
-        if (faltam <= 0) break
-        const chave = `${candidato.id}:${avaliador.id}`
-        if (usados.has(chave)) continue
-        usados.add(chave)
-        pares.push({ funcionario_id: candidato.id, avaliador_id: avaliador.id })
-        atendidos.set(avaliador.id, (atendidos.get(avaliador.id) ?? 0) + 1)
-        faltam--
-      }
-    }
-
-    return pares
-  }
-
-  async function handleConfirmarPares(selecionados: CandidatoLider[], quantidade: number) {
-    const { ciclo } = modalPares
-    const lideres = selecionados
-    if (!ciclo || lideres.length < 2) return
-    setModalPares((prev) => ({ ...prev, confirmando: true, erro: null }))
-
-    const supabase = createClient()
-    const { data: existentes, error: erroExistentes } = await supabase
-      .from('avaliacoes')
-      .select('funcionario_id, avaliador_id')
-      .eq('ciclo_id', ciclo.id)
-      .eq('tipo', 'pares')
-    if (erroExistentes) {
-      setModalPares((prev) => ({ ...prev, confirmando: false, erro: erroExistentes.message }))
-      return
-    }
-    const jaExiste = new Set((existentes ?? []).map((a) => `${a.funcionario_id}:${a.avaliador_id}`))
-
-    const pares = sortearPares(lideres, quantidade).filter(
-      (p) => !jaExiste.has(`${p.funcionario_id}:${p.avaliador_id}`)
-    )
-
-    if (pares.length > 0) {
-      const resultados = await Promise.all(
-        pares.map((p) => createAvaliacao({ ciclo_id: ciclo.id, funcionario_id: p.funcionario_id, avaliador_id: p.avaliador_id, tipo: 'pares' }))
-      )
-      const erroCriacao = resultados.find((r) => r.error)?.error
-      if (erroCriacao) {
-        setModalPares((prev) => ({ ...prev, confirmando: false, erro: erroCriacao.message }))
-        return
-      }
-    }
-
-    setModalPares({ open: false, ciclo: null, lideres: [], confirmando: false, erro: null })
-    if (cicloAtivo?.id === ciclo.id) fetchAvaliacoes()
   }
 
   async function handleExcluirAvaliacao(av: Avaliacao) {
@@ -747,10 +622,10 @@ export default function AvaliacaoPage() {
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold text-foreground">{av.funcionario?.full_name ?? 'Colega'}</p>
-              {/* Só é "Avaliação de Pares" de fato quando tipo === 'pares' (sorteio
-                  entre os líderes) — antes essa tag aparecia pra qualquer item de
-                  "Preciso Avaliar", inclusive avaliação padrão de alguém fora do
-                  grupo de líderes, o que confundia o rótulo. */}
+              {/* Indicador visual pedido: quem vai ser avaliado numa Avaliação de
+                  Pares (tipo === 'pares', montada à mão pelo admin junto com o
+                  ciclo) aparece com essa tag, pra diferenciar de uma avaliação
+                  comum dentro da mesma lista "Devo Avaliar". */}
               {av.tipo === 'pares' && (
                 <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-violet-100 text-violet-700">
                   Avaliação de Pares
@@ -1066,15 +941,6 @@ export default function AvaliacaoPage() {
                           Adicionar ao ciclo
                         </button>
                       )}
-                      {(souAdministrador || souLider) && ciclo.status === 'ativo' && (
-                        <button
-                          onClick={() => abrirModalPares(ciclo)}
-                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground"
-                        >
-                          <ArrowRightLeft className="w-3.5 h-3.5" />
-                          Avaliação de Pares
-                        </button>
-                      )}
                       <button
                         onClick={() => setModalNineBox(true)}
                         className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground"
@@ -1239,21 +1105,13 @@ export default function AvaliacaoPage() {
         cicloNome={modalMontar.ciclo?.nome ?? ''}
         funcionarios={modalMontar.funcionariosAlvo}
         opcoesAvaliador={opcoesAvaliador}
+        lideres={modalMontar.lideres}
+        paresExistentes={modalMontar.paresExistentes}
         acaoLabel={modalMontar.ativarAoConfirmar ? 'Confirmar e ativar ciclo' : 'Adicionar ao ciclo'}
         confirmando={modalMontar.confirmando}
         erro={modalMontar.erro}
-        onClose={() => setModalMontar({ open: false, ciclo: null, ativarAoConfirmar: false, funcionariosAlvo: [], confirmando: false, erro: null })}
+        onClose={() => setModalMontar({ open: false, ciclo: null, ativarAoConfirmar: false, funcionariosAlvo: [], lideres: [], paresExistentes: [], confirmando: false, erro: null })}
         onConfirmar={handleConfirmarMontagem}
-      />
-
-      <ModalAvaliacaoPares
-        open={modalPares.open}
-        cicloNome={modalPares.ciclo?.nome ?? ''}
-        lideres={modalPares.lideres}
-        confirmando={modalPares.confirmando}
-        erro={modalPares.erro}
-        onClose={() => setModalPares({ open: false, ciclo: null, lideres: [], confirmando: false, erro: null })}
-        onConfirmar={handleConfirmarPares}
       />
 
       <ModalGerenciarLideres
