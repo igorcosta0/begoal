@@ -628,8 +628,15 @@ export default function AvaliacaoPage() {
   // comum — pares nunca tem autoavaliação, então nunca cumpriria a condição
   // "todo mundo com auto + gestor concluídos" e ficaria fora de propósito.
   const avaliacoesComuns = avaliacoes.filter((a) => a.tipo !== 'pares')
+  // "Sem avaliador definido" é marcação intencional (pedido ago/2026): essa
+  // pessoa só avalia os outros, não é avaliada — ninguém nunca vai preencher
+  // o lado do avaliador dela mesma, então não deve travar a calibragem do
+  // resto do ciclo esperando por isso. Só entra na conta de "todo mundo
+  // pronto" quem tem avaliador de fato.
+  const avaliacoesQueContamParaCalibragem = avaliacoesComuns.filter((a) => a.avaliador !== null)
   const todosProntosParaCalibragem =
-    avaliacoesComuns.length > 0 && avaliacoesComuns.every((a) => ['gestor_concluida', 'calibragem', 'finalizada'].includes(a.status))
+    avaliacoesQueContamParaCalibragem.length > 0 &&
+    avaliacoesQueContamParaCalibragem.every((a) => ['gestor_concluida', 'calibragem', 'finalizada'].includes(a.status))
   const existeAlgumParaIniciarCalibragem = avaliacoesComuns.some((a) => a.status === 'gestor_concluida')
   const existeAlgumEmCalibragem = avaliacoesComuns.some((a) => a.status === 'calibragem')
 
@@ -1204,7 +1211,7 @@ export default function AvaliacaoPage() {
 
       <ModalNineBox
         open={modalNineBox}
-        avaliacoes={avaliacoes.filter((a) => a.tipo !== 'pares').map((a) => ({
+        avaliacoes={avaliacoesQueContamParaCalibragem.map((a) => ({
           id: a.id,
           funcionario: a.funcionario,
           media_cultural_final: a.media_cultural_calibragem,
