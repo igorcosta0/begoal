@@ -88,6 +88,45 @@ export async function finalizarCalibragemCiclo(cicloId: string) {
     .eq('status', 'calibragem')
 }
 
+// "Finalizar Calibragem" trava avaliação pra sempre (status calibragem →
+// finalizada não tem volta pela UI) — diferente de "Iniciar Calibragem", que
+// só libera quando todo mundo já concluiu auto+gestor, aqui não existia
+// nenhuma checagem de que a nota de calibragem foi realmente preenchida.
+// Sem isso, dava pra clicar "Finalizar" com gente ainda sem nota de
+// calibragem e ela ficava travada pra sempre com media_*_calibragem null.
+// Esta função confere, avaliação por avaliação (as que estão em
+// status='calibragem' agora), se os 4 pilares culturais e todos os
+// critérios técnicos da vertical dela já têm nota_calibragem preenchida —
+// olha o campo granular (não a média), porque a média já fica não-nula
+// mesmo com só 1 de 4 pilares preenchidos (calcMedia ignora null).
+export async function getCalibragemPendente(cicloId: string): Promise<{ pendente: boolean; error: { message: string } | null }> {
+  const supabase = createClient()
+  const { data: avaliacoes, error: erroAvaliacoes } = await supabase
+    .from('avaliacoes')
+    .select('id')
+    .eq('ciclo_id', cicloId)
+    .eq('tipo', 'padrao')
+    .eq('status', 'calibragem')
+  if (erroAvaliacoes) return { pendente: true, error: erroAvaliacoes }
+  const ids = (avaliacoes ?? []).map((a) => a.id)
+  if (ids.length === 0) return { pendente: false, error: null }
+
+  const [{ data: cultural, error: erroC }, { data: tecnica, error: erroT }] = await Promise.all([
+    supabase.from('avaliacoes_cultural').select('avaliacao_id, nota_calibragem').in('avaliacao_id', ids),
+    supabase.from('avaliacoes_tecnica').select('avaliacao_id, nota_calibragem').in('avaliacao_id', ids),
+  ])
+  const erro = erroC || erroT
+  if (erro) return { pendente: true, error: erro }
+
+  for (const id of ids) {
+    const pilares = (cultural ?? []).filter((c) => c.avaliacao_id === id)
+    if (pilares.length < 4 || pilares.some((p) => p.nota_calibragem === null)) return { pendente: true, error: null }
+    const criterios = (tecnica ?? []).filter((t) => t.avaliacao_id === id)
+    if (criterios.length > 0 && criterios.some((c) => c.nota_calibragem === null)) return { pendente: true, error: null }
+  }
+  return { pendente: false, error: null }
+}
+
 export async function updateCicloStatus(id: string, status: string) {
   const supabase = createClient()
   return supabase.from('ciclos_avaliacao').update({ status }).eq('id', id).select().single()

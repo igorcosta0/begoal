@@ -15,6 +15,7 @@ import {
   deleteAvaliacao,
   iniciarCalibragemCiclo,
   finalizarCalibragemCiclo,
+  getCalibragemPendente,
 } from '@/lib/queries/avaliacao'
 import { getFuncionariosByEmpresa } from '@/lib/queries/okr'
 import ModalCriarCiclo from '@/components/avaliacao/ModalCriarCiclo'
@@ -186,6 +187,12 @@ export default function AvaliacaoPage() {
   const [opcoesAvaliador, setOpcoesAvaliador] = useState<OpcaoAvaliador[]>([])
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
+  // Trava "Finalizar Calibragem" até TODA avaliação em calibragem ter nota
+  // preenchida em todos os pilares/critérios — sem isso dava pra fechar
+  // gente sem calibragem e travar pra sempre (status calibragem→finalizada
+  // não tem volta). Começa true (bloqueado) até a checagem confirmar que
+  // está tudo pronto — default seguro enquanto ainda não carregou.
+  const [calibragemPendente, setCalibragemPendente] = useState(true)
 
   const [modalCriarCiclo, setModalCriarCiclo] = useState<{ open: boolean; ciclo: Ciclo | null }>({ open: false, ciclo: null })
   const [modalAvaliacao, setModalAvaliacao] = useState<{
@@ -224,6 +231,16 @@ export default function AvaliacaoPage() {
     const { data } = await getAvaliacoesByCiclo(cicloAtivo.id)
     setAvaliacoes((data ?? []) as unknown as Avaliacao[])
   }, [cicloAtivo])
+
+  // Reavalia se ainda falta alguém sem calibragem completa neste ciclo —
+  // roda de novo sempre que a lista de avaliações muda (ex.: depois de
+  // salvar uma calibragem em ModalAvaliacao), pra destravar "Finalizar
+  // Calibragem" assim que a última pendência for preenchida.
+  const fetchCalibragemPendente = useCallback(async () => {
+    if (!cicloAtivo || !souAdministrador) return
+    const { pendente } = await getCalibragemPendente(cicloAtivo.id)
+    setCalibragemPendente(pendente)
+  }, [cicloAtivo, souAdministrador])
 
   const fetchMinhasAvaliacoes = useCallback(async () => {
     if (!meuFuncionario) return
@@ -331,6 +348,16 @@ export default function AvaliacaoPage() {
   useEffect(() => {
     fetchAvaliacoes()
   }, [fetchAvaliacoes])
+
+  useEffect(() => {
+    // Depende também de `avaliacoes` (não só do callback) pra reconferir
+    // toda vez que a lista muda — inclusive depois de "Iniciar Calibragem"
+    // (que muda status em lote) e depois de salvar uma nota de calibragem
+    // dentro do ModalAvaliacao (onSave chama fetchAvaliacoes, que atualiza
+    // esse array e reaciona este efeito).
+    fetchCalibragemPendente()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchCalibragemPendente, avaliacoes])
 
   useEffect(() => {
     if (!meuFuncionario) return
@@ -506,6 +533,14 @@ export default function AvaliacaoPage() {
   }
 
   async function handleEncerrarCiclo(ciclo: Ciclo) {
+    // Encerrar não trava edição de avaliação nenhuma (isso é só rótulo, não
+    // existe RLS nem checagem de status pra bloquear preenchimento depois
+    // disso) e, uma vez encerrado, não tem botão pra reabrir — pedindo
+    // confirmação aqui, igual já existe em "Excluir ciclo".
+    const confirmado = window.confirm(
+      `Encerrar o ciclo "${ciclo.nome}"? Depois de encerrado não tem um botão pra reabrir por aqui.`
+    )
+    if (!confirmado) return
     setErro('')
     const { error } = await updateCicloStatus(ciclo.id, 'encerrado')
     if (error) {
@@ -1050,7 +1085,9 @@ export default function AvaliacaoPage() {
                       {souAdministrador && existeAlgumEmCalibragem && (
                         <button
                           onClick={() => handleFinalizarCalibragem(ciclo)}
-                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground"
+                          disabled={calibragemPendente}
+                          title={calibragemPendente ? 'Só libera quando todo mundo em calibragem tiver nota preenchida em todos os pilares/critérios — depois de finalizar não dá mais pra editar a calibragem.' : undefined}
+                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                         >
                           <ArrowRightLeft className="w-3.5 h-3.5" />
                           Finalizar Calibragem
