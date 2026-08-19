@@ -207,11 +207,11 @@ function calcMedia(values: (number | null)[]): number | null {
 }
 
 function notaLabel(nota: number) {
-  if (nota === 1) return 'Precisa Melhorar'
-  if (nota === 2) return 'Regular'
-  if (nota === 3) return 'Bom'
-  if (nota === 4) return 'Excelente'
-  return 'Excepcional'
+  if (nota === 1) return 'Raramente alcançado'
+  if (nota === 2) return 'Às vezes alcançado'
+  if (nota === 3) return 'Consistentemente alcançado'
+  if (nota === 4) return 'Frequentemente superado'
+  return 'Consistentemente superado'
 }
 
 // Régua oficial de avaliação da CTZ (Manual do Avaliador): notas 1 a 4 usam a
@@ -220,38 +220,37 @@ function notaLabel(nota: number) {
 const NOTAS_LEGENDA = [
   {
     valor: 1,
-    label: 'Precisa Melhorar',
+    label: 'Raramente alcançado',
     cor: 'bg-red-50 border-red-200 text-red-700',
     descricao:
-      'Fica frequentemente abaixo do esperado nos comportamentos culturais, ou atinge menos de 70% das metas técnicas combinadas.',
+      'Não atende ao critério na maior parte das situações. Requer acompanhamento e desenvolvimento frequentes.',
   },
   {
     valor: 2,
-    label: 'Regular',
+    label: 'Às vezes alcançado',
     cor: 'bg-orange-50 border-orange-200 text-orange-700',
     descricao:
-      'Vive os valores de forma oscilante e requer supervisão frequente; entrega entre 70% e 89% das metas técnicas.',
+      'Atende ao critério em algumas situações, mas apresenta inconsistência e ainda requer acompanhamento.',
   },
   {
     valor: 3,
-    label: 'Bom',
+    label: 'Consistentemente alcançado',
     cor: 'bg-yellow-50 border-yellow-200 text-yellow-700',
-    descricao:
-      "Pratica o \"como se vive\" com consistência no dia a dia e atinge entre 90% e 100% das metas técnicas — é o alvo esperado.",
+    descricao: 'Atende ao critério de forma consistente, conforme o esperado para a função.',
   },
   {
     valor: 4,
-    label: 'Excelente',
+    label: 'Frequentemente superado',
     cor: 'bg-lime-50 border-lime-200 text-lime-700',
     descricao:
-      'É exemplo público das atitudes culturais desejadas e supera em mais de 100% as metas técnicas estipuladas.',
+      'Supera o esperado com frequência, demonstrando um nível de entrega acima do exigido para a função.',
   },
   {
     valor: 5,
-    label: 'Excepcional',
+    label: 'Consistentemente superado',
     cor: 'bg-green-50 border-green-200 text-green-700',
     descricao:
-      'Vai além da referência: multiplica a cultura ao desenvolver outras pessoas e sustenta uma entrega muito acima da meta ao longo de todo o ciclo.',
+      'Supera o esperado de forma consistente e é referência nesse critério, contribuindo para elevar o padrão da equipe.',
   },
 ]
 
