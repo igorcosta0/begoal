@@ -590,38 +590,42 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
     return true
   }
 
-  async function handleSave() {
+  // Botão único (pedido ago/2026): "Salvar" e "Concluir [etapa]" eram duas
+  // ações separadas — isso já causou confusão real (gente preenchia tudo,
+  // clicava só "Salvar", nunca clicava "Concluir", e depois achava que tinha
+  // perdido o trabalho porque a avaliação não aparecia como concluída). Como
+  // validarCampos() já bloqueia o "Salvar" se faltar qualquer campo — ou
+  // seja, um salvamento bem-sucedido já implica que está tudo completo —, não
+  // existe um caso real de "salvar rascunho incompleto" sendo perdido ao
+  // unificar: o botão único conclui a etapa sempre que o salvamento for
+  // bem-sucedido E a pessoa tiver uma etapa pra avançar; senão só salva,
+  // igual antes.
+  //
+  // gestor_concluida→calibragem e calibragem→finalizada continuam de fora
+  // daqui — isso é ação em lote do administrador, na tela do ciclo (ver
+  // avaliacao/page.tsx: "Iniciar Calibragem"/"Finalizar Calibragem"), não
+  // avaliação por avaliação.
+  async function handleSalvarOuConcluir() {
     if (!avaliacao) return
+    const ehParesForm = avaliacao.tipo === 'pares'
 
-    const camposFaltando = validarCampos()
-    if (camposFaltando.length) {
-      setErro(`Preencha antes de salvar: ${camposFaltando.join('; ')}.`)
-      return
-    }
+    // Mesma condição de podeAvancarStatus (computada mais abaixo pro rótulo
+    // do botão) — decide se este clique também avança a etapa, além de
+    // salvar. Pares só avança pelo avaliador partindo de "pendente";
+    // avaliação comum avança pelo avaliado partindo de "pendente" (auto) ou
+    // pelo avaliador partindo de "auto_concluida" (gestor).
+    const podeAvancar = ehParesForm
+      ? isAdmin && avaliacao.status === 'pendente'
+      : (!isAdmin && avaliacao.status === 'pendente') || (isAdmin && avaliacao.status === 'auto_concluida')
 
-    setSaving(true)
-    setErro('')
-    const ok = await persistirCampos()
-    setSaving(false)
-    if (ok) onSave()
-  }
-
-  async function handleAvancarStatus() {
-    if (!avaliacao) return
-    // gestor_concluida→calibragem e calibragem→finalizada saíram daqui — ver
-    // comentário de podeAvancarStatus. Avaliação de pares não tem etapa de
-    // autoavaliação (o avaliado nunca abre a própria linha, de propósito) —
-    // então pula direto de pendente pra gestor_concluida, empurrada pelo
-    // próprio avaliador (que é o único que sempre mexe nela).
-    const proximo: Record<string, string> = avaliacao.tipo === 'pares'
+    const proximo: Record<string, string> = ehParesForm
       ? { pendente: 'gestor_concluida' }
       : { pendente: 'auto_concluida', auto_concluida: 'gestor_concluida' }
-    const next = proximo[avaliacao.status]
-    if (!next) return
+    const next = podeAvancar ? proximo[avaliacao.status] : undefined
 
     const camposFaltando = validarCampos()
     if (camposFaltando.length) {
-      setErro(`Preencha e salve antes de avançar de etapa: ${camposFaltando.join('; ')}.`)
+      setErro(`Preencha antes de ${next ? 'concluir' : 'salvar'}: ${camposFaltando.join('; ')}.`)
       return
     }
 
@@ -1286,34 +1290,21 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
             </div>
           )}
 
-        {/* Footer */}
-        <div className="flex items-center justify-between gap-2 p-5 border-t border-border shrink-0">
-          <div>
-            {podeAvancarStatus && (
-              <button
-                onClick={handleAvancarStatus}
-                disabled={saving}
-                className="px-4 py-2 border border-primary text-primary rounded-md text-sm font-medium hover:bg-primary/10 transition-colors disabled:opacity-60"
-              >
-                {saving ? 'Salvando...' : proximoStatusLabel[avaliacao.status]}
-              </button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 border border-border rounded-md text-sm text-muted-foreground hover:bg-accent transition-colors"
-            >
-              Fechar
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm disabled:opacity-60"
-            >
-              {saving ? 'Salvando...' : 'Salvar'}
-            </button>
-          </div>
+        {/* Footer — botão único: conclui a etapa quando aplicável, senão só salva */}
+        <div className="flex items-center justify-end gap-2 p-5 border-t border-border shrink-0">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-border rounded-md text-sm text-muted-foreground hover:bg-accent transition-colors"
+          >
+            Fechar
+          </button>
+          <button
+            onClick={handleSalvarOuConcluir}
+            disabled={saving}
+            className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm disabled:opacity-60"
+          >
+            {saving ? 'Salvando...' : podeAvancarStatus ? proximoStatusLabel[avaliacao.status] : 'Salvar'}
+          </button>
         </div>
       </div>
     </div>
