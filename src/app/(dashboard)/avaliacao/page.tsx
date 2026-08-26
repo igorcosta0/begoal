@@ -21,6 +21,7 @@ import { getFuncionariosByEmpresa } from '@/lib/queries/okr'
 import ModalCriarCiclo from '@/components/avaliacao/ModalCriarCiclo'
 import ModalAvaliacao from '@/components/avaliacao/ModalAvaliacao'
 import ModalNineBox from '@/components/avaliacao/ModalNineBox'
+import ModalCalibragem from '@/components/avaliacao/ModalCalibragem'
 import ModalMontarAvaliacoes, { type LinhaMontagem, type OpcaoAvaliador, type ParPares } from '@/components/avaliacao/ModalMontarAvaliacoes'
 import ModalGerenciarLideres from '@/components/avaliacao/ModalGerenciarLideres'
 import { cn, isEmpresaCTZ } from '@/lib/utils'
@@ -202,6 +203,7 @@ export default function AvaliacaoPage() {
     papelAvaliador: boolean
   }>({ open: false, avaliacao: null, cicloNome: '', papelAvaliador: false })
   const [modalNineBox, setModalNineBox] = useState(false)
+  const [modalCalibragem, setModalCalibragem] = useState(false)
   const [modalMontar, setModalMontar] = useState<{
     open: boolean
     ciclo: Ciclo | null
@@ -1093,6 +1095,21 @@ export default function AvaliacaoPage() {
                           Finalizar Calibragem
                         </button>
                       )}
+                      {/* Painel de Calibragem: ciclo inteiro numa tabela só (Auto/
+                          Avaliador/Média de Pares/Calibragem lado a lado), em vez de
+                          abrir o ModalAvaliacao pessoa por pessoa — pedido pra reduzir o
+                          número de cliques de quem calibra (Felipe Réus e demais
+                          administradores). Mesma regra de acesso de sempre: só
+                          souAdministrador, sem cargo novo. */}
+                      {souAdministrador && existeAlgumEmCalibragem && (
+                        <button
+                          onClick={() => setModalCalibragem(true)}
+                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground"
+                        >
+                          <LayoutGrid className="w-3.5 h-3.5" />
+                          Painel de Calibragem
+                        </button>
+                      )}
                       {/* Nine Box usa a nota final calibrada — só quem viu a calibragem
                           (administrador) enxerga algo útil aqui, por isso virou admin-only. */}
                       {souAdministrador && (
@@ -1244,6 +1261,14 @@ export default function AvaliacaoPage() {
           fetchAvaliacoesParaAvaliar()
           setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '', papelAvaliador: false })
         }}
+      />
+
+      <ModalCalibragem
+        open={modalCalibragem}
+        cicloId={cicloAtivo?.id ?? ''}
+        cicloNome={cicloAtivo?.nome ?? ''}
+        onClose={() => setModalCalibragem(false)}
+        onSaved={fetchAvaliacoes}
       />
 
       <ModalNineBox

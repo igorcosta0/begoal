@@ -312,6 +312,22 @@ export async function upsertAvaliacaoTecnica(
     .upsert({ avaliacao_id: avaliacaoId, criterio_key: criterioKey, ...campos }, { onConflict: 'avaliacao_id,criterio_key' })
 }
 
+// ── Painel de Calibragem (ciclo inteiro numa tabela só) ─────────────────────
+// Mesma máscara de coluna de getAvaliacaoCultural/Tecnica (pode_ver_lado_
+// calibragem, admin-only) — ver comentário na migration 20260826_calibragem_
+// painel. Quem não é administrador de verdade recebe null em toda nota
+// (inclusive a média de pares), igual já acontece hoje dentro do
+// ModalAvaliacao.
+export async function getCalibragemCicloCultural(cicloId: string) {
+  const supabase = createClient()
+  return supabase.rpc('get_calibragem_ciclo_cultural', { p_ciclo_id: cicloId })
+}
+
+export async function getCalibragemCicloTecnica(cicloId: string) {
+  const supabase = createClient()
+  return supabase.rpc('get_calibragem_ciclo_tecnica', { p_ciclo_id: cicloId })
+}
+
 export async function getPdiItems(avaliacaoId: string) {
   const supabase = createClient()
   return supabase
