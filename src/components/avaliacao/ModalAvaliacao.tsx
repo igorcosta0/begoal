@@ -327,7 +327,10 @@ function LegendaNotas() {
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
-type ScoreEntry = { auto: number | null; gestor: number | null; calibragem: number | null }
+// media_pares (pedido ago/2026): só leitura, calculada no banco (lateral
+// join em get_avaliacao_cultural/tecnica) — nunca é definida pelo usuário
+// aqui, só populada em loadData() e mostrada ao lado da nota de calibragem.
+type ScoreEntry = { auto: number | null; gestor: number | null; media_pares: number | null; calibragem: number | null }
 type ScoresC = Record<string, ScoreEntry & { observacoes: string }>
 type ScoresT = Record<string, ScoreEntry & { observacoes: string }>
 
@@ -392,10 +395,10 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
   const [vertical, setVertical] = useState('')
   const [observacoes, setObservacoes] = useState('')
   const [scoresC, setScoresC] = useState<ScoresC>({
-    '1': { auto: null, gestor: null, calibragem: null, observacoes: '' },
-    '2': { auto: null, gestor: null, calibragem: null, observacoes: '' },
-    '3': { auto: null, gestor: null, calibragem: null, observacoes: '' },
-    '4': { auto: null, gestor: null, calibragem: null, observacoes: '' },
+    '1': { auto: null, gestor: null, media_pares: null, calibragem: null, observacoes: '' },
+    '2': { auto: null, gestor: null, media_pares: null, calibragem: null, observacoes: '' },
+    '3': { auto: null, gestor: null, media_pares: null, calibragem: null, observacoes: '' },
+    '4': { auto: null, gestor: null, media_pares: null, calibragem: null, observacoes: '' },
   })
   const [scoresT, setScoresT] = useState<ScoresT>({})
   const [pdiItems, setPdiItems] = useState<PdiItem[]>([])
@@ -470,15 +473,16 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
     ])
 
     const newScoresC: ScoresC = {
-      '1': { auto: null, gestor: null, calibragem: null, observacoes: '' },
-      '2': { auto: null, gestor: null, calibragem: null, observacoes: '' },
-      '3': { auto: null, gestor: null, calibragem: null, observacoes: '' },
-      '4': { auto: null, gestor: null, calibragem: null, observacoes: '' },
+      '1': { auto: null, gestor: null, media_pares: null, calibragem: null, observacoes: '' },
+      '2': { auto: null, gestor: null, media_pares: null, calibragem: null, observacoes: '' },
+      '3': { auto: null, gestor: null, media_pares: null, calibragem: null, observacoes: '' },
+      '4': { auto: null, gestor: null, media_pares: null, calibragem: null, observacoes: '' },
     }
-    cultural.data?.forEach((row: { pilar: number; nota_auto: number | null; nota_gestor: number | null; nota_calibragem: number | null; observacoes: string | null }) => {
+    cultural.data?.forEach((row: { pilar: number; nota_auto: number | null; nota_gestor: number | null; media_pares: number | null; nota_calibragem: number | null; observacoes: string | null }) => {
       newScoresC[String(row.pilar)] = {
         auto: row.nota_auto,
         gestor: row.nota_gestor,
+        media_pares: row.media_pares,
         calibragem: row.nota_calibragem,
         observacoes: row.observacoes ?? '',
       }
@@ -486,10 +490,11 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
     setScoresC(newScoresC)
 
     const newScoresT: ScoresT = {}
-    tecnica.data?.forEach((row: { criterio_key: string; nota_auto: number | null; nota_gestor: number | null; nota_calibragem: number | null; observacoes: string | null }) => {
+    tecnica.data?.forEach((row: { criterio_key: string; nota_auto: number | null; nota_gestor: number | null; media_pares: number | null; nota_calibragem: number | null; observacoes: string | null }) => {
       newScoresT[row.criterio_key] = {
         auto: row.nota_auto,
         gestor: row.nota_gestor,
+        media_pares: row.media_pares,
         calibragem: row.nota_calibragem,
         observacoes: row.observacoes ?? '',
       }
@@ -777,7 +782,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
   function setScoreT(key: string, tipo: 'auto' | 'gestor' | 'calibragem', valor: number) {
     setScoresT((prev) => ({
       ...prev,
-      [key]: { ...(prev[key] ?? { auto: null, gestor: null, calibragem: null, observacoes: '' }), [tipo]: valor },
+      [key]: { ...(prev[key] ?? { auto: null, gestor: null, media_pares: null, calibragem: null, observacoes: '' }), [tipo]: valor },
     }))
   }
 
@@ -967,7 +972,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                                   setScoresC((prev) => ({
                                     ...prev,
                                     [String(pilar.numero)]: {
-                                      ...(prev[String(pilar.numero)] ?? { auto: null, gestor: null, calibragem: null, observacoes: '' }),
+                                      ...(prev[String(pilar.numero)] ?? { auto: null, gestor: null, media_pares: null, calibragem: null, observacoes: '' }),
                                       observacoes: e.target.value,
                                     },
                                   }))
@@ -1019,6 +1024,18 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                                     />
                                   ))}
                                 </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1.5">Média Pares</p>
+                              {ehPares ? (
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Não se aplica a pares</p>
+                              ) : !podeCalibrar ? (
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo de quem calibra</p>
+                              ) : (
+                                <p className={cn('h-8 flex items-center text-sm font-medium', score?.media_pares == null && 'text-muted-foreground/50')}>
+                                  {score?.media_pares ?? '—'}
+                                </p>
                               )}
                             </div>
                             <div>
@@ -1134,7 +1151,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                                   setScoresT((prev) => ({
                                     ...prev,
                                     [criterio.key]: {
-                                      ...(prev[criterio.key] ?? { auto: null, gestor: null, calibragem: null, observacoes: '' }),
+                                      ...(prev[criterio.key] ?? { auto: null, gestor: null, media_pares: null, calibragem: null, observacoes: '' }),
                                       observacoes: e.target.value,
                                     },
                                   }))
@@ -1183,6 +1200,18 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                                     />
                                   ))}
                                 </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1.5">Média Pares</p>
+                              {ehPares ? (
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Não se aplica a pares</p>
+                              ) : !podeCalibrar ? (
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo de quem calibra</p>
+                              ) : (
+                                <p className={cn('h-8 flex items-center text-sm font-medium', score?.media_pares == null && 'text-muted-foreground/50')}>
+                                  {score?.media_pares ?? '—'}
+                                </p>
                               )}
                             </div>
                             <div>
