@@ -178,6 +178,13 @@ export default function AvaliacaoPage() {
   // Administrador e calibrador enxergam todos os funcionários da empresa; gestor comum
   // vê somente seus próprios liderados (definidos pelo campo "gestor_id" de cada funcionário).
   const [veTodaEmpresa, setVeTodaEmpresa] = useState(false)
+  // Pedido (ago/2026): na CTZ, quem opera a calibragem (Iniciar/Finalizar/
+  // Painel) deixa de ser "qualquer administrador" e vira só Igor + Filippe
+  // Réus — mesmo e-mail fixo usado na migration 20260827000000_calibragem_
+  // ctz_restrita (pode_ver_lado_calibragem), só que aqui não dá pra comparar
+  // por user_id porque o front-end só tem o e-mail da sessão. Em qualquer
+  // outra empresa continua igual a sempre (souAdministrador).
+  const [souGestorDaCalibragem, setSouGestorDaCalibragem] = useState(false)
   const [meuFuncionario, setMeuFuncionario] = useState<Funcionario | null>(null)
   const [ciclos, setCiclos] = useState<Ciclo[]>([])
   const [cicloAtivo, setCicloAtivo] = useState<Ciclo | null>(null)
@@ -239,10 +246,10 @@ export default function AvaliacaoPage() {
   // salvar uma calibragem em ModalAvaliacao), pra destravar "Finalizar
   // Calibragem" assim que a última pendência for preenchida.
   const fetchCalibragemPendente = useCallback(async () => {
-    if (!cicloAtivo || !souAdministrador) return
+    if (!cicloAtivo || !souGestorDaCalibragem) return
     const { pendente } = await getCalibragemPendente(cicloAtivo.id)
     setCalibragemPendente(pendente)
-  }, [cicloAtivo, souAdministrador])
+  }, [cicloAtivo, souGestorDaCalibragem])
 
   const fetchMinhasAvaliacoes = useCallback(async () => {
     if (!meuFuncionario) return
@@ -321,12 +328,21 @@ export default function AvaliacaoPage() {
       const todaEmpresa = administrador || calibrador
       const admin = administrador || calibrador
 
+      // CTZ = 'ac4ad62b-9b88-44da-ae69-0f26ced07d06' — fora dela, calibragem
+      // continua sendo "qualquer administrador", igual sempre foi.
+      const emailAtual = user.email?.toLowerCase() ?? ''
+      const souGestorDaCalibragemAtual =
+        empresa!.id === 'ac4ad62b-9b88-44da-ae69-0f26ced07d06'
+          ? ['igorecosta1@gmail.com', 'filippe.reus@ctz.eng.br'].includes(emailAtual)
+          : administrador
+
       setIsAdmin(admin)
       setSouAdministrador(administrador)
       setSouLider(souLiderAtual)
       setPodeCriarCiclo(administrador)
-      setPodeIgnorarLimiteCiclo(user.email?.toLowerCase() === 'igorecosta1@gmail.com')
+      setPodeIgnorarLimiteCiclo(emailAtual === 'igorecosta1@gmail.com')
       setVeTodaEmpresa(todaEmpresa)
+      setSouGestorDaCalibragem(souGestorDaCalibragemAtual)
 
       await fetchCiclos()
       if (todaEmpresa) {
@@ -666,14 +682,14 @@ export default function AvaliacaoPage() {
   // "todo mundo com auto + gestor concluídos" e ficaria fora de propósito.
   const avaliacoesComuns = avaliacoes.filter((a) => a.tipo !== 'pares')
   // "Sem avaliador definido" é marcação intencional (pedido ago/2026): essa
-  // pessoa só avalia os outros, não é avaliada — ninguém nunca vai preencher
-  // o lado do avaliador dela mesma, então não deve travar a calibragem do
-  // resto do ciclo esperando por isso. Só entra na conta de "todo mundo
-  // pronto" quem tem avaliador de fato.
+  // pessoa só avalia os outros, não é avaliada — nunca teria nota de gestor
+  // preenchida, então não entra no painel de calibragem por padrão.
+  //
+  // Pedido ago/2026: removida a trava que só liberava "Iniciar Calibragem"
+  // quando TODA avaliação comum já tivesse passado de auto+gestor
+  // (todosProntosParaCalibragem) — agora ativa independente de quem ainda
+  // não concluiu.
   const avaliacoesQueContamParaCalibragem = avaliacoesComuns.filter((a) => a.avaliador !== null)
-  const todosProntosParaCalibragem =
-    avaliacoesQueContamParaCalibragem.length > 0 &&
-    avaliacoesQueContamParaCalibragem.every((a) => ['gestor_concluida', 'calibragem', 'finalizada'].includes(a.status))
   const existeAlgumParaIniciarCalibragem = avaliacoesComuns.some((a) => a.status === 'gestor_concluida')
   const existeAlgumEmCalibragem = avaliacoesComuns.some((a) => a.status === 'calibragem')
 
@@ -895,6 +911,7 @@ export default function AvaliacaoPage() {
           cicloNome={modalAvaliacao.cicloNome}
           isAdmin={modalAvaliacao.papelAvaliador}
           souAdministrador={souAdministrador}
+          souGestorDaCalibragem={souGestorDaCalibragem}
           onClose={() => setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '', papelAvaliador: false })}
           onSave={() => { fetchMinhasAvaliacoes(); fetchAvaliacoesParaAvaliar(); setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '', papelAvaliador: false }) }}
         />
@@ -1069,22 +1086,22 @@ export default function AvaliacaoPage() {
                           Adicionar ao ciclo
                         </button>
                       )}
-                      {/* Calibragem: etapa ciclo-inteira, só administrador. "Iniciar"
-                          só libera quando TODA avaliação comum já passou de auto+gestor
-                          (não trava por causa de quem ainda não concluiu — só desabilita
-                          até lá); "Finalizar" fecha quem já está em calibragem. */}
-                      {souAdministrador && existeAlgumParaIniciarCalibragem && (
+                      {/* Calibragem: etapa ciclo-inteira. Pedido ago/2026: "Iniciar" não
+                          trava mais esperando todo mundo concluir auto+gestor — ativa
+                          independente de quem ainda falta; "Finalizar" continua fechando
+                          quem já está em calibragem. Acesso restrito a souGestorDaCalibragem
+                          (na CTZ: só Igor e Filippe Réus; nas demais empresas: qualquer
+                          administrador, igual sempre foi — ver init() acima). */}
+                      {souGestorDaCalibragem && existeAlgumParaIniciarCalibragem && (
                         <button
                           onClick={() => handleIniciarCalibragem(ciclo)}
-                          disabled={!todosProntosParaCalibragem}
-                          title={!todosProntosParaCalibragem ? 'Só libera quando todo mundo da avaliação comum tiver concluído a etapa do avaliador' : undefined}
-                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground"
                         >
                           <ArrowRightLeft className="w-3.5 h-3.5" />
                           Iniciar Calibragem
                         </button>
                       )}
-                      {souAdministrador && existeAlgumEmCalibragem && (
+                      {souGestorDaCalibragem && existeAlgumEmCalibragem && (
                         <button
                           onClick={() => handleFinalizarCalibragem(ciclo)}
                           disabled={calibragemPendente}
@@ -1098,10 +1115,10 @@ export default function AvaliacaoPage() {
                       {/* Painel de Calibragem: ciclo inteiro numa tabela só (Auto/
                           Avaliador/Média de Pares/Calibragem lado a lado), em vez de
                           abrir o ModalAvaliacao pessoa por pessoa — pedido pra reduzir o
-                          número de cliques de quem calibra (Felipe Réus e demais
-                          administradores). Mesma regra de acesso de sempre: só
-                          souAdministrador, sem cargo novo. */}
-                      {souAdministrador && existeAlgumEmCalibragem && (
+                          número de cliques de quem calibra. Pedido ago/2026: na CTZ, só
+                          Igor e Filippe Réus (souGestorDaCalibragem), não mais qualquer
+                          administrador. */}
+                      {souGestorDaCalibragem && existeAlgumEmCalibragem && (
                         <button
                           onClick={() => setModalCalibragem(true)}
                           className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground"
@@ -1254,6 +1271,7 @@ export default function AvaliacaoPage() {
         cicloNome={modalAvaliacao.cicloNome}
         isAdmin={modalAvaliacao.papelAvaliador}
         souAdministrador={souAdministrador}
+        souGestorDaCalibragem={souGestorDaCalibragem}
         onClose={() => setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '', papelAvaliador: false })}
         onSave={() => {
           fetchAvaliacoes()

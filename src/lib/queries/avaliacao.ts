@@ -64,10 +64,14 @@ export async function updateCiclo(
   return supabase.from('ciclos_avaliacao').update(payload).eq('id', id)
 }
 
-// Calibragem (pedido ago/2026): etapa ciclo-inteira, só administrador —
-// avança/fecha TODAS as avaliações comuns (tipo='padrao') elegíveis do ciclo
-// de uma vez, em vez de uma por uma. Pares fica de fora (nunca tem
-// autoavaliação, então nunca "está pronta" pra calibragem).
+// Calibragem (pedido ago/2026): etapa ciclo-inteira, acesso restrito (ver
+// souGestorDaCalibragem em avaliacao/page.tsx — na CTZ é só Igor e Filippe
+// Réus, nas demais empresas é qualquer administrador) — avança/fecha TODAS
+// as avaliações comuns (tipo='padrao') elegíveis do ciclo de uma vez, em vez
+// de uma por uma. Pares fica de fora (nunca tem autoavaliação, então nunca
+// "está pronta" pra calibragem). Iniciar não exige mais que TODO mundo do
+// ciclo esteja pronto — só avança quem já estiver em gestor_concluida,
+// deixando o resto pra trás sem travar (pedido ago/2026).
 export async function iniciarCalibragemCiclo(cicloId: string) {
   const supabase = createClient()
   return supabase
@@ -89,9 +93,10 @@ export async function finalizarCalibragemCiclo(cicloId: string) {
 }
 
 // "Finalizar Calibragem" trava avaliação pra sempre (status calibragem →
-// finalizada não tem volta pela UI) — diferente de "Iniciar Calibragem", que
-// só libera quando todo mundo já concluiu auto+gestor, aqui não existia
-// nenhuma checagem de que a nota de calibragem foi realmente preenchida.
+// finalizada não tem volta pela UI) — diferente de "Iniciar Calibragem" (que,
+// desde ago/2026, ativa quem já estiver pronto sem esperar o resto do ciclo),
+// aqui não existia nenhuma checagem de que a nota de calibragem foi realmente
+// preenchida.
 // Sem isso, dava pra clicar "Finalizar" com gente ainda sem nota de
 // calibragem e ela ficava travada pra sempre com media_*_calibragem null.
 // Esta função confere, avaliação por avaliação (as que estão em

@@ -366,13 +366,21 @@ interface Props {
   // comuns) só vê a nota que ele mesmo deu, nunca a que recebeu — sem exceção
   // de etapa/calibragem nem de "revelar".
   souAdministrador?: boolean
+  // Pedido (ago/2026): quem pode ver/editar especificamente o lado de
+  // CALIBRAGEM (nesta modal e no Painel de Calibragem) — na CTZ é só Igor e
+  // Filippe Réus, não mais "qualquer administrador"; nas demais empresas é
+  // igual a souAdministrador. Ver avaliacao/page.tsx. Cai pra souAdministrador
+  // se não vier informado, só por segurança de chamador antigo — hoje sempre
+  // vem preenchido.
+  souGestorDaCalibragem?: boolean
   onClose: () => void
   onSave: () => void
 }
 
 // ── Componente principal ─────────────────────────────────────────────────────
 
-export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, souAdministrador, onClose, onSave }: Props) {
+export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, souAdministrador, souGestorDaCalibragem, onClose, onSave }: Props) {
+  const podeCalibrar = souGestorDaCalibragem ?? souAdministrador
   const [activeTab, setActiveTab] = useState<'cultural' | 'tecnica' | 'pdi'>('cultural')
   const [vertical, setVertical] = useState('')
   const [observacoes, setObservacoes] = useState('')
@@ -480,7 +488,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
     }
 
     const emEtapaCalibragem = avaliacao ? ['calibragem', 'finalizada'].includes(avaliacao.status) : false
-    if (souAdministrador && emEtapaCalibragem) {
+    if (podeCalibrar && emEtapaCalibragem) {
       const pilaresCalibragemFaltando = [1, 2, 3, 4].some((p) => scoresC[String(p)]?.calibragem == null)
       if (pilaresCalibragemFaltando) {
         faltando.push('nota de calibragem em todos os pilares culturais')
@@ -520,7 +528,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
           isAdmin
             ? {
                 nota_gestor: score?.gestor ?? null,
-                ...(souAdministrador ? { nota_calibragem: score?.calibragem ?? null } : {}),
+                ...(podeCalibrar ? { nota_calibragem: score?.calibragem ?? null } : {}),
               }
             : { nota_auto: score?.auto ?? null, observacoes: score?.observacoes || null }
         )
@@ -543,7 +551,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
             isAdmin
               ? {
                   nota_gestor: score?.gestor ?? null,
-                  ...(souAdministrador ? { nota_calibragem: score?.calibragem ?? null } : {}),
+                  ...(podeCalibrar ? { nota_calibragem: score?.calibragem ?? null } : {}),
                 }
               : { nota_auto: score?.auto ?? null, observacoes: score?.observacoes || null }
           )
@@ -558,8 +566,8 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
 
     // Mesma lógica na linha-pai: só manda o lado de quem está salvando, pra
     // não sobrescrever a média do outro lado com null. media_*_calibragem só
-    // entra quando for administrador de verdade — mesmo raciocínio do
-    // upsert acima.
+    // entra quando podeCalibrar (Igor/Filippe na CTZ, administrador nas
+    // demais empresas) — mesmo raciocínio do upsert acima.
     const payloadBase = {
       vertical: vertical || null,
       ...(statusExtra ? { status: statusExtra } : {}),
@@ -569,7 +577,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
           observacoes_gerais: observacoes || null,
           media_cultural_gestor: calcMedia([1, 2, 3, 4].map((p) => scoresC[String(p)]?.gestor ?? null)),
           media_tecnica_gestor: calcMedia(criterios.map((c) => scoresT[c.key]?.gestor ?? null)),
-          ...(souAdministrador
+          ...(podeCalibrar
             ? {
                 media_cultural_calibragem: calcMedia([1, 2, 3, 4].map((p) => scoresC[String(p)]?.calibragem ?? null)),
                 media_tecnica_calibragem: calcMedia(criterios.map((c) => scoresT[c.key]?.calibragem ?? null)),
@@ -735,13 +743,14 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
   const podeVerMedias = isAdmin || !!souAdministrador
 
   // Calibragem (pedido ago/2026): não é mais "o mesmo avaliador, numa etapa
-  // posterior" — é exclusiva do administrador de verdade. Nem o avaliador
-  // original que preencheu a nota do gestor enxerga a nota de calibragem
-  // agora; só quem tem souAdministrador. calibragemLiberada continua
-  // controlando SÓ o "ainda não chegou a etapa" pro administrador — pra
-  // qualquer outra pessoa a seção de calibragem fica oculta, ponto.
+  // posterior" — é exclusiva de quem tem podeCalibrar (na CTZ: só Igor e
+  // Filippe Réus; nas demais empresas: administrador de verdade). Nem o
+  // avaliador original que preencheu a nota do gestor enxerga a nota de
+  // calibragem agora. calibragemLiberada continua controlando SÓ o "ainda
+  // não chegou a etapa" — pra qualquer outra pessoa a seção de calibragem
+  // fica oculta, ponto.
   const calibragemLiberada = ['calibragem', 'finalizada'].includes(avaliacao.status)
-  const podeEditarCalibragem = !!souAdministrador && avaliacao.status === 'calibragem'
+  const podeEditarCalibragem = !!podeCalibrar && avaliacao.status === 'calibragem'
 
   const notaFinalCultural = avaliacao.media_cultural_calibragem ?? avaliacao.media_cultural_gestor
   const notaFinalTecnica = avaliacao.media_tecnica_calibragem ?? avaliacao.media_tecnica_gestor
@@ -916,8 +925,8 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                               <p className="text-xs text-muted-foreground mb-1.5">Calibragem</p>
                               {ehPares ? (
                                 <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Não se aplica a pares</p>
-                              ) : !souAdministrador ? (
-                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo do administrador</p>
+                              ) : !podeCalibrar ? (
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo de quem calibra</p>
                               ) : !calibragemLiberada ? (
                                 <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Disponível na etapa de Calibragem</p>
                               ) : (
@@ -1064,8 +1073,8 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1.5">Calibragem</p>
-                              {!souAdministrador ? (
-                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo do administrador</p>
+                              {!podeCalibrar ? (
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo de quem calibra</p>
                               ) : !calibragemLiberada ? (
                                 <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Disponível na etapa de Calibragem</p>
                               ) : (
