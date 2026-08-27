@@ -11,6 +11,7 @@ import {
   updateAvaliacao,
   createPdiItem,
   deletePdiItem,
+  getVerticalPadrao,
 } from '@/lib/queries/avaliacao'
 import { Trash2, Plus } from 'lucide-react'
 
@@ -344,6 +345,12 @@ interface Avaliacao {
   vertical: string | null
   tipo?: 'padrao' | 'pares'
   revelado?: boolean
+  // Pedido (ago/2026): só usados pra Avaliação de Pares travar a vertical na
+  // da avaliação comum da pessoa (ver useEffect de vertical mais abaixo) —
+  // opcionais porque nem todo caller ainda os preenche (ex.: abrirMinhaAvaliacao
+  // em avaliacao/page.tsx, que é só autoavaliação padrão e nunca precisa disso).
+  funcionario_id?: string
+  ciclo_id?: string
   observacoes_gerais: string | null
   media_cultural_auto: number | null
   media_cultural_gestor: number | null
@@ -397,14 +404,60 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [erro, setErro] = useState('')
+  // Pedido (ago/2026): quais campos específicos estão faltando na última
+  // tentativa de salvar — usado pra desenhar contorno vermelho neles e pra
+  // trocar de aba automaticamente, em vez de só uma frase genérica no
+  // rodapé (ver validarCampos). Vazio = nenhuma tentativa de salvar falhou
+  // ainda (ou a última deu certo).
+  const [camposInvalidos, setCamposInvalidos] = useState<{
+    pilaresNota: Set<number>
+    pilaresEvidencia: Set<number>
+    pilaresCalibragem: Set<number>
+    criteriosNota: Set<string>
+    criteriosCalibragem: Set<string>
+    observacoesGerais: boolean
+    vertical: boolean
+  }>({
+    pilaresNota: new Set(),
+    pilaresEvidencia: new Set(),
+    pilaresCalibragem: new Set(),
+    criteriosNota: new Set(),
+    criteriosCalibragem: new Set(),
+    observacoesGerais: false,
+    vertical: false,
+  })
 
   useEffect(() => {
     if (open && avaliacao) {
-      setVertical(avaliacao.vertical ?? '')
       setObservacoes(avaliacao.observacoes_gerais ?? '')
       setActiveTab('cultural')
       setErro('')
+      setCamposInvalidos({
+        pilaresNota: new Set(),
+        pilaresEvidencia: new Set(),
+        pilaresCalibragem: new Set(),
+        criteriosNota: new Set(),
+        criteriosCalibragem: new Set(),
+        observacoesGerais: false,
+        vertical: false,
+      })
       loadData(avaliacao.id)
+
+      // Pedido (ago/2026): na Avaliação de Pares, a vertical não fica livre
+      // pro par escolher — trava na vertical ATUAL da avaliação comum (tipo
+      // 'padrao') dessa pessoa no mesmo ciclo. Sem isso, o par podia
+      // preencher critérios de uma vertical diferente da real, e a Média
+      // Pares técnica no Painel de Calibragem (que casa nota por
+      // criterio_key) nunca bateria com nada. get_vertical_padrao é
+      // security definer de propósito: o par muitas vezes não tem RLS pra
+      // ler a linha 'padrao' de quem ele avalia, só a vertical dela.
+      if (avaliacao.tipo === 'pares' && avaliacao.funcionario_id && avaliacao.ciclo_id) {
+        getVerticalPadrao(avaliacao.ciclo_id, avaliacao.funcionario_id).then(({ data }) => {
+          setVertical(data ?? avaliacao.vertical ?? '')
+        })
+      } else {
+        setVertical(avaliacao.vertical ?? '')
+      }
     }
   }, [open, avaliacao?.id])
 
@@ -447,14 +500,25 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
     setLoading(false)
   }
 
-  function validarCampos(): string[] {
+  // Pedido (ago/2026): o "Salvar" já bloqueava tudo-ou-nada quando faltava
+  // algum campo (não é novo), mas o aviso era só uma frase genérica no
+  // rodapé — fácil de não notar, e não dizia EM QUAL pilar/critério faltava
+  // nota, nem trocava de aba se o problema estivesse na aba que a pessoa não
+  // estava vendo. Caso real: avaliação de pares ficou sem nenhuma nota salva
+  // porque faltou "observações do avaliador" e a pessoa não percebeu o erro.
+  //
+  // Agora validarCampos() também preenche camposInvalidos — os pilares/
+  // critérios específicos que faltam — pra: 1) trocar automaticamente pra
+  // aba com problema (handleSalvarOuConcluir); 2) desenhar contorno
+  // vermelho exatamente nos campos vazios, em vez de só uma frase.
+  function validarCampos(): { faltando: string[]; invalidos: typeof camposInvalidos } {
     const faltando: string[] = []
     const ehParesForm = avaliacao?.tipo === 'pares'
 
-    const pilaresFaltando = [1, 2, 3, 4].some((p) =>
+    const pilaresComNotaFaltando = [1, 2, 3, 4].filter((p) =>
       isAdmin ? scoresC[String(p)]?.gestor == null : scoresC[String(p)]?.auto == null
     )
-    if (pilaresFaltando) {
+    if (pilaresComNotaFaltando.length) {
       faltando.push(
         isAdmin
           ? 'nota do gestor em todos os pilares culturais'
@@ -462,40 +526,45 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
       )
     }
 
-    if (!isAdmin && [1, 2, 3, 4].some((p) => !scoresC[String(p)]?.observacoes?.trim())) {
+    const pilaresComEvidenciaFaltando = !isAdmin
+      ? [1, 2, 3, 4].filter((p) => !scoresC[String(p)]?.observacoes?.trim())
+      : []
+    if (pilaresComEvidenciaFaltando.length) {
       faltando.push('evidências e exemplos práticos em todos os pilares culturais')
     }
-    if (isAdmin && !observacoes.trim()) {
+    const observacoesGeraisFaltando = isAdmin && !observacoes.trim()
+    if (observacoesGeraisFaltando) {
       faltando.push(ehParesForm ? 'observações do avaliador' : 'observações do gestor')
     }
 
-    if (!vertical) {
+    const verticalFaltando = !vertical
+    if (verticalFaltando) {
       faltando.push('vertical de atuação')
     }
 
     const criteriosAtuais = vertical ? (VERTICAIS_CTZ[vertical]?.criterios ?? []) : []
-    if (criteriosAtuais.length) {
-      const criteriosFaltando = criteriosAtuais.some((c) =>
-        isAdmin ? scoresT[c.key]?.gestor == null : scoresT[c.key]?.auto == null
+    const criteriosComNotaFaltando = criteriosAtuais.length
+      ? criteriosAtuais.filter((c) => (isAdmin ? scoresT[c.key]?.gestor == null : scoresT[c.key]?.auto == null)).map((c) => c.key)
+      : []
+    if (criteriosComNotaFaltando.length) {
+      faltando.push(
+        isAdmin
+          ? 'nota do gestor em todos os critérios técnicos'
+          : 'nota de autoavaliação em todos os critérios técnicos'
       )
-      if (criteriosFaltando) {
-        faltando.push(
-          isAdmin
-            ? 'nota do gestor em todos os critérios técnicos'
-            : 'nota de autoavaliação em todos os critérios técnicos'
-        )
-      }
     }
 
     const emEtapaCalibragem = avaliacao ? ['calibragem', 'finalizada'].includes(avaliacao.status) : false
+    let pilaresCalibragemFaltando: number[] = []
+    let criteriosCalibragemFaltando: string[] = []
     if (podeCalibrar && emEtapaCalibragem) {
-      const pilaresCalibragemFaltando = [1, 2, 3, 4].some((p) => scoresC[String(p)]?.calibragem == null)
-      if (pilaresCalibragemFaltando) {
+      pilaresCalibragemFaltando = [1, 2, 3, 4].filter((p) => scoresC[String(p)]?.calibragem == null)
+      if (pilaresCalibragemFaltando.length) {
         faltando.push('nota de calibragem em todos os pilares culturais')
       }
       if (criteriosAtuais.length) {
-        const criteriosCalibragemFaltando = criteriosAtuais.some((c) => scoresT[c.key]?.calibragem == null)
-        if (criteriosCalibragemFaltando) {
+        criteriosCalibragemFaltando = criteriosAtuais.filter((c) => scoresT[c.key]?.calibragem == null).map((c) => c.key)
+        if (criteriosCalibragemFaltando.length) {
           faltando.push('nota de calibragem em todos os critérios técnicos')
         }
       }
@@ -503,7 +572,21 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
 
     // PDI é opcional — só pode ser preenchido durante a etapa de Calibragem (ver gate na aba PDI)
 
-    return faltando
+    const invalidos = {
+      pilaresNota: new Set(pilaresComNotaFaltando),
+      pilaresEvidencia: new Set(pilaresComEvidenciaFaltando),
+      pilaresCalibragem: new Set(pilaresCalibragemFaltando),
+      criteriosNota: new Set(criteriosComNotaFaltando),
+      criteriosCalibragem: new Set(criteriosCalibragemFaltando),
+      observacoesGerais: observacoesGeraisFaltando,
+      vertical: verticalFaltando,
+    }
+    // Guarda no state pra desenhar o contorno vermelho nos campos (o render
+    // só reflete esse valor no próximo ciclo — por isso handleSalvarOuConcluir
+    // usa o `invalidos` retornado aqui, não o state, pra decidir a aba).
+    setCamposInvalidos(invalidos)
+
+    return { faltando, invalidos }
   }
 
   async function persistirCampos(statusExtra?: string): Promise<boolean> {
@@ -631,9 +714,16 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
       : { pendente: 'auto_concluida', auto_concluida: 'gestor_concluida' }
     const next = podeAvancar ? proximo[avaliacao.status] : undefined
 
-    const camposFaltando = validarCampos()
+    const { faltando: camposFaltando, invalidos } = validarCampos()
     if (camposFaltando.length) {
-      setErro(`Preencha antes de ${next ? 'concluir' : 'salvar'}: ${camposFaltando.join('; ')}.`)
+      setErro(`Preencha antes de ${next ? 'concluir' : 'salvar'}: ${camposFaltando.join('; ')}. Os campos em vermelho abaixo indicam exatamente o que falta.`)
+      // Leva a pessoa direto pra aba com o problema, em vez de deixar ela
+      // procurar — cultural tem prioridade porque aparece primeiro no fluxo.
+      if (invalidos.pilaresNota.size || invalidos.pilaresEvidencia.size || invalidos.pilaresCalibragem.size || invalidos.observacoesGerais) {
+        setActiveTab('cultural')
+      } else if (invalidos.vertical || invalidos.criteriosNota.size || invalidos.criteriosCalibragem.size) {
+        setActiveTab('tecnica')
+      }
       return
     }
 
@@ -641,7 +731,10 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
     setErro('')
     const ok = await persistirCampos(next)
     setSaving(false)
-    if (ok) onSave()
+    if (ok) {
+      setCamposInvalidos(invalidos) // vazio (todos os Sets ficam vazios quando faltando.length === 0)
+      onSave()
+    }
   }
 
   async function handleAddPdi(e: React.FormEvent) {
@@ -882,7 +975,10 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                                 rows={2}
                                 disabled={isAdmin}
                                 placeholder="Descreva exemplos concretos que justifiquem as notas..."
-                                className="mt-1 w-full px-3 py-1.5 text-xs rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
+                                className={cn(
+                                  'mt-1 w-full px-3 py-1.5 text-xs rounded-xl border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60',
+                                  !isAdmin && camposInvalidos.pilaresEvidencia.has(pilar.numero) ? 'border-destructive' : 'border-input'
+                                )}
                               />
                             )}
                           </div>
@@ -894,7 +990,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                               {isAdmin && !gestorVeAuto ? (
                                 <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo de quem preencheu</p>
                               ) : (
-                                <div className="flex gap-1">
+                                <div className={cn('flex gap-1 p-0.5 rounded-md', !isAdmin && camposInvalidos.pilaresNota.has(pilar.numero) && 'ring-2 ring-destructive')}>
                                   {([1, 2, 3, 4, 5] as const).map((v) => (
                                     <ScoreButton
                                       key={v}
@@ -912,7 +1008,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                               {!isAdmin && !colaboradorVeGestor ? (
                                 <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo de quem preencheu</p>
                               ) : (
-                                <div className="flex gap-1">
+                                <div className={cn('flex gap-1 p-0.5 rounded-md', isAdmin && camposInvalidos.pilaresNota.has(pilar.numero) && 'ring-2 ring-destructive')}>
                                   {([1, 2, 3, 4, 5] as const).map((v) => (
                                     <ScoreButton
                                       key={v}
@@ -968,7 +1064,10 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                         rows={3}
                         disabled={!isAdmin}
                         placeholder="Feedback geral sobre a avaliação..."
-                        className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
+                        className={cn(
+                          'mt-1 w-full px-3 py-2 text-sm rounded-xl border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60',
+                          isAdmin && camposInvalidos.observacoesGerais ? 'border-destructive' : 'border-input'
+                        )}
                       />
                     )}
                   </div>
@@ -983,13 +1082,24 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                     <select
                       value={vertical}
                       onChange={(e) => setVertical(e.target.value)}
-                      className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
+                      disabled={ehPares}
+                      className={cn(
+                        'mt-1 w-full px-3 py-2 text-sm rounded-xl border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60',
+                        camposInvalidos.vertical ? 'border-destructive' : 'border-input'
+                      )}
                     >
                       <option value="">Selecione a vertical...</option>
                       {Object.entries(VERTICAIS_CTZ).map(([key, v]) => (
                         <option key={key} value={key}>{v.label}</option>
                       ))}
                     </select>
+                    {ehPares && (
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        {vertical
+                          ? 'Travada na vertical da avaliação comum desta pessoa — não dá pra trocar aqui.'
+                          : 'A pessoa avaliada ainda não tem vertical definida na avaliação comum dela — defina lá primeiro.'}
+                      </p>
+                    )}
                   </div>
 
                   {!vertical && (
@@ -1044,7 +1154,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                               {isAdmin && !gestorVeAuto ? (
                                 <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo de quem preencheu</p>
                               ) : (
-                                <div className="flex gap-1">
+                                <div className={cn('flex gap-1 p-0.5 rounded-md', !isAdmin && camposInvalidos.criteriosNota.has(criterio.key) && 'ring-2 ring-destructive')}>
                                   {([1, 2, 3, 4, 5] as const).map((v) => (
                                     <ScoreButton
                                       key={v}
@@ -1062,7 +1172,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                               {!isAdmin && !colaboradorVeGestor ? (
                                 <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo de quem preencheu</p>
                               ) : (
-                                <div className="flex gap-1">
+                                <div className={cn('flex gap-1 p-0.5 rounded-md', isAdmin && camposInvalidos.criteriosNota.has(criterio.key) && 'ring-2 ring-destructive')}>
                                   {([1, 2, 3, 4, 5] as const).map((v) => (
                                     <ScoreButton
                                       key={v}
@@ -1118,7 +1228,10 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                         rows={3}
                         disabled={!isAdmin}
                         placeholder="Feedback geral sobre a avaliação..."
-                        className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
+                        className={cn(
+                          'mt-1 w-full px-3 py-2 text-sm rounded-xl border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60',
+                          isAdmin && camposInvalidos.observacoesGerais ? 'border-destructive' : 'border-input'
+                        )}
                       />
                     )}
                   </div>

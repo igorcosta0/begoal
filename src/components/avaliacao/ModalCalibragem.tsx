@@ -13,18 +13,21 @@ import { PILARES_CULTURAIS, VERTICAIS_CTZ } from '@/components/avaliacao/ModalAv
 import { X } from 'lucide-react'
 
 // ── Painel de Calibragem ─────────────────────────────────────────────────────
-// Pedido (ago/2026): o administrador (Felipe Réus / dono da empresa, e
-// qualquer outro administrador) calibrava abrindo o ModalAvaliacao pessoa por
-// pessoa. Este painel junta o ciclo inteiro numa tabela só — por pilar
-// cultural: Auto / Avaliador / Média de Pares / Calibragem lado a lado; por
-// critério técnico (varia por vertical): Auto / Avaliador / Calibragem, sem
-// coluna de pares (Avaliação de Pares é só cultural).
+// Pedido (ago/2026): o administrador calibrava abrindo o ModalAvaliacao
+// pessoa por pessoa. Este painel junta o ciclo inteiro numa tabela só — por
+// pilar cultural: Auto / Avaliador / Média de Pares / Calibragem lado a
+// lado; por critério técnico (varia por vertical): Auto / Avaliador / Média
+// Pares / Calibragem, mesmas colunas do cultural (Avaliação de Pares ganhou
+// lado técnico em ago/2026, migration 20260827030000_calibragem_media_
+// pares_tecnica — antes era só cultural).
 //
-// Acesso: só renderizado pra quem tem souAdministrador=true (ver
-// avaliacao/page.tsx) — mesma regra de sempre, sem cargo novo. O banco
-// (get_calibragem_ciclo_cultural/tecnica, migration 20260826_calibragem_
-// painel) já devolve tudo null pra quem não é administrador de verdade, mas
-// este componente nem chega a ser montado nesse caso.
+// Acesso: só renderizado pra quem tem souGestorDaCalibragem=true (ver
+// avaliacao/page.tsx) — na CTZ é Igor, Filippe Réus e Priscila Santos; nas
+// demais empresas, qualquer administrador de verdade. O banco
+// (get_calibragem_ciclo_cultural/tecnica, migrations 20260826_calibragem_
+// painel e 20260827020000/030000) já devolve tudo null pra quem não tem
+// pode_ver_lado_calibragem, mas este componente nem chega a ser montado
+// nesse caso.
 //
 // Salvamento é por clique (autosave), não um botão "Salvar" geral — cada nota
 // de calibragem grava assim que clicada, pra minimizar o número de cliques do
@@ -47,6 +50,7 @@ interface CriterioLinha {
   criterio_key: string
   nota_auto: number | null
   nota_avaliador: number | null
+  media_pares: number | null
   nota_calibragem: number | null
 }
 
@@ -169,6 +173,7 @@ export default function ModalCalibragem({ open, cicloId, cicloNome, onClose, onS
         criterio_key: row.criterio_key,
         nota_auto: row.nota_auto,
         nota_avaliador: row.nota_avaliador,
+        media_pares: row.media_pares,
         nota_calibragem: row.nota_calibragem,
       }
     })
@@ -349,6 +354,7 @@ export default function ModalCalibragem({ open, cicloId, cicloNome, onClose, onS
                             <th className="px-4 py-2 font-medium">Critério técnico</th>
                             <th className="px-2 py-2 font-medium">Auto</th>
                             <th className="px-2 py-2 font-medium">Avaliador</th>
+                            <th className="px-2 py-2 font-medium">Média Pares</th>
                             <th className="px-2 py-2 font-medium">Calibragem</th>
                           </tr>
                         </thead>
@@ -361,6 +367,9 @@ export default function ModalCalibragem({ open, cicloId, cicloNome, onClose, onS
                                 <td className="px-4 py-2 text-xs text-foreground">{criterio.label}</td>
                                 <td className="px-2 py-2"><CelulaScore value={linha?.nota_auto ?? null} /></td>
                                 <td className="px-2 py-2"><CelulaScore value={linha?.nota_avaliador ?? null} /></td>
+                                <td className="px-2 py-2">
+                                  <CelulaScore value={linha?.media_pares ?? null} />
+                                </td>
                                 <td className="px-2 py-2">
                                   <CelulaScore
                                     value={linha?.nota_calibragem ?? null}

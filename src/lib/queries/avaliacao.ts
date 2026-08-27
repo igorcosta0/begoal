@@ -338,6 +338,16 @@ export async function getCalibragemCicloTecnica(cicloId: string) {
   return supabase.rpc('get_calibragem_ciclo_tecnica', { p_ciclo_id: cicloId })
 }
 
+// Vertical da avaliação COMUM (tipo='padrao') de um funcionário no ciclo —
+// usada só pra Avaliação de Pares travar a vertical do par na vertical de
+// quem ele avalia (ver ModalAvaliacao.tsx). security definer no banco:
+// quem está avaliando em pares muitas vezes não tem RLS pra ler a linha
+// 'padrao' inteira dessa pessoa, só precisa saber a vertical dela.
+export async function getVerticalPadrao(cicloId: string, funcionarioId: string) {
+  const supabase = createClient()
+  return supabase.rpc('get_vertical_padrao', { p_ciclo_id: cicloId, p_funcionario_id: funcionarioId })
+}
+
 export async function getPdiItems(avaliacaoId: string) {
   const supabase = createClient()
   return supabase

@@ -627,8 +627,18 @@ export default function AvaliacaoPage() {
     fetchMinhasAvaliacoes()
   }
 
-  function abrirAvaliacao(avaliacao: Avaliacao, cicloNome: string) {
-    setModalAvaliacao({ open: true, avaliacao, cicloNome, papelAvaliador: true })
+  function abrirAvaliacao(avaliacao: Avaliacao, cicloNome: string, cicloId: string) {
+    // funcionario_id/ciclo_id (pedido ago/2026): pra Avaliação de Pares
+    // buscar a vertical da avaliação comum da pessoa e travar o seletor
+    // nela (ver useEffect de vertical em ModalAvaliacao.tsx) — sem isso a
+    // Média Pares técnica no Painel de Calibragem não teria como casar os
+    // critérios entre a nota do par e a nota do gestor.
+    setModalAvaliacao({
+      open: true,
+      avaliacao: { ...avaliacao, funcionario_id: avaliacao.funcionario?.id, ciclo_id: cicloId } as Avaliacao,
+      cicloNome,
+      papelAvaliador: true,
+    })
   }
 
   function abrirMinhaAvaliacao(avaliacao: MinhaAvaliacao) {
@@ -669,6 +679,8 @@ export default function AvaliacaoPage() {
         evidencias_tecnicas: null,
         funcionario: avaliacao.funcionario,
         avaliador: meuFuncionario ? { id: meuFuncionario.id, full_name: meuFuncionario.full_name } : null,
+        funcionario_id: avaliacao.funcionario?.id,
+        ciclo_id: avaliacao.ciclo?.id,
       } as Avaliacao,
       cicloNome: avaliacao.ciclo?.nome ?? '',
       papelAvaliador: true,
@@ -1204,7 +1216,7 @@ export default function AvaliacaoPage() {
                               {labelStatusAvaliacao(av.status, av.tipo)}
                             </span>
                             <button
-                              onClick={() => abrirAvaliacao(av, ciclo.nome)}
+                              onClick={() => abrirAvaliacao(av, ciclo.nome, ciclo.id)}
                               className="px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:opacity-90 transition-opacity"
                             >
                               Abrir
