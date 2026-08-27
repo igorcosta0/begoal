@@ -216,7 +216,7 @@ export default function ModalMontarAvaliacoes({
               <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide">Avaliação de Pares</h3>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Só entre líderes, só Alinhamento Cultural (sem metas técnicas). Escolha quem avalia quem — pode distribuir como quiser, inclusive mais de um avaliador pra mesma pessoa. Ninguém faz autoavaliação aqui: a avaliação de pares é só a nota do colega.
+              Só entre líderes, com Alinhamento Cultural e Performance Técnica (a vertical é escolhida na hora de avaliar). Escolha quem avalia quem — pode distribuir como quiser, inclusive mais de um avaliador pra mesma pessoa. Ninguém faz autoavaliação aqui: a avaliação de pares é só a nota do colega.
             </p>
 
             {lideres.length < 2 ? (

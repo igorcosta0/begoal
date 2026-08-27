@@ -469,11 +469,11 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
       faltando.push(ehParesForm ? 'observações do avaliador' : 'observações do gestor')
     }
 
-    if (!ehParesForm && !vertical) {
+    if (!vertical) {
       faltando.push('vertical de atuação')
     }
 
-    const criteriosAtuais = !ehParesForm && vertical ? (VERTICAIS_CTZ[vertical]?.criterios ?? []) : []
+    const criteriosAtuais = vertical ? (VERTICAIS_CTZ[vertical]?.criterios ?? []) : []
     if (criteriosAtuais.length) {
       const criteriosFaltando = criteriosAtuais.some((c) =>
         isAdmin ? scoresT[c.key]?.gestor == null : scoresT[c.key]?.auto == null
@@ -540,7 +540,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
       return false
     }
 
-    const criterios = avaliacao.tipo !== 'pares' && vertical ? (VERTICAIS_CTZ[vertical]?.criterios ?? []) : []
+    const criterios = vertical ? (VERTICAIS_CTZ[vertical]?.criterios ?? []) : []
     if (criterios.length) {
       const resultadosT = await Promise.all(
         criterios.map((c) => {
@@ -690,11 +690,14 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
 
   if (!open || !avaliacao) return null
 
-  // Avaliação de pares (líder avaliando líder) é só cultural — sem aba de
-  // metas técnicas, já que um colega de outra vertical raramente tem
-  // visibilidade das metas específicas de quem está avaliando.
+  // Avaliação de pares (líder avaliando líder) pedido ago/2026: ganhou aba de
+  // Performance Técnica igual à avaliação comum (antes era só cultural, pela
+  // lógica de que um colega de outra vertical raramente teria visibilidade
+  // das metas específicas de quem está avaliando — decisão revertida a
+  // pedido). Calibragem continua fora (pares nunca entra em
+  // iniciarCalibragemCiclo/finalizarCalibragemCiclo, filtro tipo='padrao').
   const ehPares = avaliacao.tipo === 'pares'
-  const criterios = !ehPares && vertical ? (VERTICAIS_CTZ[vertical]?.criterios ?? []) : []
+  const criterios = vertical ? (VERTICAIS_CTZ[vertical]?.criterios ?? []) : []
   const statusLabel: Record<string, string> = {
     pendente: 'Pendente',
     auto_concluida: 'Autoavaliação Concluída',
@@ -801,7 +804,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
 
         {/* Tabs */}
         <div className="flex border-b border-border shrink-0 px-5">
-          {(['cultural', 'tecnica', 'pdi'] as const).filter((tab) => !ehPares || tab !== 'tecnica').map((tab) => (
+          {(['cultural', 'tecnica', 'pdi'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -812,7 +815,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               )}
             >
-              {tab === 'cultural' && (ehPares ? 'Alinhamento Cultural' : 'Alinhamento Cultural (50%)')}
+              {tab === 'cultural' && 'Alinhamento Cultural (50%)'}
               {tab === 'tecnica' && 'Performance Técnica (50%)'}
               {tab === 'pdi' && 'PDI'}
             </button>
@@ -1073,7 +1076,9 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1.5">Calibragem</p>
-                              {!podeCalibrar ? (
+                              {ehPares ? (
+                                <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Não se aplica a pares</p>
+                              ) : !podeCalibrar ? (
                                 <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Oculto — exclusivo de quem calibra</p>
                               ) : !calibragemLiberada ? (
                                 <p className="h-8 flex items-center text-[11px] text-muted-foreground italic">Disponível na etapa de Calibragem</p>
