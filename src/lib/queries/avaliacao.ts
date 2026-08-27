@@ -68,10 +68,14 @@ export async function updateCiclo(
 // souGestorDaCalibragem em avaliacao/page.tsx — na CTZ é só Igor e Filippe
 // Réus, nas demais empresas é qualquer administrador) — avança/fecha TODAS
 // as avaliações comuns (tipo='padrao') elegíveis do ciclo de uma vez, em vez
-// de uma por uma. Pares fica de fora (nunca tem autoavaliação, então nunca
-// "está pronta" pra calibragem). Iniciar não exige mais que TODO mundo do
-// ciclo esteja pronto — só avança quem já estiver em gestor_concluida,
-// deixando o resto pra trás sem travar (pedido ago/2026).
+// de uma por uma. Pares fica de fora (nunca tem autoavaliação/gestor nos
+// mesmos moldes da comum).
+//
+// Pedido ago/2026 (2ª rodada): "Iniciar" não fica mais restrito a quem já
+// concluiu auto+gestor (status gestor_concluida) — move TODO mundo que ainda
+// não está em calibragem/finalizada, mesmo quem está em pendente ou só
+// auto_concluida. Quem calibra decide se preenche a nota de quem ainda não
+// terminou o próprio processo; o app não trava mais essa escolha.
 export async function iniciarCalibragemCiclo(cicloId: string) {
   const supabase = createClient()
   return supabase
@@ -79,7 +83,7 @@ export async function iniciarCalibragemCiclo(cicloId: string) {
     .update({ status: 'calibragem' })
     .eq('ciclo_id', cicloId)
     .eq('tipo', 'padrao')
-    .eq('status', 'gestor_concluida')
+    .in('status', ['pendente', 'auto_concluida', 'gestor_concluida'])
 }
 
 export async function finalizarCalibragemCiclo(cicloId: string) {

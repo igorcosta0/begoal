@@ -677,20 +677,24 @@ export default function AvaliacaoPage() {
   const funcionariosComAvaliacao = new Set(avaliacoes.map((a) => a.funcionario?.id))
   const funcionariosSemAvaliacao = funcionarios.filter((f) => !funcionariosComAvaliacao.has(f.id))
 
-  // Calibragem (pedido ago/2026): etapa ciclo-inteira, só admin, só avaliação
-  // comum — pares nunca tem autoavaliação, então nunca cumpriria a condição
-  // "todo mundo com auto + gestor concluídos" e ficaria fora de propósito.
+  // Calibragem (pedido ago/2026): etapa ciclo-inteira, acesso restrito (ver
+  // souGestorDaCalibragem), só avaliação comum — pares fica de fora.
   const avaliacoesComuns = avaliacoes.filter((a) => a.tipo !== 'pares')
-  // "Sem avaliador definido" é marcação intencional (pedido ago/2026): essa
-  // pessoa só avalia os outros, não é avaliada — nunca teria nota de gestor
-  // preenchida, então não entra no painel de calibragem por padrão.
+  // "Sem avaliador definido" é marcação intencional: essa pessoa só avalia
+  // os outros, não é avaliada. Usado só pro Nine Box (avaliacoesQueContamParaCalibragem
+  // abaixo) — a calibragem em si (iniciarCalibragemCiclo) não filtra por
+  // avaliador, todo mundo elegível entra.
   //
-  // Pedido ago/2026: removida a trava que só liberava "Iniciar Calibragem"
-  // quando TODA avaliação comum já tivesse passado de auto+gestor
-  // (todosProntosParaCalibragem) — agora ativa independente de quem ainda
-  // não concluiu.
+  // Pedido ago/2026 (2ª rodada): "Iniciar Calibragem" não fica mais restrito
+  // a quem já concluiu auto+gestor (status gestor_concluida) — move TODO
+  // mundo que ainda não está em calibragem/finalizada, mesmo quem está em
+  // pendente ou só auto_concluida (ver iniciarCalibragemCiclo em
+  // lib/queries/avaliacao.ts). O botão só some quando não sobra mais
+  // ninguém elegível pra mover.
   const avaliacoesQueContamParaCalibragem = avaliacoesComuns.filter((a) => a.avaliador !== null)
-  const existeAlgumParaIniciarCalibragem = avaliacoesComuns.some((a) => a.status === 'gestor_concluida')
+  const existeAlgumParaIniciarCalibragem = avaliacoesComuns.some(
+    (a) => !['calibragem', 'finalizada'].includes(a.status)
+  )
   const existeAlgumEmCalibragem = avaliacoesComuns.some((a) => a.status === 'calibragem')
 
   // Só pode existir 1 ciclo em aberto (rascunho ou ativo) por vez — evita criar
@@ -1086,10 +1090,11 @@ export default function AvaliacaoPage() {
                           Adicionar ao ciclo
                         </button>
                       )}
-                      {/* Calibragem: etapa ciclo-inteira. Pedido ago/2026: "Iniciar" não
-                          trava mais esperando todo mundo concluir auto+gestor — ativa
-                          independente de quem ainda falta; "Finalizar" continua fechando
-                          quem já está em calibragem. Acesso restrito a souGestorDaCalibragem
+                      {/* Calibragem: etapa ciclo-inteira. Pedido ago/2026: "Iniciar" move
+                          TODO MUNDO da avaliação comum pra calibragem de uma vez, mesmo
+                          quem ainda está pendente ou só com a autoavaliação feita — não
+                          exige mais gestor_concluida; "Finalizar" continua fechando quem
+                          já está em calibragem. Acesso restrito a souGestorDaCalibragem
                           (na CTZ: só Igor e Filippe Réus; nas demais empresas: qualquer
                           administrador, igual sempre foi — ver init() acima). */}
                       {souGestorDaCalibragem && existeAlgumParaIniciarCalibragem && (
