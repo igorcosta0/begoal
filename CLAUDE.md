@@ -19,11 +19,17 @@
 
 - Fluxo de status: `pendente → auto_concluida → gestor_concluida → calibragem → finalizada`.
 - Cada usuário só vê a nota que ELE deu, nunca a que recebeu — regra absoluta, sem exceção de etapa/calibragem/revelação (migration `20260822_avaliacao_bloqueio_total_notas`). A coluna `avaliacoes.revelado` existe mas não faz mais nada (a máscara que dependia dela foi removida) — é resíduo, não mexer achando que ainda funciona.
-- Calibragem é etapa **ciclo inteira**, **exclusiva de administrador de verdade** (`souAdministrador`, não confundir com `isAdmin` que é só "papel de avaliador nesta avaliação específica"). Nem o avaliador que preencheu a nota do gestor vê a calibragem.
+- Calibragem é etapa **ciclo inteira**. Acesso (Iniciar/Finalizar/Painel/aba Calibragem do ModalAvaliacao) é `souGestorDaCalibragem` (não confundir com `isAdmin`, que é só "papel de avaliador nesta avaliação específica"): **na CTZ, só Igor e Filippe Réus** (pedido 27/08, ver abaixo); em qualquer outra empresa continua sendo qualquer administrador de verdade (`souAdministrador`), igual sempre foi. Nem o avaliador que preencheu a nota do gestor vê a calibragem. "Iniciar Calibragem" não trava mais esperando todo mundo concluir auto+gestor — ativa quem já estiver pronto, independente do resto do ciclo (pedido 27/08).
 - Avaliação de Pares é só cultural (4 pilares, sem técnica), montada à mão pelo admin junto com a avaliação comum — não tem autoavaliação, o avaliador preenche a nota no campo `nota_gestor` (mesmo slot que o gestor usa na avaliação comum).
 - ~~Pendente: unificar os botões "Salvar" e "Concluir [etapa]"~~ — **feito** (commit `3559d2d`, local, ver Log de Sessões).
 
 ## Log de Sessões
+
+### 2026-08-27
+- Levantado quem tem `permission_level = 'administrador'` em cada empresa via SQL direto (13 empresas, 11 e-mails distintos — a equipe da behive aparece como admin em quase todas, mais 1-2 pessoas específicas por empresa).
+- Pedido: calibragem da CTZ vira exclusiva de Igor + Filippe Réus (não mais "qualquer administrador"), e a trava de "Iniciar Calibragem" que exigia todo mundo do ciclo com auto+gestor concluídos foi removida — ativa independente. Commit `b96702b`, **local, ainda não enviado ao GitHub** (mesma situação do `3559d2d` — aguardando decisão de quando fazer o push, já que dispara deploy). Migrations `20260827000000_calibragem_ctz_restrita` e `20260827010000_calibragem_ctz_acesso_filippe` já aplicadas em produção via SQL Editor.
+- Detalhe não óbvio: Filippe não é administrador da CTZ, só `gestor` — a nova regra usa `pode_ver_lado_calibragem()` (checa `auth.uid()` contra os dois user_id fixos, só pra `client_id` da CTZ) tanto pra mascarar a nota quanto, via `pode_acessar_avaliacao`/`avaliacoes_select`/`avaliacoes_update`, pra dar acesso de linha — sem isso o Painel de Calibragem carregaria vazio pra ele nas avaliações de quem ele não lidera.
+- Descoberto que a cópia em `C:\Users\igorc\OneDrive\Documents\begoal-master-...` (ver "Fatos operacionais" acima) estava sendo usada por engano numa sessão nova antes deste log ser lido — perdeu tempo tentando consertar o repositório quebrado ali em vez de vir direto pra `C:\dev\begoal`. Reforçando aqui pra próxima sessão não repetir.
 
 ### 2026-08-26
 - Diagnosticado (via SQL direto no Supabase, sem acesso ao código na hora) que o relato "autoavaliação não salva" não era perda de dado: era gente preenchendo tudo e nunca clicando em "Concluir". Achado real: Guilherme Costa Manoel tinha nota 1 + texto "ff" em todos os pilares (dado de teste/rascunho) que quase foi marcado como concluído por engano — revertido pra `pendente` a tempo. Felipe Bet Ross tinha dado real, confirmado e mantido como `auto_concluida`.
