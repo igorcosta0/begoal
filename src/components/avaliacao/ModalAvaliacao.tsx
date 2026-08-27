@@ -367,11 +367,11 @@ interface Props {
   // de etapa/calibragem nem de "revelar".
   souAdministrador?: boolean
   // Pedido (ago/2026): quem pode ver/editar especificamente o lado de
-  // CALIBRAGEM (nesta modal e no Painel de Calibragem) — na CTZ é só Igor e
-  // Filippe Réus, não mais "qualquer administrador"; nas demais empresas é
-  // igual a souAdministrador. Ver avaliacao/page.tsx. Cai pra souAdministrador
-  // se não vier informado, só por segurança de chamador antigo — hoje sempre
-  // vem preenchido.
+  // CALIBRAGEM (nesta modal e no Painel de Calibragem) — na CTZ é só Igor,
+  // Filippe Réus e Priscila Santos, não mais "qualquer administrador"; nas
+  // demais empresas é igual a souAdministrador. Ver avaliacao/page.tsx. Cai
+  // pra souAdministrador se não vier informado, só por segurança de chamador
+  // antigo — hoje sempre vem preenchido.
   souGestorDaCalibragem?: boolean
   onClose: () => void
   onSave: () => void
@@ -566,8 +566,8 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
 
     // Mesma lógica na linha-pai: só manda o lado de quem está salvando, pra
     // não sobrescrever a média do outro lado com null. media_*_calibragem só
-    // entra quando podeCalibrar (Igor/Filippe na CTZ, administrador nas
-    // demais empresas) — mesmo raciocínio do upsert acima.
+    // entra quando podeCalibrar (Igor/Filippe/Priscila na CTZ, administrador
+    // nas demais empresas) — mesmo raciocínio do upsert acima.
     const payloadBase = {
       vertical: vertical || null,
       ...(statusExtra ? { status: statusExtra } : {}),
@@ -746,8 +746,9 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
   const podeVerMedias = isAdmin || !!souAdministrador
 
   // Calibragem (pedido ago/2026): não é mais "o mesmo avaliador, numa etapa
-  // posterior" — é exclusiva de quem tem podeCalibrar (na CTZ: só Igor e
-  // Filippe Réus; nas demais empresas: administrador de verdade). Nem o
+  // posterior" — é exclusiva de quem tem podeCalibrar (na CTZ: só Igor,
+  // Filippe Réus e Priscila Santos; nas demais empresas: administrador de
+  // verdade). Nem o
   // avaliador original que preencheu a nota do gestor enxerga a nota de
   // calibragem agora. calibragemLiberada continua controlando SÓ o "ainda
   // não chegou a etapa" — pra qualquer outra pessoa a seção de calibragem

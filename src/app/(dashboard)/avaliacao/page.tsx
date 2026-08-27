@@ -179,11 +179,12 @@ export default function AvaliacaoPage() {
   // vê somente seus próprios liderados (definidos pelo campo "gestor_id" de cada funcionário).
   const [veTodaEmpresa, setVeTodaEmpresa] = useState(false)
   // Pedido (ago/2026): na CTZ, quem opera a calibragem (Iniciar/Finalizar/
-  // Painel) deixa de ser "qualquer administrador" e vira só Igor + Filippe
-  // Réus — mesmo e-mail fixo usado na migration 20260827000000_calibragem_
-  // ctz_restrita (pode_ver_lado_calibragem), só que aqui não dá pra comparar
-  // por user_id porque o front-end só tem o e-mail da sessão. Em qualquer
-  // outra empresa continua igual a sempre (souAdministrador).
+  // Painel) deixa de ser "qualquer administrador" e vira só Igor, Filippe
+  // Réus e Priscila Santos — mesma lista fixa usada na migration
+  // pode_ver_lado_calibragem (20260827000000, atualizada em 20260827020000
+  // pra incluir a Priscila), só que aqui não dá pra comparar por user_id
+  // porque o front-end só tem o e-mail da sessão. Em qualquer outra empresa
+  // continua igual a sempre (souAdministrador).
   const [souGestorDaCalibragem, setSouGestorDaCalibragem] = useState(false)
   const [meuFuncionario, setMeuFuncionario] = useState<Funcionario | null>(null)
   const [ciclos, setCiclos] = useState<Ciclo[]>([])
@@ -333,7 +334,7 @@ export default function AvaliacaoPage() {
       const emailAtual = user.email?.toLowerCase() ?? ''
       const souGestorDaCalibragemAtual =
         empresa!.id === 'ac4ad62b-9b88-44da-ae69-0f26ced07d06'
-          ? ['igorecosta1@gmail.com', 'filippe.reus@ctz.eng.br'].includes(emailAtual)
+          ? ['igorecosta1@gmail.com', 'filippe.reus@ctz.eng.br', 'priscila.santos@behive.net.br'].includes(emailAtual)
           : administrador
 
       setIsAdmin(admin)
@@ -1095,8 +1096,9 @@ export default function AvaliacaoPage() {
                           quem ainda está pendente ou só com a autoavaliação feita — não
                           exige mais gestor_concluida; "Finalizar" continua fechando quem
                           já está em calibragem. Acesso restrito a souGestorDaCalibragem
-                          (na CTZ: só Igor e Filippe Réus; nas demais empresas: qualquer
-                          administrador, igual sempre foi — ver init() acima). */}
+                          (na CTZ: só Igor, Filippe Réus e Priscila Santos; nas demais
+                          empresas: qualquer administrador, igual sempre foi — ver init()
+                          acima). */}
                       {souGestorDaCalibragem && existeAlgumParaIniciarCalibragem && (
                         <button
                           onClick={() => handleIniciarCalibragem(ciclo)}
@@ -1121,7 +1123,7 @@ export default function AvaliacaoPage() {
                           Avaliador/Média de Pares/Calibragem lado a lado), em vez de
                           abrir o ModalAvaliacao pessoa por pessoa — pedido pra reduzir o
                           número de cliques de quem calibra. Pedido ago/2026: na CTZ, só
-                          Igor e Filippe Réus (souGestorDaCalibragem), não mais qualquer
+                          Igor, Filippe Réus e Priscila Santos (souGestorDaCalibragem), não mais qualquer
                           administrador. */}
                       {souGestorDaCalibragem && existeAlgumEmCalibragem && (
                         <button

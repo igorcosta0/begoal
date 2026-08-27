@@ -65,8 +65,9 @@ export async function updateCiclo(
 }
 
 // Calibragem (pedido ago/2026): etapa ciclo-inteira, acesso restrito (ver
-// souGestorDaCalibragem em avaliacao/page.tsx — na CTZ é só Igor e Filippe
-// Réus, nas demais empresas é qualquer administrador) — avança/fecha TODAS
+// souGestorDaCalibragem em avaliacao/page.tsx — na CTZ é só Igor, Filippe
+// Réus e Priscila Santos, nas demais empresas é qualquer administrador) —
+// avança/fecha TODAS
 // as avaliações comuns (tipo='padrao') elegíveis do ciclo de uma vez, em vez
 // de uma por uma. Pares fica de fora (nunca tem autoavaliação/gestor nos
 // mesmos moldes da comum).
