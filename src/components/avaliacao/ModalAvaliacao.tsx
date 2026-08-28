@@ -981,11 +981,11 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                                     },
                                   }))
                                 }
-                                rows={2}
+                                rows={4}
                                 disabled={isAdmin}
                                 placeholder="Descreva exemplos concretos que justifiquem as notas..."
                                 className={cn(
-                                  'mt-1 w-full px-3 py-1.5 text-xs rounded-xl border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60',
+                                  'mt-1 w-full px-3 py-1.5 text-xs rounded-xl border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-y disabled:opacity-60',
                                   !isAdmin && camposInvalidos.pilaresEvidencia.has(pilar.numero) ? 'border-destructive' : 'border-input'
                                 )}
                               />
@@ -1082,11 +1082,11 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                       <textarea
                         value={observacoes}
                         onChange={(e) => setObservacoes(e.target.value)}
-                        rows={3}
+                        rows={5}
                         disabled={!isAdmin}
                         placeholder="Feedback geral sobre a avaliação..."
                         className={cn(
-                          'mt-1 w-full px-3 py-2 text-sm rounded-xl border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60',
+                          'mt-1 w-full px-3 py-2 text-sm rounded-xl border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-y disabled:opacity-60',
                           isAdmin && camposInvalidos.observacoesGerais ? 'border-destructive' : 'border-input'
                         )}
                       />
@@ -1160,10 +1160,10 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                                     },
                                   }))
                                 }
-                                rows={2}
+                                rows={4}
                                 disabled={isAdmin}
                                 placeholder="Descreva exemplos concretos que justifiquem as notas..."
-                                className="mt-1 w-full px-3 py-1.5 text-xs rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
+                                className="mt-1 w-full px-3 py-1.5 text-xs rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-y disabled:opacity-60"
                               />
                             )}
                           </div>
@@ -1258,11 +1258,11 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                       <textarea
                         value={observacoes}
                         onChange={(e) => setObservacoes(e.target.value)}
-                        rows={3}
+                        rows={5}
                         disabled={!isAdmin}
                         placeholder="Feedback geral sobre a avaliação..."
                         className={cn(
-                          'mt-1 w-full px-3 py-2 text-sm rounded-xl border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60',
+                          'mt-1 w-full px-3 py-2 text-sm rounded-xl border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-y disabled:opacity-60',
                           isAdmin && camposInvalidos.observacoesGerais ? 'border-destructive' : 'border-input'
                         )}
                       />
