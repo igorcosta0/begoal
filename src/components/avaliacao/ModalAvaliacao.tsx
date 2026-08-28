@@ -836,10 +836,14 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
 
   // Cada usuário só vê a nota que ELE deu, nunca a que recebeu — sem exceção
   // de etapa/calibragem nem de "revelar" (isso existia antes e foi removido de
-  // propósito). Só administrador de verdade da empresa (souAdministrador, não
-  // confundir com `isAdmin` = papel de avaliador nesta avaliação) enxerga os
-  // dois lados sempre, como auditor.
-  const gestorVeAuto = !!souAdministrador
+  // propósito). Administrador de verdade da empresa (souAdministrador, não
+  // confundir com `isAdmin` = papel de avaliador nesta avaliação) sempre
+  // enxerga os dois lados, como auditor — e, desde 28/08/2026, quem tem
+  // souGestorDaCalibragem também (na CTZ: Igor, Filippe Réus, Priscila Santos
+  // e Felipe Marques Santos), senão a auto ficava oculta pra eles no painel
+  // individual (só aparecia no Painel de Calibragem em lote). Espelha
+  // pode_ver_lado_auto no banco (migration 20260828010000).
+  const gestorVeAuto = !!souAdministrador || !!souGestorDaCalibragem
   const colaboradorVeGestor = !!souAdministrador
   const podeVerMedias = isAdmin || !!souAdministrador
 
