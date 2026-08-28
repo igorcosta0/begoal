@@ -334,7 +334,7 @@ export default function AvaliacaoPage() {
       const emailAtual = user.email?.toLowerCase() ?? ''
       const souGestorDaCalibragemAtual =
         empresa!.id === 'ac4ad62b-9b88-44da-ae69-0f26ced07d06'
-          ? ['igorecosta1@gmail.com', 'filippe.reus@ctz.eng.br', 'priscila.santos@behive.net.br'].includes(emailAtual)
+          ? ['igorecosta1@gmail.com', 'filippe.reus@ctz.eng.br', 'priscila.santos@behive.net.br', 'felipe.marques@projetosconcretize.com.br'].includes(emailAtual)
           : administrador
 
       setIsAdmin(admin)
@@ -1108,9 +1108,9 @@ export default function AvaliacaoPage() {
                           quem ainda está pendente ou só com a autoavaliação feita — não
                           exige mais gestor_concluida; "Finalizar" continua fechando quem
                           já está em calibragem. Acesso restrito a souGestorDaCalibragem
-                          (na CTZ: só Igor, Filippe Réus e Priscila Santos; nas demais
-                          empresas: qualquer administrador, igual sempre foi — ver init()
-                          acima). */}
+                          (na CTZ: só Igor, Filippe Réus, Priscila Santos e Felipe Marques
+                          Santos; nas demais empresas: qualquer administrador, igual sempre
+                          foi — ver init() acima). */}
                       {souGestorDaCalibragem && existeAlgumParaIniciarCalibragem && (
                         <button
                           onClick={() => handleIniciarCalibragem(ciclo)}
@@ -1135,8 +1135,8 @@ export default function AvaliacaoPage() {
                           Avaliador/Média de Pares/Calibragem lado a lado), em vez de
                           abrir o ModalAvaliacao pessoa por pessoa — pedido pra reduzir o
                           número de cliques de quem calibra. Pedido ago/2026: na CTZ, só
-                          Igor, Filippe Réus e Priscila Santos (souGestorDaCalibragem), não mais qualquer
-                          administrador. */}
+                          Igor, Filippe Réus, Priscila Santos e Felipe Marques Santos
+                          (souGestorDaCalibragem), não mais qualquer administrador. */}
                       {souGestorDaCalibragem && existeAlgumEmCalibragem && (
                         <button
                           onClick={() => setModalCalibragem(true)}

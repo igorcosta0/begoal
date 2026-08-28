@@ -22,8 +22,9 @@ import { X } from 'lucide-react'
 // pares_tecnica — antes era só cultural).
 //
 // Acesso: só renderizado pra quem tem souGestorDaCalibragem=true (ver
-// avaliacao/page.tsx) — na CTZ é Igor, Filippe Réus e Priscila Santos; nas
-// demais empresas, qualquer administrador de verdade. O banco
+// avaliacao/page.tsx) — na CTZ é Igor, Filippe Réus, Priscila Santos e
+// Felipe Marques Santos; nas demais empresas, qualquer administrador de
+// verdade. O banco
 // (get_calibragem_ciclo_cultural/tecnica, migrations 20260826_calibragem_
 // painel e 20260827020000/030000) já devolve tudo null pra quem não tem
 // pode_ver_lado_calibragem, mas este componente nem chega a ser montado
