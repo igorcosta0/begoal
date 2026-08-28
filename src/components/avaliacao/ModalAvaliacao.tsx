@@ -355,6 +355,7 @@ interface Avaliacao {
   funcionario_id?: string
   ciclo_id?: string
   observacoes_gerais: string | null
+  observacoes_calibragem: string | null
   media_cultural_auto: number | null
   media_cultural_gestor: number | null
   media_cultural_calibragem: number | null
@@ -394,6 +395,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
   const [activeTab, setActiveTab] = useState<'cultural' | 'tecnica' | 'pdi'>('cultural')
   const [vertical, setVertical] = useState('')
   const [observacoes, setObservacoes] = useState('')
+  const [observacoesCalibragem, setObservacoesCalibragem] = useState('')
   const [scoresC, setScoresC] = useState<ScoresC>({
     '1': { auto: null, gestor: null, media_pares: null, calibragem: null, observacoes: '' },
     '2': { auto: null, gestor: null, media_pares: null, calibragem: null, observacoes: '' },
@@ -433,6 +435,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
   useEffect(() => {
     if (open && avaliacao) {
       setObservacoes(avaliacao.observacoes_gerais ?? '')
+      setObservacoesCalibragem(avaliacao.observacoes_calibragem ?? '')
       setActiveTab('cultural')
       setErro('')
       setCamposInvalidos({
@@ -669,6 +672,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
             ? {
                 media_cultural_calibragem: calcMedia([1, 2, 3, 4].map((p) => scoresC[String(p)]?.calibragem ?? null)),
                 media_tecnica_calibragem: calcMedia(criterios.map((c) => scoresT[c.key]?.calibragem ?? null)),
+                observacoes_calibragem: observacoesCalibragem || null,
               }
             : {}),
         }
@@ -1092,6 +1096,28 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                       />
                     )}
                   </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-foreground">Observações de Calibragem</label>
+                    {!podeCalibrar ? (
+                      <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-2">
+                        Oculto — exclusivo de quem calibra.
+                      </p>
+                    ) : !calibragemLiberada ? (
+                      <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-2">
+                        Disponível na etapa de Calibragem.
+                      </p>
+                    ) : (
+                      <textarea
+                        value={observacoesCalibragem}
+                        onChange={(e) => setObservacoesCalibragem(e.target.value)}
+                        rows={4}
+                        disabled={!podeEditarCalibragem}
+                        placeholder="Justificativa/observações sobre a calibragem..."
+                        className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-y disabled:opacity-60"
+                      />
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1265,6 +1291,28 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                           'mt-1 w-full px-3 py-2 text-sm rounded-xl border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-y disabled:opacity-60',
                           isAdmin && camposInvalidos.observacoesGerais ? 'border-destructive' : 'border-input'
                         )}
+                      />
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-foreground">Observações de Calibragem</label>
+                    {!podeCalibrar ? (
+                      <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-2">
+                        Oculto — exclusivo de quem calibra.
+                      </p>
+                    ) : !calibragemLiberada ? (
+                      <p className="mt-1 text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-2">
+                        Disponível na etapa de Calibragem.
+                      </p>
+                    ) : (
+                      <textarea
+                        value={observacoesCalibragem}
+                        onChange={(e) => setObservacoesCalibragem(e.target.value)}
+                        rows={4}
+                        disabled={!podeEditarCalibragem}
+                        placeholder="Justificativa/observações sobre a calibragem..."
+                        className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-y disabled:opacity-60"
                       />
                     )}
                   </div>

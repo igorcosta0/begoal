@@ -173,6 +173,7 @@ export async function getAvaliacoesByCiclo(cicloId: string) {
     media_tecnica_gestor: row.media_tecnica_gestor,
     media_tecnica_calibragem: row.media_tecnica_calibragem,
     observacoes_gerais: row.observacoes_gerais,
+    observacoes_calibragem: row.observacoes_calibragem,
     funcionario: row.funcionario_id ? { id: row.funcionario_id, full_name: row.funcionario_nome, cargo: row.funcionario_cargo } : null,
     avaliador: row.avaliador_id ? { id: row.avaliador_id, full_name: row.avaliador_nome } : null,
   }))
@@ -190,6 +191,7 @@ export async function getMinhasAvaliacoes(funcionarioId: string) {
     tipo: row.tipo,
     revelado: row.revelado,
     observacoes_gerais: row.observacoes_gerais,
+    observacoes_calibragem: row.observacoes_calibragem,
     media_cultural_auto: row.media_cultural_auto,
     media_cultural_gestor: row.media_cultural_gestor,
     media_cultural_calibragem: row.media_cultural_calibragem,
