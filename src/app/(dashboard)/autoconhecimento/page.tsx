@@ -168,10 +168,37 @@ export default function AutoconhecimentoPage() {
             </ul>
           </div>
           <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Onde ver cada coisa nesta página</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-muted-foreground border-b border-border">
+                    <th className="py-2 pr-4 font-medium">Pedido do áudio</th>
+                    <th className="py-2 font-medium">Onde está nesta página</th>
+                  </tr>
+                </thead>
+                <tbody className="text-foreground">
+                  <tr className="border-b border-border/50">
+                    <td className="py-2 pr-4">9 arquétipos, cada um com mecanismo de defesa, forças e sombras</td>
+                    <td className="py-2">Card &quot;Tipo N — ...&quot; logo abaixo desta seção (mostra o seu; os outros 8 tipos ficam na base de dados, não têm tela própria)</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2 pr-4">Competências: comunicação, decisão, relacionamento</td>
+                    <td className="py-2">Usadas por trás dos panos pra formular as respostas do assistente — não aparecem campo a campo na tela, só refletidas nas respostas do chat</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4">&quot;Assistente que responde as pessoas conforme o tipo daquela pessoa&quot;</td>
+                    <td className="py-2">Caixa de chat mais abaixo nesta página (só aparece pra quem tem tipo próprio mapeado)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Decisões tomadas durante a construção (não estavam no pedido original)</p>
             <ul className="list-disc list-inside space-y-1 text-foreground">
               <li>Protótipo restrito só a você e à Priscila por enquanto — ninguém mais na CTZ vê este módulo.</li>
-              <li>Cada pessoa só veria o próprio tipo, nunca o de outra pessoa — mesmo princípio já usado nas notas de avaliação de desempenho. Vocês dois, como administradores do protótipo, têm uma exceção pra ver o perfil de todo mundo (tabela acima), pra conferir se o mapeamento está certo.</li>
+              <li>Cada pessoa só veria o próprio tipo, nunca o de outra pessoa — mesmo princípio já usado nas notas de avaliação de desempenho. Vocês dois, como administradores do protótipo, têm uma exceção pra ver o perfil de todo mundo (tabela mais abaixo nesta página), pra conferir se o mapeamento está certo.</li>
               <li>O material mais espiritual/sistêmico sobre os instintos (de outra autora, fora da apostila principal) não entra no tom do assistente por padrão.</li>
             </ul>
           </div>
@@ -197,6 +224,14 @@ export default function AutoconhecimentoPage() {
             <span className="shrink-0 text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">{tipo.palavraSintese}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Mecanismo de defesa</p>
+              <p className="text-foreground">{tipo.mecanismoDefesa}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Virtude a desenvolver</p>
+              <p className="text-foreground">{tipo.virtude}</p>
+            </div>
             <div>
               <p className="text-xs font-medium text-muted-foreground mb-1">Suas forças</p>
               <p className="text-foreground">{tipo.forcas}</p>

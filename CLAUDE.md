@@ -99,7 +99,7 @@
   `getTodosPerfisEneagrama()` e uma tabela na página listando nome + tipo + subtipo de todo mundo,
   visível só quando a RLS de fato devolve linhas (ou seja, só pra esses 2). O chat do assistente
   continua só sobre o próprio tipo — não estendi pra "conversar sobre o tipo de outra pessoa", não foi
-  pedido. **Ainda não rodada** (confirmado direto no banco: `pode_ver_todos_eneagrama_ctz` não existe lá).
+  pedido. **Rodada e confirmada** no banco (função + policy existem).
 - Incidente: o Igor apagou o conteúdo inteiro de `supabase/migrations/` local ("estava confuso e com
   muitos arquivos"). Recuperado sem perda real via `git restore supabase/migrations/` — as 33 migrations
   já estavam todas commitadas (inclusive as duas de hoje), apagar da pasta local não desfaz nada que já
@@ -111,6 +111,19 @@
   `PENDENTE_` antes da data (ex.: `PENDENTE_20260901000000_algo.sql`), pra ficar visualmente destacada
   das dezenas de migrations históricas na hora de achar qual rodar. Aplicar em toda migration daqui pra
   frente.
+- Adicionada na página `/autoconhecimento` uma seção recolhível "Pedido original × o que foi
+  construído" (pro Igor mostrar pra Priscila e ela validar) — compara ponto a ponto o que o áudio
+  pediu, o que foi entregue (inclusive o que foi além, tipo as 3 competências extras), as decisões
+  tomadas no meio do caminho que não estavam no pedido (piloto restrito, privacidade por padrão) e o
+  que ainda está em aberto.
+- **Ideia guardada pro Igor, não implementada ainda** (pediu pra lembrar, "foi boa"): deixar Igor e
+  Priscila escolherem um tipo qualquer da lista pra "simular" e testar o chat do assistente — hoje
+  nenhum dos dois consegue testar o chat de verdade, porque a caixa de conversa só aparece quando existe
+  um tipo PRÓPRIO mapeado (`{tipo && (...)}` em `autoconhecimento/page.tsx`), e nem Igor nem Priscila são
+  um dos 20 funcionários com tipo. Surgiu de uma verificação da transcrição original (31/08): o pedido do
+  áudio ("assistente que responde as pessoas conforme o tipo daquela pessoa") está implementado e
+  funciona pra qualquer um dos 20 mapeados, mas os únicos 2 que hoje têm acesso ao protótipo não
+  conseguem validar essa parte específica na própria pele sem essa simulação.
 - Achado à parte (advisory automático do MCP do Supabase, não pedido, mas o próprio tool manda
   reportar): **`public.page_access_log` e `public."Propagandas"` estão com RLS desabilitado** — ficam
   totalmente expostas pra `anon`/`authenticated` (qualquer um com a chave pública lê/escreve todas as
