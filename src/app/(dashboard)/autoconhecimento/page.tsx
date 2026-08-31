@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { cn, isEmpresaCTZ, souPilotoAutoconhecimento } from '@/lib/utils'
 import { getMeuPerfilEneagrama, getTodosPerfisEneagrama, type PerfilEneagramaComNome } from '@/lib/queries/eneagrama'
 import { TIPOS_ENEAGRAMA, NOME_INSTINTO, type Instinto } from '@/lib/eneagrama/tipos'
-import { Sparkles, Loader2, Send } from 'lucide-react'
+import { Sparkles, Loader2, Send, ChevronDown } from 'lucide-react'
 
 interface Mensagem {
   role: 'user' | 'model'
@@ -144,6 +144,45 @@ export default function AutoconhecimentoPage() {
           <p className="text-sm text-muted-foreground mt-0.5">Seu perfil de Eneagrama e um assistente pra te ajudar a aplicar isso no dia a dia</p>
         </div>
       </div>
+
+      <details className="bg-card border border-border rounded-2xl p-6 group">
+        <summary className="text-sm font-semibold text-foreground cursor-pointer list-none flex items-center justify-between gap-2">
+          <span>Pedido original × o que foi construído (pra validação)</span>
+          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="mt-4 space-y-4 text-sm">
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Pedido original (áudio do Igor)</p>
+            <ul className="list-disc list-inside space-y-1 text-foreground">
+              <li>Consolidar toda a documentação num "padrão por tipo" — os 9 arquétipos do Eneagrama, cada um com: como funciona, mecanismo de defesa, forças, sombras.</li>
+              <li>Cruzar com a "apostila 2" (competências): como cada tipo comunica, toma decisão e se relaciona.</li>
+              <li>Objetivo final, nas palavras do áudio: "criar um assistente que vai responder as pessoas conforme... o tipo daquela pessoa" — a IA se adapta a quem está perguntando.</li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">O que foi construído</p>
+            <ul className="list-disc list-inside space-y-1 text-foreground">
+              <li>Base de conhecimento com os 9 tipos padronizados (mecanismo de defesa, forças, sombras, virtude) + as 6 competências de cada um — indo além do pedido original, que citava só comunicação, decisão e relacionamento (também mapeamos feedback, gestão de conflitos e orientação para resultados).</li>
+              <li>Extra, também mapeado: os 27 subtipos (instintos), asas e flechas de cada tipo.</li>
+              <li>O card acima com o próprio tipo, e o assistente de chat mais abaixo — que responde sempre considerando o tipo de quem está perguntando, resolvido no servidor a partir do login (nunca aceita o tipo vindo do navegador).</li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Decisões tomadas durante a construção (não estavam no pedido original)</p>
+            <ul className="list-disc list-inside space-y-1 text-foreground">
+              <li>Protótipo restrito só a você e à Priscila por enquanto — ninguém mais na CTZ vê este módulo.</li>
+              <li>Cada pessoa só veria o próprio tipo, nunca o de outra pessoa — mesmo princípio já usado nas notas de avaliação de desempenho. Vocês dois, como administradores do protótipo, têm uma exceção pra ver o perfil de todo mundo (tabela acima), pra conferir se o mapeamento está certo.</li>
+              <li>O material mais espiritual/sistêmico sobre os instintos (de outra autora, fora da apostila principal) não entra no tom do assistente por padrão.</li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Ainda não construído / em aberto</p>
+            <ul className="list-disc list-inside space-y-1 text-foreground">
+              <li>Um modo "como conversar com alguém de um tipo X" (diferente do pedido original — o assistente hoje só fala sobre o tipo de quem pergunta, não orienta sobre como abordar outra pessoa). Ainda não decidido se entra.</li>
+            </ul>
+          </div>
+        </div>
+      </details>
 
       {erroPerfil && (
         <div className="px-4 py-3 rounded-xl text-sm font-medium bg-red-50 text-red-700 border border-red-200">
