@@ -99,7 +99,18 @@
   `getTodosPerfisEneagrama()` e uma tabela na página listando nome + tipo + subtipo de todo mundo,
   visível só quando a RLS de fato devolve linhas (ou seja, só pra esses 2). O chat do assistente
   continua só sobre o próprio tipo — não estendi pra "conversar sobre o tipo de outra pessoa", não foi
-  pedido.
+  pedido. **Ainda não rodada** (confirmado direto no banco: `pode_ver_todos_eneagrama_ctz` não existe lá).
+- Incidente: o Igor apagou o conteúdo inteiro de `supabase/migrations/` local ("estava confuso e com
+  muitos arquivos"). Recuperado sem perda real via `git restore supabase/migrations/` — as 33 migrations
+  já estavam todas commitadas (inclusive as duas de hoje), apagar da pasta local não desfaz nada que já
+  rodou no banco. **Exceção**: `20260828030000_avaliacao_fecha_leitura_direta_notas.sql` nunca tinha
+  sido commitada (já estava como arquivo solto desde o início desta sessão) — essa não deu pra
+  recuperar, ninguém nunca leu o conteúdo dela nesta conversa. Provavelmente já está aplicada no banco
+  (é de 28/08), só a cópia local do arquivo que se perdeu de vez.
+- **Convenção nova, pedida pelo Igor**: toda migration nova a partir de agora leva o prefixo
+  `PENDENTE_` antes da data (ex.: `PENDENTE_20260901000000_algo.sql`), pra ficar visualmente destacada
+  das dezenas de migrations históricas na hora de achar qual rodar. Aplicar em toda migration daqui pra
+  frente.
 - Achado à parte (advisory automático do MCP do Supabase, não pedido, mas o próprio tool manda
   reportar): **`public.page_access_log` e `public."Propagandas"` estão com RLS desabilitado** — ficam
   totalmente expostas pra `anon`/`authenticated` (qualquer um com a chave pública lê/escreve todas as
