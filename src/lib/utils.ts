@@ -96,3 +96,12 @@ export function formatBytes(bytes?: number | null): string {
 export function isEmpresaCTZ(companyName?: string | null): boolean {
   return !!companyName && companyName.toLowerCase().includes('ctz')
 }
+
+// Módulo de Autoconhecimento (Eneagrama) é protótipo em teste (pedido 31/08) —
+// por enquanto só Igor e Priscila Santos devem ver que ele existe, ninguém
+// mais na CTZ. Mesmo padrão de lista fixa já usado em souGestorDaCalibragem
+// (avaliacao/page.tsx). Remover/ampliar essa lista quando o piloto acabar.
+const EMAILS_PILOTO_AUTOCONHECIMENTO = ['igorecosta1@gmail.com', 'priscila.santos@behive.net.br']
+export function souPilotoAutoconhecimento(email?: string | null): boolean {
+  return !!email && EMAILS_PILOTO_AUTOCONHECIMENTO.includes(email.toLowerCase())
+}

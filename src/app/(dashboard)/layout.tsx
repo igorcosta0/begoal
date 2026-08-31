@@ -29,7 +29,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
-      <Sidebar permissionLevel={permissionLevel} />
+      <Sidebar permissionLevel={permissionLevel} userEmail={user.email} />
       <main className="flex-1 overflow-y-auto">
         <div className="p-6">
           {children}

@@ -25,6 +25,80 @@
 
 ## Log de Sessões
 
+### 2026-08-31
+- Início de uma feature nova, só CTZ: módulo de autoconhecimento baseado em Eneagrama, pra virar um
+  assistente que orienta cada pessoa conforme seu tipo (pedido gravado em `Adições futuras/Eneagrama.txt`).
+  Fonte é a pasta `Adições futuras/Relatórios/` (apostilas/slides do "Programa Foco" da BeHive/Letícia
+  Leite + 3 PDFs de instintos de outra autora, Yara Cunha, tom bem mais espiritual/sistêmico).
+- **Etapa 1 concluída** (só isso, por pedido explícito — nada de código de assistente ainda): li e
+  consolidei todo o material em `Adições futuras/Eneagrama - Base de Conhecimento CTZ.md` — os 9 tipos
+  num formato padronizado (mecanismo de defesa, forças, sombras, virtude + as 6 competências
+  relacionais de cada), os 27 subtipos, Asas/Flechas, os 3 instintos (camada prática + camada avançada
+  da Yara Cunha, incluída a pedido do usuário mas marcada como tom à parte), e o diagnóstico real da
+  equipe/liderança CTZ que a BeHive já fez (jul/2026). Ainda não decidido onde isso entra no produto
+  nem como vira o assistente — isso fica pra próxima etapa.
+- Atenção pra próxima etapa: as apostilas dizem "protegidos por direitos autorais" e os PDFs da Yara
+  Cunha dizem "reprodução proibida" — antes de expor esse conteúdo a usuário final (não só uso interno
+  como está agora), confirmar com o Igor se há autorização.
+- Verificação pedida pelo usuário: confirmei que **nenhum** documento da pasta `Relatórios/` liga nome
+  de pessoa a tipo (só contagem agregada da equipe). Só depois apareceu na própria pasta `Adições
+  futuras/` o arquivo `FUNCIONARIOS CTZ.xlsx` — esse sim tem nome + cargo + líder + vertical + Tipo
+  Eneagrama + sequência de subtipo de 22 pessoas (2 ainda sem tipo preenchido: Felipe Bortolozzo
+  Araújo de Mello e Gabriel Rodrigues Lodetti; Priscila Santos não consta na planilha). Já registrado
+  na seção 4 da base de conhecimento, junto com o alerta de privacidade (mesma categoria sensível das
+  notas de avaliação — decidir uma regra de acesso parecida quando desenhar o assistente).
+- Verificado no banco (via MCP do Supabase, só leitura) que dá pra casar as 22 pessoas da planilha com
+  usuário real: `public.funcionarios` da CTZ (`client_id = ac4ad62b-9b88-44da-ae69-0f26ced07d06`, 25
+  linhas) já tem `user_id` em cada linha, e `upper(trim(full_name))` bate 100% com o `NOME` da
+  planilha — nenhum fuzzy match necessário. Achados: Ezequiel Cunha de Oliveira está `Desligado`;
+  Priscila Santos (Calibradora Externa) e Laura Tolentino (sem `user_id` ainda) existem em
+  `funcionarios` mas não estão na planilha. Detalhe registrado na seção 4 da base de conhecimento.
+- **Fase 2 implementada**: página `/autoconhecimento` (só CTZ, mesmo padrão `isEmpresaCTZ` do
+  `/avaliacao`) com o card do próprio tipo + um chat simples (pergunta/resposta, histórico só em
+  memória do React, não persiste no banco) que chama `/api/assistente-eneagrama`. Essa rota resolve o
+  tipo da pessoa **sempre no servidor** a partir da sessão (nunca aceita tipo vindo do client), monta o
+  system prompt a partir de `src/lib/eneagrama/tipos.ts` (só a camada corporativa da Fase 1, a camada
+  avançada da Yara Cunha ficou de fora do MVP) e chama o Gemini pelo mesmo padrão já usado em
+  `/api/sugerir-icp` (`GEMINI_API_KEY`, `gemini-1.5-flash`, fetch direto, sem SDK novo).
+- Decisão de banco importante: o tipo de cada pessoa foi pra uma tabela **nova**,
+  `public.funcionarios_eneagrama` (migration `20260831000000_eneagrama_perfis_ctz.sql`, **ainda não
+  rodada** — precisa ir no SQL Editor antes do push), e não pra colunas em `funcionarios`. Motivo: a
+  RLS de SELECT de `funcionarios` hoje libera qualquer pessoa da mesma empresa ver a linha de qualquer
+  colega — colocar o tipo ali vazaria o tipo de todo mundo pra todo mundo. A tabela nova tem RLS própria
+  restrita a `user_id = auth.uid()` (mesmo princípio de "cada um só vê o seu" das notas de avaliação).
+- Pedido do Igor (mesmo dia): módulo inteiro é protótipo em teste — **só Igor e Priscila Santos podem
+  ver que ele existe**, nada deve aparecer pros outros 20 funcionários mapeados por enquanto. Adicionado
+  `souPilotoAutoconhecimento()` em `lib/utils.ts` (lista fixa de e-mails, mesmo padrão de
+  `souGestorDaCalibragem`), aplicado em 3 camadas: item do menu no `Sidebar.tsx` (não aparece pra
+  ninguém fora da lista — precisou passar `user.email` do `layout.tsx` pro Sidebar como prop nova),
+  `autoconhecimento/page.tsx` (mostra a mesma mensagem genérica de "módulo não disponível" se não
+  estiver na lista, sem entregar pista de que é uma restrição), e `api/assistente-eneagrama/route.ts`
+  (retorna 403 — essa é a camada que importa de verdade pra segurança, as outras duas são só UI).
+  Ressalva conhecida: a RLS de `funcionarios_eneagrama` continua restrita a `user_id = auth.uid()`, não
+  à lista do piloto — então, tecnicamente, um dos 18 funcionários que JÁ tem tipo mapeado ainda
+  conseguiria ler a própria linha via uma chamada direta ao Supabase (fora da UI/API do app). Não travei
+  isso na RLS porque é um cenário que exigiria a pessoa abrir o devtools e replicar a chamada
+  manualmente, e o pedido foi sobre a experiência do produto ("não deve aparecer nada"), não sobre
+  esconder de um ataque deliberado — mas vale saber que existe essa brecha residual se o piloto for
+  levado mais a sério antes de abrir pra CTZ inteira.
+  A migration já popula as 20 pessoas com tipo confirmado (join por nome contra `funcionarios`,
+  re-verificado direto no banco antes de escrever o arquivo — bateu 100%, mesmo resultado da Fase 1).
+- Achado à parte (advisory automático do MCP do Supabase, não pedido, mas o próprio tool manda
+  reportar): **`public.page_access_log` e `public."Propagandas"` estão com RLS desabilitado** — ficam
+  totalmente expostas pra `anon`/`authenticated` (qualquer um com a chave pública lê/escreve todas as
+  linhas). Não mexi em nada (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY` sem policy travaria o acesso
+  todo) — decidir com o Igor se e quando tratar isso.
+- Instalado **Poppler** (winget, `oschwartz10612.Poppler`) pra extrair texto/imagem de PDF nesta
+  máquina — não veio instalado, igual Git/Node antes. Detalhe: `winget install` só funcionou pela
+  ferramenta PowerShell, não pela Bash (Bash deu erro de rede, `InternetOpenUrl() failed`). E mesmo
+  depois de instalado, o Read tool nativo (que processa PDF internamente) continuou sem achar o
+  `pdftoppm` mesmo copiando os binários pra pasta do PATH do Windows (`C:\Users\igorc\.local\bin`) —
+  o processo do Claude Code já tinha o PATH antigo em memória e não relê o registro do Windows em
+  runtime. Contornado extraindo texto via `pdftotext -layout` e páginas via `pdftoppm` **pelo Bash**
+  (que pega o PATH atualizado) e depois lendo os `.txt`/`.png` gerados com o Read tool normal — funciona
+  bem, só não dá pra usar `pages=` do Read tool direto num PDF nesta sessão. Se isso incomodar de novo,
+  a solução de verdade é reiniciar a sessão do Claude Code depois de instalar uma ferramenta nova.
+
 ### 2026-08-28
 - Pedido: Felipe Marques Santos (Líder de Operações, `permission_level='gestor'` na CTZ, não admin de verdade) entra na calibragem restrita da CTZ junto com Igor/Filippe Réus/Priscila Santos. Confirmado antes por investigação: sem essa lista, gestor comum (mesmo dos próprios liderados) não vê autoavaliação nenhuma — `pode_ver_lado_auto` só libera `e_admin_do_ciclo` ou o próprio avaliado, sem exceção pra gestor/avaliador desde a migration `20260822_avaliacao_bloqueio_total_notas` (a exceção "gestor vê a partir da Calibragem" foi removida de propósito nela). O único jeito de um gestor (não-admin) ver a nota "auto" de alguém é estar na lista de `pode_ver_lado_calibragem` — só aí o Painel de Calibragem (`get_calibragem_ciclo_cultural/tecnica`) libera `nota_auto`.
 - Aplicado: migration `20260828000000_calibragem_ctz_adiciona_felipe_marques` (recria `pode_ver_lado_calibragem` com o user_id dele, `05d3db6c-ef45-40af-9748-2f02b6f1efc4`) rodada manualmente no SQL Editor pelo usuário; `souGestorDaCalibragem` em `avaliacao/page.tsx` ganhou o e-mail dele na lista. Commit `ff975d8`, enviado a `master` (deploy no ar).

@@ -5,10 +5,10 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
-import { cn, isEmpresaCTZ } from '@/lib/utils'
+import { cn, isEmpresaCTZ, souPilotoAutoconhecimento } from '@/lib/utils'
 import {
   Target, Flag, Zap, Activity, Users, Settings,
-  User, LogOut, ChevronLeft, ChevronRight, Building2, Home, ArrowLeftRight, Upload, Map, ClipboardList, Library, Compass,
+  User, LogOut, ChevronLeft, ChevronRight, Building2, Home, ArrowLeftRight, Upload, Map, ClipboardList, Library, Compass, Sparkles,
 } from 'lucide-react'
 
 const navItems = [
@@ -20,6 +20,7 @@ const navItems = [
   { href: '/estrategia', label: 'Estratégia', icon: Map },
   { href: '/funcionarios', label: 'Funcionários', icon: Users },
   { href: '/avaliacao', label: 'Avaliação', icon: ClipboardList },
+  { href: '/autoconhecimento', label: 'Autoconhecimento', icon: Sparkles },
   { href: '/biblioteca', label: 'Biblioteca', icon: Library },
   { href: '/guia', label: 'Guia de Uso', icon: Compass },
   { href: '/importar-lancamentos', label: 'Importar', icon: Upload },
@@ -28,9 +29,10 @@ const navItems = [
 
 interface SidebarProps {
   permissionLevel?: string
+  userEmail?: string | null
 }
 
-export default function Sidebar({ permissionLevel }: SidebarProps) {
+export default function Sidebar({ permissionLevel, userEmail }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
@@ -89,6 +91,7 @@ export default function Sidebar({ permissionLevel }: SidebarProps) {
           if (item.href === '/admin' && permissionLevel !== 'administrador') return null
           if (item.href === '/importar-lancamentos' && permissionLevel !== 'administrador') return null
           if (item.href === '/avaliacao' && !isEmpresaCTZ(empresa?.company_name)) return null
+          if (item.href === '/autoconhecimento' && !(isEmpresaCTZ(empresa?.company_name) && souPilotoAutoconhecimento(userEmail))) return null
           const isActive = pathname.startsWith(item.href)
           const Icon = item.icon
           return (
