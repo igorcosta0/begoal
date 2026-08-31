@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
 import { cn, isEmpresaCTZ, souPilotoAutoconhecimento } from '@/lib/utils'
-import { getMeuPerfilEneagrama } from '@/lib/queries/eneagrama'
+import { getMeuPerfilEneagrama, getTodosPerfisEneagrama, type PerfilEneagramaComNome } from '@/lib/queries/eneagrama'
 import { TIPOS_ENEAGRAMA, NOME_INSTINTO, type Instinto } from '@/lib/eneagrama/tipos'
 import { Sparkles, Loader2, Send } from 'lucide-react'
 
@@ -39,6 +39,10 @@ export default function AutoconhecimentoPage() {
   const [tipoNumero, setTipoNumero] = useState<number | null>(null)
   const [subtipoSequencia, setSubtipoSequencia] = useState<string | null>(null)
   const [erroPerfil, setErroPerfil] = useState<string | null>(null)
+  // Visão de administrador do protótipo: só preenche de verdade pra quem a
+  // RLS (pode_ver_todos_eneagrama_ctz) libera — pra qualquer outra pessoa
+  // que por acaso chegasse até aqui, a query volta vazia.
+  const [todosPerfis, setTodosPerfis] = useState<PerfilEneagramaComNome[]>([])
 
   const [pergunta, setPergunta] = useState('')
   const [mensagens, setMensagens] = useState<Mensagem[]>([])
@@ -56,20 +60,24 @@ export default function AutoconhecimentoPage() {
       const { data: { user } } = await supabase.auth.getUser()
       const liberado = souPilotoAutoconhecimento(user?.email)
       setAcessoLiberado(liberado)
-      if (!liberado) {
+      if (!liberado || !empresa) {
         setLoading(false)
         return
       }
-      const { perfil, error } = await getMeuPerfilEneagrama()
+      const [{ perfil, error }, { perfis, error: erroTodos }] = await Promise.all([
+        getMeuPerfilEneagrama(),
+        getTodosPerfisEneagrama(empresa.id),
+      ])
       if (error) setErroPerfil(error)
       else if (perfil) {
         setTipoNumero(perfil.tipo)
         setSubtipoSequencia(perfil.subtipo_sequencia)
       }
+      if (!erroTodos) setTodosPerfis(perfis)
       setLoading(false)
     }
     carregar()
-  }, [ctz])
+  }, [ctz, empresa?.id])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -143,34 +151,65 @@ export default function AutoconhecimentoPage() {
         </div>
       )}
 
-      {!tipo ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center">
-          <p className="text-muted-foreground text-sm">Seu perfil de Eneagrama ainda não foi mapeado. Fale com a liderança ou o RH pra saber mais.</p>
+      {tipo ? (
+        <div className="bg-card border border-border rounded-2xl p-6 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-foreground">Tipo {tipo.numero} — {tipo.motivacao}</h2>
+            <span className="shrink-0 text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">{tipo.palavraSintese}</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Suas forças</p>
+              <p className="text-foreground">{tipo.forcas}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Sua sombra (fica de olho)</p>
+              <p className="text-foreground">{tipo.sombra}</p>
+            </div>
+          </div>
+          {subtipoSequencia && (
+            <p className="text-xs text-muted-foreground pt-2 border-t border-border">
+              Sequência de instintos: {formatarSequencia(subtipoSequencia)}
+            </p>
+          )}
         </div>
       ) : (
-        <>
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold text-foreground">Tipo {tipo.numero} — {tipo.motivacao}</h2>
-              <span className="shrink-0 text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">{tipo.palavraSintese}</span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Suas forças</p>
-                <p className="text-foreground">{tipo.forcas}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Sua sombra (fica de olho)</p>
-                <p className="text-foreground">{tipo.sombra}</p>
-              </div>
-            </div>
-            {subtipoSequencia && (
-              <p className="text-xs text-muted-foreground pt-2 border-t border-border">
-                Sequência de instintos: {formatarSequencia(subtipoSequencia)}
-              </p>
-            )}
-          </div>
+        <div className="rounded-2xl border border-dashed border-border bg-card/50 p-6 text-center">
+          <p className="text-muted-foreground text-sm">Você não tem um perfil de Eneagrama próprio mapeado — normal pra quem administra o sistema. Confira abaixo o perfil de toda a equipe.</p>
+        </div>
+      )}
 
+      {todosPerfis.length > 0 && (
+        <div className="bg-card border border-border rounded-2xl p-6 space-y-3">
+          <h2 className="text-sm font-semibold text-foreground">Perfis da equipe (visão de administrador)</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-muted-foreground border-b border-border">
+                  <th className="py-2 pr-4 font-medium">Nome</th>
+                  <th className="py-2 pr-4 font-medium">Tipo</th>
+                  <th className="py-2 font-medium">Sequência de instintos</th>
+                </tr>
+              </thead>
+              <tbody>
+                {todosPerfis.map((p) => {
+                  const t = TIPOS_ENEAGRAMA[p.tipo]
+                  return (
+                    <tr key={p.funcionario_id} className="border-b border-border/50 last:border-0">
+                      <td className="py-2 pr-4 text-foreground whitespace-nowrap">{p.full_name}</td>
+                      <td className="py-2 pr-4 text-foreground whitespace-nowrap">Tipo {p.tipo}{t ? ` — ${t.palavraSintese}` : ''}</td>
+                      <td className="py-2 text-muted-foreground whitespace-nowrap">{p.subtipo_sequencia ? formatarSequencia(p.subtipo_sequencia) : '—'}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tipo && (
+        <>
           <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
             <h2 className="text-sm font-semibold text-foreground">Pergunte ao assistente</h2>
 
