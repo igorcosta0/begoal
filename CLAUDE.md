@@ -26,6 +26,55 @@
 
 ## Log de Sessões
 
+### 2026-09-01
+- Início da sessão: git status mostrava 34 migrations + 4 docs de "Adições futuras" apagados no
+  working tree local (mesmo tipo de incidente do dia 31/08, aparentemente repetido ou desfeito depois
+  do `git restore` daquela sessão). Nada afetava o banco (só arquivos locais, tudo já commitado) —
+  restaurado com `git restore` de novo antes de qualquer outra coisa.
+- Pedido do Igor: a tabela "Perfis da equipe" do Autoconhecimento (visão de admin piloto) mostrava só
+  tipo de Eneagrama, sem relacionar ao perfil do cargo da pessoa, às competências exigidas nesse cargo,
+  nem sugerir "o que o Eneagrama ajuda/atrapalha" considerando resultados esperados. Confirmado que o
+  pedido nasceu de um arquivo novo que ele colou em `Adições futuras/`: **`Cargos Concretize.xlsx`**
+  (também apareceram no mesmo lote, ainda não usados: `Avaliação Desempenho CTZ - 2026.docx`, `Código de
+  Cultura CTZ 2026.pdf`, `Diretrizes de avaliação.jpg`, `Manual do avaliador - CTZ 2026.docx` — parecem
+  reaparecimento dos mesmos arquivos que já existiam antes, não conteúdo novo, não abertos nesta sessão).
+- `Cargos Concretize.xlsx` tem 8 abas: Liderança (4 papéis sem distinção de nível), Adm e Finanças,
+  Urbanismo, Infraestrutura, Legalização, Agrimensura, Comercial (cada uma com Assistente/Analista/
+  Especialista × Júnior/Pleno/Sênior — várias combinações ficaram em branco na planilha, só as
+  preenchidas entram no banco) e Conceitos (definição geral de Júnior/Pleno/Sênior, pouco conteúdo).
+  Extraído programaticamente via Python/openpyxl (não à mão, pra não errar transcrição) — 31
+  combinações válidas de área/cargo/nível.
+- 3 decisões confirmadas com o Igor antes de implementar (`AskUserQuestion`): (1) essa análise continua
+  visível só pro admin piloto (Igor/Priscila), mesma regra de sempre — ninguém mais vê; (2) as "dicas e
+  sugestões" são **pré-geradas pela IA e salvas no banco** (botão "Gerar/Atualizar análise" por pessoa),
+  não geradas a cada abertura de tela; (3) as 2 pessoas cujo cargo real não bate com nenhuma linha da
+  planilha nova (Felipe Bortolozzo, "Coordenador de TI"; Filippe Réus, "CEO/Sócio Administrador") — e
+  mais uma achada durante a implementação, Guilherme Costa Manoel ("SÓCIO ADMINISTRADOR / LÍDER DA
+  VERTICAL DE LOTEAMENTOS / ESP. LEGALIZAÇÃO", cargo composto demais pra mapear 1:1) e Carolina Zanette
+  ("Especialista de Urbanismo", cargo que existe na planilha mas está com a célula em branco) — mostram
+  só o tipo de Eneagrama, sem o cruzamento de cargo, em vez de tentar adivinhar.
+- Implementado: migration `PENDENTE_20260901000000_cargos_perfil_eneagrama.sql` (**ainda não rodada no
+  Supabase, avisar o Igor**) com 2 tabelas novas — `cargos_perfil` (referência, os 31 perfis de cargo,
+  RLS restrita a `pode_ver_todos_eneagrama_ctz()` igual ao resto do protótipo) e
+  `funcionarios_cargo_perfil` (vínculo pessoa↔cargo + `dicas_texto`/`dicas_gerado_em`, RLS: select
+  próprio+admin piloto, update só admin piloto) — mais a carga inicial das 20 pessoas já mapeadas em
+  `funcionarios_eneagrama` (17 com `cargo_perfil_id` preenchido, 3 nulas de propósito, ver acima).
+  Query nova `src/lib/queries/cargosPerfil.ts` (`getTodosCargosPerfil`), rota nova
+  `src/app/api/gerar-dica-cargo-eneagrama/route.ts` (mesmo padrão de auth+trava de
+  `/api/assistente-eneagrama`, mas recebe `funcionarioId` no corpo porque quem chama é o admin gerando
+  a análise de OUTRA pessoa, não a própria — a rota monta o prompt cruzando perfil de cargo +
+  forças/sombra/virtude/competências do tipo do Eneagrama, chama o mesmo Gemini de sempre, e salva a
+  resposta em `funcionarios_cargo_perfil.dicas_texto`). Página `autoconhecimento/page.tsx`: linha da
+  tabela virou expansível (clique mostra sumário do cargo, autonomia, competências técnicas/
+  comportamentais, e o bloco de dicas com o botão gerar/atualizar). `npm run type-check` passou limpo.
+- **Pendências pro Igor antes do próximo push pra `master`**: (1) rodar a migration no SQL Editor do
+  Supabase; (2) revisar a aproximação feita pra Fabiana Carolina de Olivera — cargo dela na planilha de
+  funcionários é só "SECRETÁRIA EXECUTIVA" sem nível, assumi "Pleno" como referência (fácil de corrigir
+  depois, é 1 linha só); (3) decidir se quer completar os cargos de Felipe Bortolozzo/Filippe Réus/
+  Guilherme/Carolina na planilha nova pra fechar os 4 que ficaram sem cruzamento.
+- Arquivos de origem (`Cargos Concretize.xlsx` incluído) seguem a mesma regra já combinada: só local,
+  fora do Git — nada de dado real de cargo/salário/pessoa vaza pro repositório.
+
 ### 2026-08-31
 - Início de uma feature nova, só CTZ: módulo de autoconhecimento baseado em Eneagrama, pra virar um
   assistente que orienta cada pessoa conforme seu tipo (pedido gravado em `Adições futuras/Eneagrama.txt`).

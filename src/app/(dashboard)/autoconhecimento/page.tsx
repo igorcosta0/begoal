@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
 import { cn, isEmpresaCTZ, souPilotoAutoconhecimento } from '@/lib/utils'
 import { getMeuPerfilEneagrama, getTodosPerfisEneagrama, type PerfilEneagramaComNome } from '@/lib/queries/eneagrama'
+import { getTodosCargosPerfil, type FuncionarioCargoPerfil } from '@/lib/queries/cargosPerfil'
 import { TIPOS_ENEAGRAMA, NOME_INSTINTO, type Instinto } from '@/lib/eneagrama/tipos'
-import { Sparkles, Loader2, Send, ChevronDown } from 'lucide-react'
+import { Sparkles, Loader2, Send, ChevronDown, ChevronRight, Wand2 } from 'lucide-react'
 
 interface Mensagem {
   role: 'user' | 'model'
@@ -43,6 +44,13 @@ export default function AutoconhecimentoPage() {
   // RLS (pode_ver_todos_eneagrama_ctz) libera — pra qualquer outra pessoa
   // que por acaso chegasse até aqui, a query volta vazia.
   const [todosPerfis, setTodosPerfis] = useState<PerfilEneagramaComNome[]>([])
+  // Cruzamento cargo x Eneagrama (pedido do Igor, 01/09/2026) — mapa por
+  // funcionario_id, mesma regra de acesso (RLS só devolve linha pra quem
+  // pode_ver_todos_eneagrama_ctz()). Ver ModalCargoEneagrama abaixo.
+  const [cargosPerfil, setCargosPerfil] = useState<Record<string, FuncionarioCargoPerfil>>({})
+  const [expandidoId, setExpandidoId] = useState<string | null>(null)
+  const [gerandoId, setGerandoId] = useState<string | null>(null)
+  const [erroGeracao, setErroGeracao] = useState<string | null>(null)
 
   const [pergunta, setPergunta] = useState('')
   const [mensagens, setMensagens] = useState<Mensagem[]>([])
@@ -64,9 +72,10 @@ export default function AutoconhecimentoPage() {
         setLoading(false)
         return
       }
-      const [{ perfil, error }, { perfis, error: erroTodos }] = await Promise.all([
+      const [{ perfil, error }, { perfis, error: erroTodos }, { mapa }] = await Promise.all([
         getMeuPerfilEneagrama(),
         getTodosPerfisEneagrama(empresa.id),
+        getTodosCargosPerfil(empresa.id),
       ])
       if (error) setErroPerfil(error)
       else if (perfil) {
@@ -74,6 +83,7 @@ export default function AutoconhecimentoPage() {
         setSubtipoSequencia(perfil.subtipo_sequencia)
       }
       if (!erroTodos) setTodosPerfis(perfis)
+      setCargosPerfil(mapa)
       setLoading(false)
     }
     carregar()
@@ -106,6 +116,32 @@ export default function AutoconhecimentoPage() {
       setErroChat(err instanceof Error ? err.message : 'Erro ao consultar o assistente. Tente novamente.')
     } finally {
       setEnviando(false)
+    }
+  }
+
+  async function gerarDica(funcionarioId: string) {
+    setErroGeracao(null)
+    setGerandoId(funcionarioId)
+    try {
+      const res = await fetch('/api/gerar-dica-cargo-eneagrama', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ funcionarioId }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.error || 'Erro ao gerar análise.')
+      setCargosPerfil((prev) => ({
+        ...prev,
+        [funcionarioId]: {
+          ...prev[funcionarioId],
+          dicas_texto: body.dicas,
+          dicas_gerado_em: new Date().toISOString(),
+        },
+      }))
+    } catch (err) {
+      setErroGeracao(err instanceof Error ? err.message : 'Erro ao gerar análise.')
+    } finally {
+      setGerandoId(null)
     }
   }
 
@@ -256,24 +292,112 @@ export default function AutoconhecimentoPage() {
       {todosPerfis.length > 0 && (
         <div className="bg-card border border-border rounded-2xl p-6 space-y-3">
           <h2 className="text-sm font-semibold text-foreground">Perfis da equipe (visão de administrador)</h2>
+          <p className="text-xs text-muted-foreground">
+            Clique numa linha pra ver o cruzamento com o perfil de cargo (competências exigidas e o que o Eneagrama ajuda/atrapalha).
+          </p>
+          {erroGeracao && (
+            <div className="px-4 py-3 rounded-xl text-sm font-medium bg-red-50 text-red-700 border border-red-200">
+              {erroGeracao}
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-muted-foreground border-b border-border">
+                  <th className="py-2 pr-4 font-medium w-6"></th>
                   <th className="py-2 pr-4 font-medium">Nome</th>
                   <th className="py-2 pr-4 font-medium">Tipo</th>
-                  <th className="py-2 font-medium">Sequência de instintos</th>
+                  <th className="py-2 pr-4 font-medium">Sequência de instintos</th>
+                  <th className="py-2 font-medium">Cargo</th>
                 </tr>
               </thead>
               <tbody>
                 {todosPerfis.map((p) => {
                   const t = TIPOS_ENEAGRAMA[p.tipo]
+                  const cargoInfo = cargosPerfil[p.funcionario_id]
+                  const cp = cargoInfo?.cargo_perfil
+                  const aberto = expandidoId === p.funcionario_id
                   return (
-                    <tr key={p.funcionario_id} className="border-b border-border/50 last:border-0">
-                      <td className="py-2 pr-4 text-foreground whitespace-nowrap">{p.full_name}</td>
-                      <td className="py-2 pr-4 text-foreground whitespace-nowrap">Tipo {p.tipo}{t ? ` — ${t.palavraSintese}` : ''}</td>
-                      <td className="py-2 text-muted-foreground whitespace-nowrap">{p.subtipo_sequencia ? formatarSequencia(p.subtipo_sequencia) : '—'}</td>
-                    </tr>
+                    <Fragment key={p.funcionario_id}>
+                      <tr
+                        onClick={() => setExpandidoId(aberto ? null : p.funcionario_id)}
+                        className="border-b border-border/50 last:border-0 cursor-pointer hover:bg-accent/50"
+                      >
+                        <td className="py-2 pr-4 text-muted-foreground">
+                          {aberto ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                        </td>
+                        <td className="py-2 pr-4 text-foreground whitespace-nowrap">{p.full_name}</td>
+                        <td className="py-2 pr-4 text-foreground whitespace-nowrap">Tipo {p.tipo}{t ? ` — ${t.palavraSintese}` : ''}</td>
+                        <td className="py-2 pr-4 text-muted-foreground whitespace-nowrap">{p.subtipo_sequencia ? formatarSequencia(p.subtipo_sequencia) : '—'}</td>
+                        <td className="py-2 text-muted-foreground whitespace-nowrap">
+                          {cp ? `${cp.cargo_base}${cp.nivel ? ` (${cp.nivel})` : ''}` : 'sem perfil de cargo mapeado'}
+                        </td>
+                      </tr>
+                      {aberto && (
+                        <tr key={`${p.funcionario_id}-detalhe`} className="border-b border-border/50 last:border-0">
+                          <td colSpan={5} className="py-4 px-2 bg-secondary/30 rounded-xl">
+                            {!cp ? (
+                              <p className="text-xs text-muted-foreground">
+                                Essa pessoa ainda não tem perfil de cargo mapeado (cargo dela não bate com nenhuma linha
+                                preenchida na planilha de cargos, ou é um cargo composto de sócio/CEO) — só o tipo de
+                                Eneagrama está disponível.
+                              </p>
+                            ) : (
+                              <div className="space-y-3 text-sm">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1">Sumário do cargo</p>
+                                    <p className="text-foreground">{cp.sumario}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1">Autonomia esperada</p>
+                                    <p className="text-foreground">{cp.autonomia ?? '—'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1">Competências técnicas</p>
+                                    <p className="text-foreground whitespace-pre-line">{cp.competencias_tecnicas ?? '—'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1">Competências comportamentais</p>
+                                    <p className="text-foreground whitespace-pre-line">{cp.competencias_comportamentais ?? '—'}</p>
+                                  </div>
+                                </div>
+
+                                <div className="pt-3 border-t border-border/50">
+                                  <div className="flex items-center justify-between gap-2 mb-2">
+                                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                                      O que o Eneagrama ajuda / atrapalha nesse cargo
+                                    </p>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); gerarDica(p.funcionario_id) }}
+                                      disabled={gerandoId === p.funcionario_id}
+                                      className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border border-border text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+                                    >
+                                      {gerandoId === p.funcionario_id
+                                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        : <Wand2 className="w-3.5 h-3.5" />}
+                                      {cargoInfo?.dicas_texto ? 'Atualizar análise' : 'Gerar análise'}
+                                    </button>
+                                  </div>
+                                  {cargoInfo?.dicas_texto ? (
+                                    <>
+                                      <p className="text-foreground whitespace-pre-line">{cargoInfo.dicas_texto}</p>
+                                      {cargoInfo.dicas_gerado_em && (
+                                        <p className="text-xs text-muted-foreground mt-2">
+                                          Gerado em {new Date(cargoInfo.dicas_gerado_em).toLocaleString('pt-BR')}
+                                        </p>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <p className="text-xs text-muted-foreground">Ainda não gerada — clique em "Gerar análise".</p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   )
                 })}
               </tbody>
