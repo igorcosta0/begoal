@@ -74,6 +74,22 @@
   Guilherme/Carolina na planilha nova pra fechar os 4 que ficaram sem cruzamento.
 - Arquivos de origem (`Cargos Concretize.xlsx` incluído) seguem a mesma regra já combinada: só local,
   fora do Git — nada de dado real de cargo/salário/pessoa vaza pro repositório.
+- **Migration rodada pelo Igor no SQL Editor, confirmada via SQL direto** (31 `cargos_perfil`, 20
+  `funcionarios_cargo_perfil` — 17 com cargo, 3 sem, exatamente como esperado). Enviado pra `master`,
+  commit `bb65b21` — Vercel deve ter feito deploy automático.
+- **Achado importante antes do push**: `src/lib/queries/avaliacao.ts` já estava modificado no working
+  tree desde antes desta sessão (não fui eu quem mudou), chamando uma RPC nova `get_calibragem_pendente`
+  (troca de um cálculo cru de `nota_calibragem` por uma RPC security-definer, por motivo de segurança —
+  ver comentário no próprio arquivo, datado de 28/08). **Confirmei via SQL direto que essa função NÃO
+  existe no banco** (`select proname from pg_proc where proname = 'get_calibragem_pendente'` veio
+  vazio) — contradiz o que o log de 31/08 supunha ("provavelmente já aplicada"). É quase certamente a
+  mesma migration `20260828030000_avaliacao_fecha_leitura_direta_notas.sql` que o incidente da pasta
+  `migrations` apagada tinha perdido sem nunca ter sido commitada. **Deixei esse arquivo de fora do
+  commit/push de hoje** (senão quebraria "Finalizar Calibragem" em produção, todo mundo que clicasse
+  receberia erro de função inexistente) — ele continua modificado, sem commit, no working tree.
+  **Pendente**: reconstruir essa migration (o conteúdo original nunca foi lido nesta conversa em nenhuma
+  sessão) e rodar no Supabase antes de commitar `avaliacao.ts` — ou reverter o arquivo pro que está em
+  produção, se o Igor preferir não mexer nisso agora.
 
 ### 2026-08-31
 - Início de uma feature nova, só CTZ: módulo de autoconhecimento baseado em Eneagrama, pra virar um
