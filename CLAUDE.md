@@ -20,11 +20,39 @@
 
 - Fluxo de status: `pendente → auto_concluida → gestor_concluida → calibragem → finalizada`.
 - Cada usuário só vê a nota que ELE deu, nunca a que recebeu — regra absoluta, sem exceção de etapa/calibragem/revelação (migration `20260822_avaliacao_bloqueio_total_notas`). A coluna `avaliacoes.revelado` existe mas não faz mais nada (a máscara que dependia dela foi removida) — é resíduo, não mexer achando que ainda funciona.
-- Calibragem é etapa **ciclo inteira**. Acesso (Iniciar/Finalizar/Painel/aba Calibragem do ModalAvaliacao) é `souGestorDaCalibragem` (não confundir com `isAdmin`, que é só "papel de avaliador nesta avaliação específica"): **na CTZ, só Igor, Filippe Réus e Priscila Santos** (pedido 27/08, ver Log de Sessões); em qualquer outra empresa continua sendo qualquer administrador de verdade (`souAdministrador`), igual sempre foi. Nem o avaliador que preencheu a nota do gestor vê a calibragem. "Iniciar Calibragem" não trava mais esperando todo mundo concluir auto+gestor — move de uma vez todo mundo que ainda não está em calibragem/finalizada (pedido 27/08).
+- Calibragem é etapa **ciclo inteira**. Acesso (Iniciar/Finalizar/Painel/aba Calibragem do ModalAvaliacao) é `souGestorDaCalibragem` (não confundir com `isAdmin`, que é só "papel de avaliador nesta avaliação específica"): **na CTZ, Igor, Filippe Réus, Priscila Santos e Felipe Marques Santos** veem/calibram o ciclo inteiro (pedidos 27/08 e 28/08, ver Log de Sessões); em qualquer outra empresa continua sendo qualquer administrador de verdade (`souAdministrador`), igual sempre foi. Nem o avaliador que preencheu a nota do gestor vê a calibragem. "Iniciar Calibragem" não trava mais esperando todo mundo concluir auto+gestor — move de uma vez todo mundo que ainda não está em calibragem/finalizada (pedido 27/08).
+- **Calibragem restrita** (pedido 02/09, distinto do item acima): Graciela Borges Hoepers calibra só os PRÓPRIOS liderados (organograma, `funcionarios.gestor_id`), não o ciclo inteiro — flag separado `souCalibradorRestrito` + função `e_calibrador_restrito(funcionario_id)` no banco (migration `PENDENTE_20260902000000_calibragem_restrita_graciela.sql`). Não entra na lista de `souGestorDaCalibragem` acima nem nas ações em lote/Painel de Calibragem. Ver Log de Sessões.
 - Avaliação de Pares tem cultural (4 pilares) **e técnica** (pedido 27/08 — antes era só cultural) — montada à mão pelo admin junto com a avaliação comum, não tem autoavaliação, o avaliador preenche a nota no campo `nota_gestor` (mesmo slot que o gestor usa na avaliação comum). A vertical técnica do par é travada automaticamente na vertical da avaliação comum de quem está sendo avaliado (`get_vertical_padrao`) — não é livre pro par escolher.
 - ~~Pendente: unificar os botões "Salvar" e "Concluir [etapa]"~~ — **feito** (commit `3559d2d`). O "Salvar" do `ModalAvaliacao` é tudo-ou-nada (bloqueia TUDO se faltar 1 campo, sem autosave) — desde 27/08 mostra contorno vermelho nos campos específicos que faltam e troca de aba sozinho pro problema, mas o comportamento tudo-ou-nada em si continua o mesmo (ver Log de Sessões, incidente da Graciela).
 
 ## Log de Sessões
+
+### 2026-09-02
+- Pedido: mais um usuário autorizado a fazer calibragem — Graciela Borges Hoepers, que tem
+  liderados (Angelica Scarpari Machado e Fabiana Carolina de Olivera no organograma; só a
+  avaliação da Fabiana está no ciclo ativo, já em status `calibragem`). Diferença explícita do
+  pedido em relação aos 4 calibradores existentes: ela só pode ver a autoavaliação e calibrar
+  os PRÓPRIOS liderados, não o ciclo inteiro.
+- Como a lista existente (`pode_ver_lado_calibragem`) é um booleano por ciclo inteiro (sem noção
+  de quem lidera quem), não deu pra só adicionar o e-mail dela lá — isso daria acesso a todo
+  mundo da CTZ, contrariando o pedido. Implementado mecanismo novo e paralelo:
+  - Migration `PENDENTE_20260902000000_calibragem_restrita_graciela.sql` (**rodada pelo Igor,
+    confirmada via SQL direto**): função `e_calibrador_restrito(funcionario_id)` — soma uma
+    lista fixa de e-mail (só Graciela, `user_id 203e4429-b9c7-451f-bc00-cc42f6e713f4`) com
+    `e_gestor_do_funcionario` (mesma checagem de organograma que já rege ela preencher a nota de
+    gestor). Somada em `pode_ver_lado_auto` e nas funções que expõem nota/observação de
+    calibragem por avaliação (`get_avaliacao_cultural/tecnica`, `get_avaliacoes_por_ciclo`).
+    Não mexe no Painel de Calibragem em lote (`get_calibragem_ciclo_cultural/tecnica`) nem na
+    lista fixa existente — ambos continuam intocados.
+  - Acesso de LINHA (abrir/gravar a avaliação) já existia via `e_gestor_do_funcionario`
+    (migration 20260807), não precisou mudar nada ali.
+  - Front-end (`avaliacao/page.tsx` + `ModalAvaliacao.tsx`): novo flag `souCalibradorRestrito`
+    (só e-mail `graciela.hoepers@ctz.eng.br` na CTZ), somado em `podeCalibrar`/`gestorVeAuto` do
+    modal individual — **não** entra nas ações em lote (Iniciar/Finalizar Calibragem) nem no
+    Painel de Calibragem, que continuam exclusivos de `souGestorDaCalibragem`.
+- `npm run type-check` passou limpo. Commit `992602f`, enviado a `master` (deploy no ar) —
+  `src/lib/queries/avaliacao.ts` (pendência de 01/09, RPC `get_calibragem_pendente` ainda não
+  existe no banco) ficou de fora do commit de novo, de propósito.
 
 ### 2026-09-01
 - Início da sessão: git status mostrava 34 migrations + 4 docs de "Adições futuras" apagados no
