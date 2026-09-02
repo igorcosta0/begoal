@@ -384,14 +384,21 @@ interface Props {
   // pra souAdministrador se não vier informado, só por segurança de chamador
   // antigo — hoje sempre vem preenchido.
   souGestorDaCalibragem?: boolean
+  // Pedido (02/09/2026): Graciela calibra só o(s) liderado(s) dela (não o
+  // ciclo inteiro, ao contrário de souGestorDaCalibragem acima) — soma na
+  // mesma checagem de podeCalibrar/gestorVeAuto, mas não entra nas ações em
+  // lote (Iniciar/Finalizar Calibragem, Painel de Calibragem), que continuam
+  // exclusivas de souGestorDaCalibragem. RLS (e_calibrador_restrito, migration
+  // PENDENTE_20260902000000) trava por trás mesmo que o front-end erre.
+  souCalibradorRestrito?: boolean
   onClose: () => void
   onSave: () => void
 }
 
 // ── Componente principal ─────────────────────────────────────────────────────
 
-export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, souAdministrador, souGestorDaCalibragem, onClose, onSave }: Props) {
-  const podeCalibrar = souGestorDaCalibragem ?? souAdministrador
+export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, souAdministrador, souGestorDaCalibragem, souCalibradorRestrito, onClose, onSave }: Props) {
+  const podeCalibrar = souGestorDaCalibragem || souCalibradorRestrito || souAdministrador
   const [activeTab, setActiveTab] = useState<'cultural' | 'tecnica' | 'pdi'>('cultural')
   const [vertical, setVertical] = useState('')
   const [observacoes, setObservacoes] = useState('')
@@ -846,8 +853,11 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
   // souGestorDaCalibragem também (na CTZ: Igor, Filippe Réus, Priscila Santos
   // e Felipe Marques Santos), senão a auto ficava oculta pra eles no painel
   // individual (só aparecia no Painel de Calibragem em lote). Espelha
-  // pode_ver_lado_auto no banco (migration 20260828010000).
-  const gestorVeAuto = !!souAdministrador || !!souGestorDaCalibragem
+  // pode_ver_lado_auto no banco (migration 20260828010000). Desde 02/09/2026,
+  // souCalibradorRestrito (Graciela) também — mas só enxerga porque a RLS já
+  // limita quais avaliações ela consegue abrir (só as dos próprios
+  // liderados), não porque este flag distingue quem é quem.
+  const gestorVeAuto = !!souAdministrador || !!souGestorDaCalibragem || !!souCalibradorRestrito
   const colaboradorVeGestor = !!souAdministrador
   const podeVerMedias = isAdmin || !!souAdministrador
 
