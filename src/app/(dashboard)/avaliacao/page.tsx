@@ -188,14 +188,15 @@ export default function AvaliacaoPage() {
   // porque o front-end só tem o e-mail da sessão. Em qualquer outra empresa
   // continua igual a sempre (souAdministrador).
   const [souGestorDaCalibragem, setSouGestorDaCalibragem] = useState(false)
-  // Pedido (02/09/2026): Graciela tem 1 (na prática, até 2) liderado(s) neste
-  // ciclo e precisa calibrar só ele(s) — ao contrário da lista acima
-  // (souGestorDaCalibragem), que enxerga/calibra o ciclo inteiro da CTZ, esta
-  // NÃO entra nas ações em lote (Iniciar/Finalizar Calibragem, Painel de
-  // Calibragem) nem no e-mail-check acima. É só um flag a mais que
+  // Pedido (02/09/2026): Graciela e (desde a mesma sessão, também) Felipe
+  // Marques calibram só os PRÓPRIOS liderados neste ciclo — ao contrário da
+  // lista acima (souGestorDaCalibragem), que enxerga/calibra o ciclo inteiro
+  // da CTZ, esta NÃO entra nas ações em lote (Iniciar/Finalizar Calibragem,
+  // Painel de Calibragem) nem no e-mail-check acima. É só um flag a mais que
   // ModalAvaliacao soma pra abrir a aba Calibragem/ver a nota auto — a RLS
-  // (e_calibrador_restrito, migration PENDENTE_20260902000000) garante que só
-  // funciona pros próprios liderados dela mesmo que o front-end erre.
+  // (e_calibrador_restrito, migrations PENDENTE_20260902000000 e
+  // PENDENTE_20260902010000) garante que só funciona pros próprios liderados
+  // de cada um, mesmo que o front-end erre.
   const [souCalibradorRestrito, setSouCalibradorRestrito] = useState(false)
   const [meuFuncionario, setMeuFuncionario] = useState<Funcionario | null>(null)
   const [ciclos, setCiclos] = useState<Ciclo[]>([])
@@ -342,10 +343,14 @@ export default function AvaliacaoPage() {
 
       // CTZ = 'ac4ad62b-9b88-44da-ae69-0f26ced07d06' — fora dela, calibragem
       // continua sendo "qualquer administrador", igual sempre foi.
+      // Pedido (02/09/2026): Felipe Marques saiu desta lista (ciclo inteiro) —
+      // só Igor, Filippe Réus (dono da empresa) e Priscila mantêm essa visão;
+      // Felipe Marques virou "calibrador restrito" (ver souCalibradorRestrito
+      // abaixo), igual a Graciela.
       const emailAtual = user.email?.toLowerCase() ?? ''
       const souGestorDaCalibragemAtual =
         empresa!.id === 'ac4ad62b-9b88-44da-ae69-0f26ced07d06'
-          ? ['igorecosta1@gmail.com', 'filippe.reus@ctz.eng.br', 'priscila.santos@behive.net.br', 'felipe.marques@projetosconcretize.com.br'].includes(emailAtual)
+          ? ['igorecosta1@gmail.com', 'filippe.reus@ctz.eng.br', 'priscila.santos@behive.net.br'].includes(emailAtual)
           : administrador
 
       setIsAdmin(admin)
@@ -356,7 +361,8 @@ export default function AvaliacaoPage() {
       setVeTodaEmpresa(todaEmpresa)
       setSouGestorDaCalibragem(souGestorDaCalibragemAtual)
       setSouCalibradorRestrito(
-        empresa!.id === 'ac4ad62b-9b88-44da-ae69-0f26ced07d06' && emailAtual === 'graciela.hoepers@ctz.eng.br'
+        empresa!.id === 'ac4ad62b-9b88-44da-ae69-0f26ced07d06' &&
+          ['graciela.hoepers@ctz.eng.br', 'felipe.marques@projetosconcretize.com.br'].includes(emailAtual)
       )
 
       await fetchCiclos()
