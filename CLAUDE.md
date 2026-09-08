@@ -44,6 +44,26 @@
   **ainda não enviado a `master`** — falta o Igor rodar a migration primeiro.
   `src/lib/queries/avaliacao.ts` seguiu de fora do commit (mesma pendência de 01/09 e 02/09, RPC
   `get_calibragem_pendente` ainda não existe no banco — reconfirmado via SQL direto nesta sessão).
+- Pedido, mesmo dia, mesmo padrão: Filipe Bossoni Finato (Líder da Vertical Novos Negócios,
+  `felipe.finato@ctz.eng.br`) relatou ter feito "as avaliações dos liderados e a calibragem".
+  Verificado via SQL direto que o relato não batia: ele fez de verdade 2 avaliações de pares
+  (Jean Patrick Candia Correa, Guilherme Costa Manoel — notas reais, `gestor_concluida`), mas a
+  própria autoavaliação estava com `nota_auto` nulo em todos os pilares/critérios, e a avaliação
+  padrão da única liderada dele no organograma (Carolina Zanette de Castro Schiefler) estava com
+  `nota_gestor` nulo — ele nunca preencheu nem a própria auto nem a avaliação de gestor da
+  Carolina. O status `calibragem` nas duas linhas é só efeito do "Iniciar Calibragem" em lote
+  (move todo mundo, não checa conclusão, mudança de 27/08), não indica trabalho feito. Confirmado
+  também que ele não estava em nenhuma das duas listas de calibragem — não tinha como ter
+  calibrado nada pela interface.
+- Confirmado com o usuário (`AskUserQuestion`) que o pedido de acesso é o mesmo padrão da
+  Graciela/Felipe Marques/Felipe Ross (calibrador restrito, só a própria liderada), não acesso ao
+  ciclo inteiro. Migration `PENDENTE_20260908010000_calibragem_finato_restrito.sql` (**ainda não
+  rodada no Supabase, avisar o Igor antes do próximo push**): `e_calibrador_restrito()` ganha o
+  quarto user_id fixo (`09f58ad9-89dc-444e-8448-88554d90f26e`). Front-end: `souCalibradorRestrito`
+  em `avaliacao/page.tsx` ganha o e-mail dele. `npm run type-check` passou limpo. Commit `f7b7379`,
+  **ainda não enviado a `master`** — falta o Igor rodar as duas migrations pendentes do dia
+  (Felipe Ross e Finato) primeiro. `src/lib/queries/avaliacao.ts` seguiu de fora do commit (mesma
+  pendência recorrente, RPC `get_calibragem_pendente` ainda não existe no banco).
 
 ### 2026-09-02
 - Pedido: mais um usuário autorizado a fazer calibragem — Graciela Borges Hoepers, que tem
