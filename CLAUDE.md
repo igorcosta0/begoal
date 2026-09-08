@@ -21,11 +21,29 @@
 - Fluxo de status: `pendente → auto_concluida → gestor_concluida → calibragem → finalizada`.
 - Cada usuário só vê a nota que ELE deu, nunca a que recebeu — regra absoluta, sem exceção de etapa/calibragem/revelação (migration `20260822_avaliacao_bloqueio_total_notas`). A coluna `avaliacoes.revelado` existe mas não faz mais nada (a máscara que dependia dela foi removida) — é resíduo, não mexer achando que ainda funciona.
 - Calibragem é etapa **ciclo inteira**. Acesso (Iniciar/Finalizar/Painel/aba Calibragem do ModalAvaliacao) é `souGestorDaCalibragem` (não confundir com `isAdmin`, que é só "papel de avaliador nesta avaliação específica"): **na CTZ, só Igor, Filippe Réus e Priscila Santos** veem/calibram o ciclo inteiro (pedidos 27/08, 28/08 e revertido em 02/09 — ver abaixo e Log de Sessões); em qualquer outra empresa continua sendo qualquer administrador de verdade (`souAdministrador`), igual sempre foi. Nem o avaliador que preencheu a nota do gestor vê a calibragem. "Iniciar Calibragem" não trava mais esperando todo mundo concluir auto+gestor — move de uma vez todo mundo que ainda não está em calibragem/finalizada (pedido 27/08).
-- **Calibragem restrita** (pedido 02/09, distinto do item acima): Graciela Borges Hoepers e Felipe Marques Santos calibram só os PRÓPRIOS liderados (organograma, `funcionarios.gestor_id`), não o ciclo inteiro — flag separado `souCalibradorRestrito` (lista de e-mails) + função `e_calibrador_restrito(funcionario_id)` no banco (migrations `PENDENTE_20260902000000_calibragem_restrita_graciela.sql` e `PENDENTE_20260902010000_calibragem_felipe_marques_restrito.sql`, esta última tirou o Felipe Marques da lista de acesso ao ciclo inteiro — só Filippe Réus, dono da empresa, ficou junto de Igor/Priscila lá). Não entra na lista de `souGestorDaCalibragem` acima nem nas ações em lote/Painel de Calibragem. Ver Log de Sessões.
+- **Calibragem restrita** (pedido 02/09, distinto do item acima): Graciela Borges Hoepers, Felipe Marques Santos e (desde 08/09) Felipe Bet Ross calibram só os PRÓPRIOS liderados (organograma, `funcionarios.gestor_id`), não o ciclo inteiro — flag separado `souCalibradorRestrito` (lista de e-mails) + função `e_calibrador_restrito(funcionario_id)` no banco (migrations `PENDENTE_20260902000000_calibragem_restrita_graciela.sql`, `PENDENTE_20260902010000_calibragem_felipe_marques_restrito.sql` — tirou o Felipe Marques da lista de acesso ao ciclo inteiro, só Filippe Réus, dono da empresa, ficou junto de Igor/Priscila lá — e `PENDENTE_20260908000000_calibragem_felipe_ross_restrito.sql`). Não entra na lista de `souGestorDaCalibragem` acima nem nas ações em lote/Painel de Calibragem. Ver Log de Sessões.
 - Avaliação de Pares tem cultural (4 pilares) **e técnica** (pedido 27/08 — antes era só cultural) — montada à mão pelo admin junto com a avaliação comum, não tem autoavaliação, o avaliador preenche a nota no campo `nota_gestor` (mesmo slot que o gestor usa na avaliação comum). A vertical técnica do par é travada automaticamente na vertical da avaliação comum de quem está sendo avaliado (`get_vertical_padrao`) — não é livre pro par escolher.
 - ~~Pendente: unificar os botões "Salvar" e "Concluir [etapa]"~~ — **feito** (commit `3559d2d`). O "Salvar" do `ModalAvaliacao` é tudo-ou-nada (bloqueia TUDO se faltar 1 campo, sem autosave) — desde 27/08 mostra contorno vermelho nos campos específicos que faltam e troca de aba sozinho pro problema, mas o comportamento tudo-ou-nada em si continua o mesmo (ver Log de Sessões, incidente da Graciela).
 
 ## Log de Sessões
+
+### 2026-09-08
+- Pedido: Felipe Bet Ross (Líder da Vertical Concretize, `felipe.ross@projetosconcretize.com.br`,
+  `permission_level` não-admin) reportou não conseguir ver a nota de autoavaliação dos próprios
+  liderados (Jean Patrick Candia Correa, Laura Tolentino, Luis Henrique Gaseta) pra fazer a
+  calibragem. Diagnosticado via SQL direto: não era bug — ele nunca tinha entrado em nenhuma das
+  duas listas de calibragem (`souGestorDaCalibragem`, ciclo inteiro, ou `souCalibradorRestrito`,
+  Graciela/Felipe Marques), apesar de ter 2 liderados (Jean Patrick e Luis Henrique Gaseta) com
+  avaliação já em status `calibragem` no ciclo ativo. Mesmo padrão exato dos pedidos de 02/09.
+- Confirmado com o usuário (`AskUserQuestion`) que o escopo é o mesmo da Graciela/Felipe Marques
+  (calibrador restrito, só os próprios liderados), não acesso ao ciclo inteiro. Migration
+  `PENDENTE_20260908000000_calibragem_felipe_ross_restrito.sql` (**ainda não rodada no Supabase,
+  avisar o Igor antes do próximo push**): `e_calibrador_restrito()` ganha o terceiro user_id fixo
+  (`9c6dfb0a-c7d5-4a6a-8214-a6f22aea74e8`). Front-end: `souCalibradorRestrito` em
+  `avaliacao/page.tsx` ganha o e-mail dele. `npm run type-check` passou limpo. Commit `df52cb9`,
+  **ainda não enviado a `master`** — falta o Igor rodar a migration primeiro.
+  `src/lib/queries/avaliacao.ts` seguiu de fora do commit (mesma pendência de 01/09 e 02/09, RPC
+  `get_calibragem_pendente` ainda não existe no banco — reconfirmado via SQL direto nesta sessão).
 
 ### 2026-09-02
 - Pedido: mais um usuário autorizado a fazer calibragem — Graciela Borges Hoepers, que tem
