@@ -189,7 +189,8 @@ export default function AvaliacaoPage() {
   // continua igual a sempre (souAdministrador).
   const [souGestorDaCalibragem, setSouGestorDaCalibragem] = useState(false)
   // Pedido (02/09/2026): Graciela e (desde a mesma sessão, também) Felipe
-  // Marques calibram só os PRÓPRIOS liderados neste ciclo — ao contrário da
+  // Marques calibram só os PRÓPRIOS liderados neste ciclo (08/09/2026: Felipe
+  // Bet Ross entrou na mesma lista) — ao contrário da
   // lista acima (souGestorDaCalibragem), que enxerga/calibra o ciclo inteiro
   // da CTZ, esta NÃO entra nas ações em lote (Iniciar/Finalizar Calibragem,
   // Painel de Calibragem) nem no e-mail-check acima. É só um flag a mais que
@@ -362,7 +363,7 @@ export default function AvaliacaoPage() {
       setSouGestorDaCalibragem(souGestorDaCalibragemAtual)
       setSouCalibradorRestrito(
         empresa!.id === 'ac4ad62b-9b88-44da-ae69-0f26ced07d06' &&
-          ['graciela.hoepers@ctz.eng.br', 'felipe.marques@projetosconcretize.com.br'].includes(emailAtual)
+          ['graciela.hoepers@ctz.eng.br', 'felipe.marques@projetosconcretize.com.br', 'felipe.ross@projetosconcretize.com.br'].includes(emailAtual)
       )
 
       await fetchCiclos()
