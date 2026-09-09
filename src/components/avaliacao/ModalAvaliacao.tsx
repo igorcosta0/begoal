@@ -572,16 +572,28 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
     const emEtapaCalibragem = avaliacao ? ['calibragem', 'finalizada'].includes(avaliacao.status) : false
     let pilaresCalibragemFaltando: number[] = []
     let criteriosCalibragemFaltando: string[] = []
-    if (podeCalibrar && emEtapaCalibragem) {
+    // Achado (09/09/2026, Finato): antes disso, um calibrador que também
+    // avalia (calibrador restrito preenchendo pela PRIMEIRA vez a nota do
+    // próprio liderado, ou a própria autoavaliação — caso que só não
+    // acontece mais por causa do escopo em avaliacao/page.tsx) ficava
+    // travado, porque o "Iniciar Calibragem" em lote (27/08) avança o status
+    // pra 'calibragem' sem checar se auto/gestor já foi preenchido, e este
+    // gate exigia calibragem no MESMO clique que a nota base, mesmo quando
+    // essa nota nunca tinha sido salva antes. Só exige calibragem numa
+    // seção (cultural/técnica) quando a nota base dessa MESMA seção já está
+    // completa — ou seja, dá pra salvar a nota base sozinha primeiro, e a
+    // calibragem fica obrigatória só a partir de quando ela também estiver
+    // preenchida (no mesmo clique ou num salvamento posterior).
+    if (podeCalibrar && emEtapaCalibragem && !pilaresComNotaFaltando.length) {
       pilaresCalibragemFaltando = [1, 2, 3, 4].filter((p) => scoresC[String(p)]?.calibragem == null)
       if (pilaresCalibragemFaltando.length) {
         faltando.push('nota de calibragem em todos os pilares culturais')
       }
-      if (criteriosAtuais.length) {
-        criteriosCalibragemFaltando = criteriosAtuais.filter((c) => scoresT[c.key]?.calibragem == null).map((c) => c.key)
-        if (criteriosCalibragemFaltando.length) {
-          faltando.push('nota de calibragem em todos os critérios técnicos')
-        }
+    }
+    if (podeCalibrar && emEtapaCalibragem && criteriosAtuais.length && !criteriosComNotaFaltando.length) {
+      criteriosCalibragemFaltando = criteriosAtuais.filter((c) => scoresT[c.key]?.calibragem == null).map((c) => c.key)
+      if (criteriosCalibragemFaltando.length) {
+        faltando.push('nota de calibragem em todos os critérios técnicos')
       }
     }
 

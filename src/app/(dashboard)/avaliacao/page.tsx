@@ -713,6 +713,18 @@ export default function AvaliacaoPage() {
   const funcionariosComAvaliacao = new Set(avaliacoes.map((a) => a.funcionario?.id))
   const funcionariosSemAvaliacao = funcionarios.filter((f) => !funcionariosComAvaliacao.has(f.id))
 
+  // Achado (09/09/2026, Finato): souCalibradorRestrito é um flag da SESSÃO
+  // inteira (só olha o e-mail, ver fetchDados acima), não da avaliação
+  // aberta — então ao abrir a PRÓPRIA autoavaliação (abrirMinhaAvaliacao seta
+  // avaliacao.funcionario = meuFuncionario), o modal achava que a pessoa
+  // podia calibrar a si mesma, e validarCampos passava a exigir nota de
+  // calibragem junto da nota de auto, que o backend nunca aceitaria mesmo
+  // (e_calibrador_restrito exige e_gestor_do_funcionario, que é sempre falso
+  // pra si próprio). Escopando aqui: só é calibrador restrito desta
+  // avaliação se ela não for a do próprio calibrador.
+  const souCalibradorRestritoDestaAvaliacao =
+    souCalibradorRestrito && (modalAvaliacao.avaliacao as Avaliacao | null)?.funcionario?.id !== meuFuncionario?.id
+
   // Calibragem (pedido ago/2026): etapa ciclo-inteira, acesso restrito (ver
   // souGestorDaCalibragem), só avaliação comum — pares fica de fora.
   const avaliacoesComuns = avaliacoes.filter((a) => a.tipo !== 'pares')
@@ -952,7 +964,7 @@ export default function AvaliacaoPage() {
           isAdmin={modalAvaliacao.papelAvaliador}
           souAdministrador={souAdministrador}
           souGestorDaCalibragem={souGestorDaCalibragem}
-          souCalibradorRestrito={souCalibradorRestrito}
+          souCalibradorRestrito={souCalibradorRestritoDestaAvaliacao}
           onClose={() => setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '', papelAvaliador: false })}
           onSave={() => { fetchMinhasAvaliacoes(); fetchAvaliacoesParaAvaliar(); setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '', papelAvaliador: false }) }}
         />
@@ -1315,7 +1327,7 @@ export default function AvaliacaoPage() {
         isAdmin={modalAvaliacao.papelAvaliador}
         souAdministrador={souAdministrador}
         souGestorDaCalibragem={souGestorDaCalibragem}
-        souCalibradorRestrito={souCalibradorRestrito}
+        souCalibradorRestrito={souCalibradorRestritoDestaAvaliacao}
         onClose={() => setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '', papelAvaliador: false })}
         onSave={() => {
           fetchAvaliacoes()
