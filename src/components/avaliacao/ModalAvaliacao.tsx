@@ -12,8 +12,11 @@ import {
   createPdiItem,
   deletePdiItem,
   getVerticalPadrao,
+  getAutoavaliacaoPadrao,
+  type AutoavaliacaoPadraoCultural,
+  type AutoavaliacaoPadraoTecnica,
 } from '@/lib/queries/avaliacao'
-import { Trash2, Plus } from 'lucide-react'
+import { Trash2, Plus, ChevronDown } from 'lucide-react'
 
 // ── Constantes CTZ ─────────────────────────────────────────────────────────
 
@@ -416,6 +419,14 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [erro, setErro] = useState('')
+  // Pedido (09/09/2026): Avaliação de Pares não tem lado "auto" próprio —
+  // pra quem já pode ver autoavaliação hoje (admin/calibrador), mostra aqui
+  // o que a pessoa disse sobre si mesma na avaliação COMUM dela no mesmo
+  // ciclo, como contexto pra preencher/revisar a nota de par. null = ainda
+  // carregando ou não é o caso (não é pares, ou quem abriu não tem esse
+  // direito) — nesses casos o painel simplesmente não aparece.
+  const [autoPadrao, setAutoPadrao] = useState<{ cultural: AutoavaliacaoPadraoCultural[]; tecnica: AutoavaliacaoPadraoTecnica[] } | null>(null)
+  const [autoPadraoAberto, setAutoPadraoAberto] = useState(true)
   // Pedido (ago/2026): quais campos específicos estão faltando na última
   // tentativa de salvar — usado pra desenhar contorno vermelho neles e pra
   // trocar de aba automaticamente, em vez de só uma frase genérica no
@@ -471,8 +482,22 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
       } else {
         setVertical(avaliacao.vertical ?? '')
       }
+
+      // Ver comentário na declaração de autoPadrao acima. souAdministrador/
+      // souGestorDaCalibragem/souCalibradorRestrito são as MESMAS 3 flags
+      // que já controlam gestorVeAuto mais abaixo — repetidas aqui porque
+      // esse cálculo só existe depois, no corpo do render.
+      const podeVerAutoDeOutrem = !!souAdministrador || !!souGestorDaCalibragem || !!souCalibradorRestrito
+      if (avaliacao.tipo === 'pares' && avaliacao.funcionario_id && avaliacao.ciclo_id && podeVerAutoDeOutrem) {
+        setAutoPadraoAberto(true)
+        getAutoavaliacaoPadrao(avaliacao.ciclo_id, avaliacao.funcionario_id).then(({ cultural, tecnica }) => {
+          setAutoPadrao({ cultural, tecnica })
+        })
+      } else {
+        setAutoPadrao(null)
+      }
     }
-  }, [open, avaliacao?.id])
+  }, [open, avaliacao?.id, souAdministrador, souGestorDaCalibragem, souCalibradorRestrito])
 
   async function loadData(avaliacaoId: string) {
     setLoading(true)
@@ -930,6 +955,67 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
             )}
           </div>
         </div>
+
+        {/* Autoavaliação (ciclo comum) — só aparece em Avaliação de Pares,
+            pra quem já pode ver autoavaliação hoje (ver comentário em
+            autoPadrao acima). Pares não tem lado "auto" próprio; isto é
+            contexto de uma avaliação DIFERENTE (tipo='padrao') da mesma
+            pessoa no mesmo ciclo, só leitura. */}
+        {autoPadrao && (
+          <div className="border-b border-border shrink-0 bg-secondary/30">
+            <button
+              onClick={() => setAutoPadraoAberto((v) => !v)}
+              className="w-full flex items-center justify-between gap-2 px-5 py-3 text-left"
+            >
+              <p className="text-xs font-semibold text-foreground">
+                Autoavaliação de {avaliacao.funcionario?.full_name ?? 'colaborador'} (ciclo comum)
+              </p>
+              <ChevronDown className={cn('w-4 h-4 text-muted-foreground shrink-0 transition-transform', autoPadraoAberto && 'rotate-180')} />
+            </button>
+            {autoPadraoAberto && (
+              <div className="px-5 pb-4 max-h-56 overflow-y-auto space-y-3">
+                {autoPadrao.cultural.length === 0 && autoPadrao.tecnica.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Essa pessoa ainda não preencheu a autoavaliação comum neste ciclo.</p>
+                ) : (
+                  <>
+                    {autoPadrao.cultural.map((c) => {
+                      const pilar = PILARES_CULTURAIS.find((p) => p.numero === c.pilar)
+                      return (
+                        <div key={c.pilar} className="text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-foreground">{c.pilar}. {pilar?.titulo ?? `Pilar ${c.pilar}`}</span>
+                            <span className={cn('shrink-0 px-1.5 py-0.5 rounded-full font-semibold', c.nota_auto === null ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary')}>
+                              {c.nota_auto ?? '—'}
+                            </span>
+                          </div>
+                          {c.observacoes && <p className="text-muted-foreground mt-0.5 whitespace-pre-line">{c.observacoes}</p>}
+                        </div>
+                      )
+                    })}
+                    {autoPadrao.tecnica.length > 0 && (
+                      <div className="pt-2 border-t border-border/60 space-y-3">
+                        {autoPadrao.tecnica.map((t) => {
+                          const criterio = criterios.find((c) => c.key === t.criterio_key)
+                          return (
+                            <div key={t.criterio_key} className="text-xs">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-foreground">{criterio?.label ?? t.criterio_key}</span>
+                                <span className={cn('shrink-0 px-1.5 py-0.5 rounded-full font-semibold', t.nota_auto === null ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary')}>
+                                  {t.nota_auto ?? '—'}
+                                </span>
+                              </div>
+                              {t.observacoes && <p className="text-muted-foreground mt-0.5 whitespace-pre-line">{t.observacoes}</p>}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex border-b border-border shrink-0 px-5">

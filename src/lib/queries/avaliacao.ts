@@ -342,6 +342,38 @@ export async function getVerticalPadrao(cicloId: string, funcionarioId: string) 
   return supabase.rpc('get_vertical_padrao', { p_ciclo_id: cicloId, p_funcionario_id: funcionarioId })
 }
 
+// Pedido (09/09/2026): dentro do ModalAvaliacao de uma Avaliação de Pares,
+// mostrar (só pra quem já pode ver autoavaliação hoje — admin/calibrador)
+// o que a pessoa disse sobre si mesma na avaliação COMUM dela no mesmo
+// ciclo, como contexto — pares não tem lado "auto" próprio. RPCs security
+// definer (migration PENDENTE_20260909030000) repetem pode_ver_lado_auto no
+// WHERE: quem não tem direito recebe array vazio, não erro.
+export interface AutoavaliacaoPadraoCultural {
+  pilar: number
+  nota_auto: number | null
+  observacoes: string | null
+}
+
+export interface AutoavaliacaoPadraoTecnica {
+  criterio_key: string
+  nota_auto: number | null
+  observacoes: string | null
+}
+
+export async function getAutoavaliacaoPadrao(cicloId: string, funcionarioId: string): Promise<{
+  cultural: AutoavaliacaoPadraoCultural[]
+  tecnica: AutoavaliacaoPadraoTecnica[]
+  error: string | null
+}> {
+  const supabase = createClient()
+  const [{ data: cultural, error: erroC }, { data: tecnica, error: erroT }] = await Promise.all([
+    supabase.rpc('get_autoavaliacao_padrao_cultural', { p_ciclo_id: cicloId, p_funcionario_id: funcionarioId }),
+    supabase.rpc('get_autoavaliacao_padrao_tecnica', { p_ciclo_id: cicloId, p_funcionario_id: funcionarioId }),
+  ])
+  const erro = erroC || erroT
+  return { cultural: cultural ?? [], tecnica: tecnica ?? [], error: erro?.message ?? null }
+}
+
 export async function getPdiItems(avaliacaoId: string) {
   const supabase = createClient()
   return supabase
