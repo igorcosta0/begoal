@@ -45,7 +45,10 @@ Responda APENAS com um JSON válido, sem texto adicional, sem markdown, sem expl
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 500 },
+          // Ver comentário em /api/como-abordar-colega: modelos Gemini novos
+          // (2.5+/3.x) gastam parte do maxOutputTokens com "pensamento"
+          // interno antes de escrever a resposta — subido pra não cortar.
+          generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
         }),
       }
     )
@@ -58,6 +61,12 @@ Responda APENAS com um JSON válido, sem texto adicional, sem markdown, sem expl
     }
 
     const data = JSON.parse(responseText)
+    // finishReason 'MAX_TOKENS' = resposta cortada no meio (modelo gastou o
+    // limite com "pensamento" interno antes de terminar) — só loga, ajuda a
+    // pegar se voltar a acontecer sem precisar reportar às cegas de novo.
+    if (data.candidates?.[0]?.finishReason === 'MAX_TOKENS') {
+      console.warn('sugerir-icp: resposta cortada por MAX_TOKENS, considere subir maxOutputTokens de novo')
+    }
     const texto = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}'
     const clean = texto.replace(/```json|```/g, '').trim()
     const sugestao = JSON.parse(clean)

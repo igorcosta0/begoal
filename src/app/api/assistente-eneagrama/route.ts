@@ -74,7 +74,10 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: systemInstruction }] },
           contents,
-          generationConfig: { temperature: 0.7, maxOutputTokens: 700 },
+          // Ver comentário em /api/como-abordar-colega: modelos Gemini novos
+          // (2.5+/3.x) gastam parte do maxOutputTokens com "pensamento"
+          // interno antes de escrever a resposta — subido pra não cortar.
+          generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
         }),
       }
     )
@@ -86,6 +89,12 @@ export async function POST(req: NextRequest) {
     }
 
     const data = JSON.parse(responseText)
+    // finishReason 'MAX_TOKENS' = resposta cortada no meio (modelo gastou o
+    // limite com "pensamento" interno antes de terminar) — só loga, ajuda a
+    // pegar se voltar a acontecer sem precisar reportar às cegas de novo.
+    if (data.candidates?.[0]?.finishReason === 'MAX_TOKENS') {
+      console.warn('assistente-eneagrama: resposta cortada por MAX_TOKENS, considere subir maxOutputTokens de novo')
+    }
     const resposta = data.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Não consegui gerar uma resposta agora. Tente novamente.'
 
     return NextResponse.json({ resposta })

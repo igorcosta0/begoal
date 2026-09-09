@@ -89,7 +89,11 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: systemInstruction }] },
           contents,
-          generationConfig: { temperature: 0.6, maxOutputTokens: 700 },
+          // Achado (09/09/2026): modelos Gemini novos (2.5+/3.x) gastam parte
+          // do maxOutputTokens com "pensamento" interno antes de escrever a
+          // resposta — com 700 a resposta vinha cortada no meio da frase.
+          // Subido bem acima do necessário pra sobrar espaço pros dois.
+          generationConfig: { temperature: 0.6, maxOutputTokens: 2048 },
         }),
       }
     )
@@ -101,6 +105,13 @@ export async function POST(req: NextRequest) {
     }
 
     const data = JSON.parse(responseText)
+    // finishReason 'MAX_TOKENS' = resposta cortada no meio (o modelo gastou o
+    // limite com "pensamento" interno antes de terminar de escrever) — só
+    // loga, não bloqueia; se acontecer de novo isso aparece direto no log em
+    // vez de precisar reportar "resposta cortando" sem mais pista nenhuma.
+    if (data.candidates?.[0]?.finishReason === 'MAX_TOKENS') {
+      console.warn('como-abordar-colega: resposta cortada por MAX_TOKENS, considere subir maxOutputTokens de novo')
+    }
     let resposta = data.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Não consegui gerar uma resposta agora. Tente novamente.'
 
     // Rede de segurança (o prompt já proíbe isso explicitamente, mas é texto
