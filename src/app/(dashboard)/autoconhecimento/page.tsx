@@ -7,7 +7,7 @@ import { cn, isEmpresaCTZ, souPilotoAutoconhecimento } from '@/lib/utils'
 import { getMeuPerfilEneagrama, getTodosPerfisEneagrama, type PerfilEneagramaComNome } from '@/lib/queries/eneagrama'
 import { getTodosCargosPerfil, type FuncionarioCargoPerfil } from '@/lib/queries/cargosPerfil'
 import { TIPOS_ENEAGRAMA, NOME_INSTINTO, type Instinto } from '@/lib/eneagrama/tipos'
-import { Sparkles, Loader2, Send, ChevronDown, ChevronRight, Wand2 } from 'lucide-react'
+import { Sparkles, Loader2, Send, ChevronDown, ChevronRight, Wand2, MessagesSquare } from 'lucide-react'
 
 interface Mensagem {
   role: 'user' | 'model'
@@ -19,6 +19,15 @@ const PERGUNTAS_SUGERIDAS = [
   'Quais são minhas sombras no trabalho?',
   'Como eu costumo tomar decisões?',
   'Como lido melhor com feedback?',
+]
+
+// Situações de exemplo pro chat "Como abordar um colega" (pedido 09/09/2026)
+// — só ilustram o tipo de pergunta, não são enviadas literalmente sem edição
+// (o campo já vem preenchido, a pessoa ajusta antes de mandar).
+const SITUACOES_SUGERIDAS = [
+  'Preciso dar um feedback sobre um atraso recorrente em entregas.',
+  'Preciso pedir pra essa pessoa assumir uma responsabilidade nova.',
+  'Preciso alinhar uma expectativa que não está sendo cumprida.',
 ]
 
 function formatarSequencia(sequencia: string) {
@@ -57,6 +66,19 @@ export default function AutoconhecimentoPage() {
   const [enviando, setEnviando] = useState(false)
   const [erroChat, setErroChat] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // "Como abordar um colega" (pedido 09/09/2026): diferente do chat acima
+  // (que só fala do tipo de quem pergunta), este fala sobre OUTRA pessoa —
+  // o tipo dela nunca é devolvido pro cliente, só usado no servidor pra
+  // calibrar o conselho (ver /api/como-abordar-colega). Troca de colega
+  // limpa o histórico — cada conversa é sobre uma pessoa só, pra não
+  // misturar contexto de situações diferentes.
+  const [colegaAlvoId, setColegaAlvoId] = useState('')
+  const [situacao, setSituacao] = useState('')
+  const [mensagensColega, setMensagensColega] = useState<Mensagem[]>([])
+  const [enviandoColega, setEnviandoColega] = useState(false)
+  const [erroColega, setErroColega] = useState('')
+  const scrollColegaRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!ctz) {
@@ -116,6 +138,44 @@ export default function AutoconhecimentoPage() {
       setErroChat(err instanceof Error ? err.message : 'Erro ao consultar o assistente. Tente novamente.')
     } finally {
       setEnviando(false)
+    }
+  }
+
+  useEffect(() => {
+    scrollColegaRef.current?.scrollTo({ top: scrollColegaRef.current.scrollHeight, behavior: 'smooth' })
+  }, [mensagensColega, enviandoColega])
+
+  // Trocar de colega limpa a conversa — ver comentário na declaração dos
+  // states acima.
+  function selecionarColega(id: string) {
+    setColegaAlvoId(id)
+    setMensagensColega([])
+    setErroColega('')
+  }
+
+  async function perguntarComoAbordar(texto: string) {
+    if (!texto.trim() || enviandoColega || !colegaAlvoId) return
+    setErroColega('')
+    const historicoAnterior = mensagensColega.slice(-8)
+    setMensagensColega((prev) => [...prev, { role: 'user', texto }])
+    setSituacao('')
+    setEnviandoColega(true)
+    try {
+      const res = await fetch('/api/como-abordar-colega', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ funcionarioAlvoId: colegaAlvoId, situacao: texto, historico: historicoAnterior }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || 'Erro ao consultar o assistente.')
+      }
+      const data = await res.json()
+      setMensagensColega((prev) => [...prev, { role: 'model', texto: data.resposta }])
+    } catch (err) {
+      setErroColega(err instanceof Error ? err.message : 'Erro ao consultar o assistente. Tente novamente.')
+    } finally {
+      setEnviandoColega(false)
     }
   }
 
@@ -403,6 +463,99 @@ export default function AutoconhecimentoPage() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {todosPerfis.length > 0 && (
+        <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <MessagesSquare className="w-4 h-4 text-primary" />
+            <h2 className="text-sm font-semibold text-foreground">Como abordar um colega</h2>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Escolha a pessoa e descreva a situação — a resposta orienta a melhor forma de conduzir a conversa,
+            sem nunca revelar o tipo comportamental dela.
+          </p>
+
+          <select
+            value={colegaAlvoId}
+            onChange={(e) => selecionarColega(e.target.value)}
+            className="w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="">Selecione um colega...</option>
+            {[...todosPerfis]
+              .sort((a, b) => a.full_name.localeCompare(b.full_name))
+              .map((p) => (
+                <option key={p.funcionario_id} value={p.funcionario_id}>
+                  {p.full_name}
+                </option>
+              ))}
+          </select>
+
+          {colegaAlvoId && (
+            <>
+              {mensagensColega.length === 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {SITUACOES_SUGERIDAS.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setSituacao(s)}
+                      className="px-3 py-1.5 text-xs rounded-full border border-border text-muted-foreground hover:bg-accent transition-colors text-left"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {mensagensColega.length > 0 && (
+                <div ref={scrollColegaRef} className="max-h-96 overflow-y-auto space-y-3 pr-1">
+                  {mensagensColega.map((m, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        'max-w-[85%] px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap',
+                        m.role === 'user' ? 'ml-auto bg-primary text-primary-foreground' : 'bg-secondary text-foreground'
+                      )}
+                    >
+                      {m.texto}
+                    </div>
+                  ))}
+                  {enviandoColega && (
+                    <div className="bg-secondary text-muted-foreground max-w-[85%] px-4 py-2.5 rounded-2xl text-sm flex items-center gap-2">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Pensando...
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {erroColega && <p className="text-xs text-destructive">{erroColega}</p>}
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  perguntarComoAbordar(situacao)
+                }}
+                className="flex items-center gap-2"
+              >
+                <input
+                  type="text"
+                  value={situacao}
+                  onChange={(e) => setSituacao(e.target.value)}
+                  placeholder="Descreva a situação..."
+                  disabled={enviandoColega}
+                  className="flex-1 px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+                />
+                <button
+                  type="submit"
+                  disabled={enviandoColega || !situacao.trim()}
+                  className="shrink-0 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm flex items-center justify-center"
+                >
+                  {enviandoColega ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                </button>
+              </form>
+            </>
+          )}
         </div>
       )}
 
