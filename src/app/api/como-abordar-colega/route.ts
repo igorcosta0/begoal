@@ -78,7 +78,10 @@ export async function POST(req: NextRequest) {
     ]
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      // gemini-1.5-flash foi desativado pelo Google (retornava 404) — usando
+      // gemini-2.5-flash direto (mesma faixa de preço/velocidade), sem
+      // precisar ter passado por 1.5 aqui.
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

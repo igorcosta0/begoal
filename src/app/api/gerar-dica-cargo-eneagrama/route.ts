@@ -77,7 +77,9 @@ export async function POST(req: NextRequest) {
     const prompt = montarPrompt(cargoPerfil, tipoInfo)
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      // gemini-1.5-flash foi desativado pelo Google (retornava 404) — trocado
+      // pra gemini-2.5-flash em 09/09/2026, mesma faixa de preço/velocidade.
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
