@@ -21,11 +21,53 @@
 - Fluxo de status: `pendente → auto_concluida → gestor_concluida → calibragem → finalizada`.
 - Cada usuário só vê a nota que ELE deu, nunca a que recebeu — regra absoluta, sem exceção de etapa/calibragem/revelação (migration `20260822_avaliacao_bloqueio_total_notas`). A coluna `avaliacoes.revelado` existe mas não faz mais nada (a máscara que dependia dela foi removida) — é resíduo, não mexer achando que ainda funciona.
 - Calibragem é etapa **ciclo inteira**. Acesso (Iniciar/Finalizar/Painel/aba Calibragem do ModalAvaliacao) é `souGestorDaCalibragem` (não confundir com `isAdmin`, que é só "papel de avaliador nesta avaliação específica"): **na CTZ, só Igor, Filippe Réus e Priscila Santos** veem/calibram o ciclo inteiro (pedidos 27/08, 28/08 e revertido em 02/09 — ver abaixo e Log de Sessões); em qualquer outra empresa continua sendo qualquer administrador de verdade (`souAdministrador`), igual sempre foi. Nem o avaliador que preencheu a nota do gestor vê a calibragem. "Iniciar Calibragem" não trava mais esperando todo mundo concluir auto+gestor — move de uma vez todo mundo que ainda não está em calibragem/finalizada (pedido 27/08).
-- **Calibragem restrita** (pedido 02/09, distinto do item acima): Graciela Borges Hoepers, Felipe Marques Santos e (desde 08/09) Felipe Bet Ross calibram só os PRÓPRIOS liderados (organograma, `funcionarios.gestor_id`), não o ciclo inteiro — flag separado `souCalibradorRestrito` (lista de e-mails) + função `e_calibrador_restrito(funcionario_id)` no banco (migrations `PENDENTE_20260902000000_calibragem_restrita_graciela.sql`, `PENDENTE_20260902010000_calibragem_felipe_marques_restrito.sql` — tirou o Felipe Marques da lista de acesso ao ciclo inteiro, só Filippe Réus, dono da empresa, ficou junto de Igor/Priscila lá — e `PENDENTE_20260908000000_calibragem_felipe_ross_restrito.sql`). Não entra na lista de `souGestorDaCalibragem` acima nem nas ações em lote/Painel de Calibragem. Ver Log de Sessões.
+- **Calibragem restrita** (pedido 02/09, distinto do item acima): Graciela Borges Hoepers, Felipe Marques Santos e (desde 08/09) Felipe Bet Ross e Filipe Bossoni Finato calibram só os PRÓPRIOS liderados (organograma, `funcionarios.gestor_id`), não o ciclo inteiro — flag separado `souCalibradorRestrito` (lista de e-mails) + função `e_calibrador_restrito(funcionario_id)` no banco (migrations `PENDENTE_20260902000000_calibragem_restrita_graciela.sql`, `PENDENTE_20260902010000_calibragem_felipe_marques_restrito.sql` — tirou o Felipe Marques da lista de acesso ao ciclo inteiro, só Filippe Réus, dono da empresa, ficou junto de Igor/Priscila lá —, `PENDENTE_20260908000000_calibragem_felipe_ross_restrito.sql` e `PENDENTE_20260908010000_calibragem_finato_restrito.sql`). Não entra na lista de `souGestorDaCalibragem` acima nem nas ações em lote/Painel de Calibragem. Ver Log de Sessões.
+- **Selo "Concluída"** (pedido 09/09): diferente do `status`, que pode avançar em lote sem que auto/gestor/calibragem tenham sido preenchidos de verdade (ver item acima). Função `avaliacao_completude(avaliacao_id)` no banco (migration `PENDENTE_20260909000000_avaliacao_completude.sql`) confere campo a campo (não a média) e alimenta a coluna `completa` nas 3 leituras de avaliação (`get_avaliacoes_por_ciclo`, `get_minhas_avaliacoes`, `get_avaliacoes_para_avaliar`); Painel de Calibragem calcula igual, mas em cima dos dados que ele já recebe (sem chamada nova). Aparece nos 3 lugares: lista do ciclo (admin), Painel de Calibragem e Minhas Avaliações/Preciso Avaliar.
 - Avaliação de Pares tem cultural (4 pilares) **e técnica** (pedido 27/08 — antes era só cultural) — montada à mão pelo admin junto com a avaliação comum, não tem autoavaliação, o avaliador preenche a nota no campo `nota_gestor` (mesmo slot que o gestor usa na avaliação comum). A vertical técnica do par é travada automaticamente na vertical da avaliação comum de quem está sendo avaliado (`get_vertical_padrao`) — não é livre pro par escolher.
 - ~~Pendente: unificar os botões "Salvar" e "Concluir [etapa]"~~ — **feito** (commit `3559d2d`). O "Salvar" do `ModalAvaliacao` é tudo-ou-nada (bloqueia TUDO se faltar 1 campo, sem autosave) — desde 27/08 mostra contorno vermelho nos campos específicos que faltam e troca de aba sozinho pro problema, mas o comportamento tudo-ou-nada em si continua o mesmo (ver Log de Sessões, incidente da Graciela).
 
 ## Log de Sessões
+
+### 2026-09-09
+- Corrigido bug relatado pelo usuário: Finato não conseguia preencher a própria autoavaliação
+  nem a avaliação de gestor da liderada (Carolina Zanette) sem também preencher a calibragem no
+  mesmo clique. Diagnosticado via SQL direto: as duas avaliações já estavam em status
+  `calibragem` (efeito do "Iniciar Calibragem" em lote, 27/08) com a nota base (auto/gestor)
+  ainda em 0/4, e `validarCampos()` em `ModalAvaliacao.tsx` exigia calibragem no MESMO clique
+  que a nota base sempre que `podeCalibrar && emEtapaCalibragem`, mesmo quando a nota nunca
+  tinha sido salva. Achado um segundo bug junto: `souCalibradorRestrito` era um flag da sessão
+  inteira (só e-mail), não escopado por avaliação — abrir a PRÓPRIA autoavaliação fazia o modal
+  achar que dava pra calibrar a si mesmo. Duas correções, só front-end, sem mudança de
+  banco/RLS: (1) `souCalibradorRestritoDestaAvaliacao` em `avaliacao/page.tsx`, escopado pra não
+  valer na avaliação do próprio calibrador; (2) `validarCampos()` só exige calibragem numa seção
+  quando a nota base dessa MESMA seção já está completa. `npm run type-check` passou limpo.
+  Commit `4997d56`, enviado a `master` (deploy no ar).
+- Três pedidos novos, implementados na mesma sessão (commit `a2bc551`, **ainda não enviado a
+  `master`** — faltam 2 migrations pro Igor rodar antes, ver abaixo):
+  1. **Selo "Concluída"** nas avaliações — ver item no estado atual do módulo acima.
+  2. **Aba "Cargos"** nova no menu (antes de "Avaliação") — catálogo somente-leitura dos 31
+     perfis de cargo já importados em 01/09 (`cargos_perfil`), agrupados por área/cargo com
+     níveis em abas, busca e filtro por área. Só CTZ, só administrador de verdade ou piloto do
+     Autoconhecimento (confirmado com o usuário via `AskUserQuestion`) — a RLS da tabela só
+     liberava pra Igor/Priscila antes, ganhou o OR de admin real escopado por `client_id`
+     (migration `PENDENTE_20260909010000_cargos_perfil_acesso_admin.sql`). Query nova
+     `getCargosPerfil` em `src/lib/queries/cargosPerfil.ts`, página nova
+     `src/app/(dashboard)/cargos/page.tsx`.
+  3. **"Gerar Análise" do cruzamento cargo x Eneagrama** (já funcional desde 01/09, o pedido era
+     dar funcionalidade a esse botão) ganhou uma 4ª seção explícita no prompt sobre as 6
+     competências relacionais (comunicação, decisão, relacionamento, feedback, conflito,
+     resultados) e como o tipo da pessoa tende a agir em cada uma — mesma rota/mesma chamada ao
+     Gemini, sem IA dedicada nova, confirmado com o usuário que essa era a interpretação certa
+     do pedido (não um botão novo).
+  4. De brinde, resolvida uma pendência de 3 sessões (01, 02 e 08/09): `get_calibragem_pendente`,
+     RPC que `src/lib/queries/avaliacao.ts` já chamava desde 28/08 mas cujo `CREATE FUNCTION`
+     nunca tinha sido commitado (perdido no incidente da pasta de migrations apagada em 31/08),
+     ficando fora de todo commit desde então. Reconstruída a partir do contrato já documentado
+     no comentário do lado JS, reaproveitando `avaliacao_completude()` por baixo — agora
+     `avaliacao.ts` finalmente entrou inteiro num commit.
+  `npm run type-check` passou limpo em cada etapa. **Pendente antes do próximo push**: rodar
+  `PENDENTE_20260909000000_avaliacao_completude.sql` e
+  `PENDENTE_20260909010000_cargos_perfil_acesso_admin.sql` no SQL Editor do Supabase.
 
 ### 2026-09-08
 - Pedido: Felipe Bet Ross (Líder da Vertical Concretize, `felipe.ross@projetosconcretize.com.br`,
