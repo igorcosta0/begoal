@@ -105,37 +105,20 @@ export async function finalizarCalibragemCiclo(cicloId: string) {
 // preenchida.
 // Sem isso, dava pra clicar "Finalizar" com gente ainda sem nota de
 // calibragem e ela ficava travada pra sempre com media_*_calibragem null.
-// Esta função confere, avaliação por avaliação (as que estão em
-// status='calibragem' agora), se os 4 pilares culturais e todos os
-// critérios técnicos da vertical dela já têm nota_calibragem preenchida —
-// olha o campo granular (não a média), porque a média já fica não-nula
-// mesmo com só 1 de 4 pilares preenchidos (calcMedia ignora null).
+// Pedido (28/08/2026, verificação de segurança): isso fazia select cru de
+// nota_calibragem em avaliacoes_cultural/tecnica — RLS de linha deixava
+// qualquer avaliado/gestor/avaliador ler a LINHA (não só o grupo de
+// calibragem), e Postgres não masca coluna sozinho, então essa nota vazava
+// em cru pra quem chamasse essa query direto pela API, sem passar pela tela.
+// Virou RPC (get_calibragem_pendente, migration 20260828030000): o cálculo
+// roda inteiro no banco, com SECURITY DEFINER, e só devolve algo diferente
+// de `false` pra quem tem pode_ver_lado_calibragem — nenhuma nota trafega
+// pro cliente.
 export async function getCalibragemPendente(cicloId: string): Promise<{ pendente: boolean; error: { message: string } | null }> {
   const supabase = createClient()
-  const { data: avaliacoes, error: erroAvaliacoes } = await supabase
-    .from('avaliacoes')
-    .select('id')
-    .eq('ciclo_id', cicloId)
-    .eq('tipo', 'padrao')
-    .eq('status', 'calibragem')
-  if (erroAvaliacoes) return { pendente: true, error: erroAvaliacoes }
-  const ids = (avaliacoes ?? []).map((a) => a.id)
-  if (ids.length === 0) return { pendente: false, error: null }
-
-  const [{ data: cultural, error: erroC }, { data: tecnica, error: erroT }] = await Promise.all([
-    supabase.from('avaliacoes_cultural').select('avaliacao_id, nota_calibragem').in('avaliacao_id', ids),
-    supabase.from('avaliacoes_tecnica').select('avaliacao_id, nota_calibragem').in('avaliacao_id', ids),
-  ])
-  const erro = erroC || erroT
-  if (erro) return { pendente: true, error: erro }
-
-  for (const id of ids) {
-    const pilares = (cultural ?? []).filter((c) => c.avaliacao_id === id)
-    if (pilares.length < 4 || pilares.some((p) => p.nota_calibragem === null)) return { pendente: true, error: null }
-    const criterios = (tecnica ?? []).filter((t) => t.avaliacao_id === id)
-    if (criterios.length > 0 && criterios.some((c) => c.nota_calibragem === null)) return { pendente: true, error: null }
-  }
-  return { pendente: false, error: null }
+  const { data, error } = await supabase.rpc('get_calibragem_pendente', { p_ciclo_id: cicloId })
+  if (error) return { pendente: true, error }
+  return { pendente: !!data, error: null }
 }
 
 export async function updateCicloStatus(id: string, status: string) {
@@ -176,6 +159,7 @@ export async function getAvaliacoesByCiclo(cicloId: string) {
     observacoes_calibragem: row.observacoes_calibragem,
     funcionario: row.funcionario_id ? { id: row.funcionario_id, full_name: row.funcionario_nome, cargo: row.funcionario_cargo } : null,
     avaliador: row.avaliador_id ? { id: row.avaliador_id, full_name: row.avaliador_nome } : null,
+    completa: !!row.completa,
   }))
   return { data: shaped, error: null }
 }
@@ -200,6 +184,12 @@ export async function getMinhasAvaliacoes(funcionarioId: string) {
     media_tecnica_calibragem: row.media_tecnica_calibragem,
     avaliador: row.avaliador_id ? { id: row.avaliador_id, full_name: row.avaliador_nome } : null,
     ciclo: row.ciclo_id ? { id: row.ciclo_id, nome: row.ciclo_nome, periodo: row.ciclo_periodo, ano: row.ciclo_ano, status: row.ciclo_status } : null,
+    // Pedido (09/09/2026): "completa" vem pronta do banco (migration
+    // PENDENTE_20260909000000_avaliacao_completude) — auto+gestor+calibragem
+    // com nota em TODOS os pilares/critérios (pares só exige gestor). Não é
+    // a mesma coisa que status='finalizada': o status pode avançar sem que
+    // o trabalho tenha sido feito de verdade (ver comentário na migration).
+    completa: !!row.completa,
   }))
   return { data: shaped, error: null }
 }
@@ -219,6 +209,7 @@ export async function getAvaliacoesParaAvaliar(avaliadorFuncionarioId: string) {
     observacoes_gerais: row.observacoes_gerais,
     funcionario: row.funcionario_id ? { id: row.funcionario_id, full_name: row.funcionario_nome, cargo: row.funcionario_cargo } : null,
     ciclo: row.ciclo_id ? { id: row.ciclo_id, nome: row.ciclo_nome, periodo: row.ciclo_periodo, ano: row.ciclo_ano, status: row.ciclo_status } : null,
+    completa: !!row.completa,
   }))
   return { data: shaped, error: null }
 }

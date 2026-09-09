@@ -8,7 +8,7 @@ import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { cn, isEmpresaCTZ, souPilotoAutoconhecimento } from '@/lib/utils'
 import {
   Target, Flag, Zap, Activity, Users, Settings,
-  User, LogOut, ChevronLeft, ChevronRight, Building2, Home, ArrowLeftRight, Upload, Map, ClipboardList, Library, Compass, Sparkles,
+  User, LogOut, ChevronLeft, ChevronRight, Building2, Home, ArrowLeftRight, Upload, Map, ClipboardList, Library, Compass, Sparkles, Briefcase,
 } from 'lucide-react'
 
 const navItems = [
@@ -19,6 +19,7 @@ const navItems = [
   { href: '/sinais-vitais', label: 'Sinais Vitais', icon: Activity },
   { href: '/estrategia', label: 'Estratégia', icon: Map },
   { href: '/funcionarios', label: 'Funcionários', icon: Users },
+  { href: '/cargos', label: 'Cargos', icon: Briefcase },
   { href: '/avaliacao', label: 'Avaliação', icon: ClipboardList },
   { href: '/autoconhecimento', label: 'Autoconhecimento', icon: Sparkles },
   { href: '/biblioteca', label: 'Biblioteca', icon: Library },
@@ -90,6 +91,7 @@ export default function Sidebar({ permissionLevel, userEmail }: SidebarProps) {
         {navItems.map((item) => {
           if (item.href === '/admin' && permissionLevel !== 'administrador') return null
           if (item.href === '/importar-lancamentos' && permissionLevel !== 'administrador') return null
+          if (item.href === '/cargos' && !(isEmpresaCTZ(empresa?.company_name) && (permissionLevel === 'administrador' || souPilotoAutoconhecimento(userEmail)))) return null
           if (item.href === '/avaliacao' && !isEmpresaCTZ(empresa?.company_name)) return null
           if (item.href === '/autoconhecimento' && !(isEmpresaCTZ(empresa?.company_name) && souPilotoAutoconhecimento(userEmail))) return null
           const isActive = pathname.startsWith(item.href)

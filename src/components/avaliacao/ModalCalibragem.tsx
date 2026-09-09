@@ -10,7 +10,7 @@ import {
   updateAvaliacao,
 } from '@/lib/queries/avaliacao'
 import { PILARES_CULTURAIS, VERTICAIS_CTZ } from '@/components/avaliacao/ModalAvaliacao'
-import { X } from 'lucide-react'
+import { X, CheckCircle2 } from 'lucide-react'
 
 // ── Painel de Calibragem ─────────────────────────────────────────────────────
 // Pedido (ago/2026): o administrador calibrava abrindo o ModalAvaliacao
@@ -78,6 +78,24 @@ function calcMedia(values: (number | null)[]): number | null {
   const validos = values.filter((v): v is number => v !== null)
   if (!validos.length) return null
   return validos.reduce((a, b) => a + b, 0) / validos.length
+}
+
+// Selo "Concluída" (pedido 09/09/2026): diferente do status (que só chegou
+// até aqui porque "Iniciar Calibragem" move todo mundo em lote, sem checar
+// conclusão), confere campo a campo se auto+avaliador+calibragem já têm
+// nota em TODOS os pilares culturais e critérios técnicos da vertical dela —
+// este painel já recebe os valores em cru (é admin-only), então dá pra
+// calcular direto aqui, sem chamada nova ao banco.
+function participanteCompleto(p: ParticipanteCalibragem, criteriosVertical: { key: string }[]): boolean {
+  const pilaresCompletos = PILARES_CULTURAIS.every((pilar) => {
+    const linha = p.pilares[pilar.numero]
+    return !!linha && linha.nota_auto !== null && linha.nota_avaliador !== null && linha.nota_calibragem !== null
+  })
+  if (!pilaresCompletos || criteriosVertical.length === 0) return false
+  return criteriosVertical.every((c) => {
+    const linha = p.criterios[c.key]
+    return !!linha && linha.nota_auto !== null && linha.nota_avaliador !== null && linha.nota_calibragem !== null
+  })
 }
 
 function CelulaScore({
@@ -300,9 +318,16 @@ export default function ModalCalibragem({ open, cicloId, cicloNome, onClose, onS
               return (
                 <div key={p.avaliacao_id} className="border border-border rounded-xl overflow-hidden">
                   <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b border-border">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{p.funcionario_nome}</p>
-                      {p.funcionario_cargo && <p className="text-xs text-muted-foreground">{p.funcionario_cargo}</p>}
+                    <div className="flex items-center gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{p.funcionario_nome}</p>
+                        {p.funcionario_cargo && <p className="text-xs text-muted-foreground">{p.funcionario_cargo}</p>}
+                      </div>
+                      {participanteCompleto(p, criteriosVertical) && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700 inline-flex items-center gap-1 shrink-0">
+                          <CheckCircle2 className="w-3 h-3" /> Concluída
+                        </span>
+                      )}
                     </div>
                     {p.vertical && (
                       <span className="text-xs text-muted-foreground">{VERTICAIS_CTZ[p.vertical]?.label ?? p.vertical}</span>

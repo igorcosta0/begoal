@@ -25,7 +25,7 @@ import ModalCalibragem from '@/components/avaliacao/ModalCalibragem'
 import ModalMontarAvaliacoes, { type LinhaMontagem, type OpcaoAvaliador, type ParPares } from '@/components/avaliacao/ModalMontarAvaliacoes'
 import ModalGerenciarLideres from '@/components/avaliacao/ModalGerenciarLideres'
 import { cn, isEmpresaCTZ } from '@/lib/utils'
-import { LayoutGrid, Plus, ChevronRight, Trash2, Users2, ArrowRightLeft, X, Crown, UserCheck, Pencil, Eye, EyeOff } from 'lucide-react'
+import { LayoutGrid, Plus, ChevronRight, Trash2, Users2, ArrowRightLeft, X, Crown, UserCheck, Pencil, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 import { VERTICAIS_CTZ } from '@/components/avaliacao/ModalAvaliacao'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
@@ -59,6 +59,11 @@ interface Avaliacao {
   observacoes_calibragem: string | null
   funcionario: { id: string; full_name: string; cargo: string | null } | null
   avaliador: { id: string; full_name: string } | null
+  // Pedido (09/09/2026): vem pronto do banco (avaliacao_completude) — auto +
+  // gestor + calibragem com nota em TODOS os pilares/critérios (pares só
+  // exige gestor). Não confundir com status === 'finalizada': o status pode
+  // avançar em lote sem que o trabalho tenha sido feito de verdade.
+  completa: boolean
 }
 
 interface MinhaAvaliacao {
@@ -77,6 +82,7 @@ interface MinhaAvaliacao {
   media_tecnica_calibragem: number | null
   avaliador?: { id: string; full_name: string } | null
   ciclo: { id: string; nome: string; periodo: number; ano: number; status: string } | null
+  completa: boolean
 }
 
 // Avaliação que EU preciso preencher como avaliador (não sobre mim) — é assim
@@ -91,6 +97,7 @@ interface AvaliacaoParaAvaliar {
   observacoes_gerais: string | null
   funcionario: { id: string; full_name: string; cargo: string | null } | null
   ciclo: { id: string; nome: string; periodo: number; ano: number; status: string } | null
+  completa: boolean
 }
 
 interface Funcionario {
@@ -140,6 +147,20 @@ const avalStatusColor: Record<string, string> = {
 function labelStatusAvaliacao(status: string, tipo?: 'padrao' | 'pares'): string {
   if (tipo === 'pares' && status === 'gestor_concluida') return 'Concluída'
   return avalStatusLabel[status] ?? status
+}
+
+// Selo "Concluída" (pedido 09/09/2026) — diferente do status, que já podia
+// avançar em lote sem que auto/gestor/calibragem tivessem sido preenchidos
+// de verdade (ver avaliacao_completude na migration
+// PENDENTE_20260909000000). Não revela nenhuma nota, só o fato de todos os
+// lados terem sido preenchidos — por isso pode aparecer pra qualquer um que
+// já vê a linha, inclusive o próprio avaliado.
+function BadgeConcluida() {
+  return (
+    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700 inline-flex items-center gap-1">
+      <CheckCircle2 className="w-3 h-3" /> Concluída
+    </span>
+  )
 }
 
 // ── Componente ───────────────────────────────────────────────────────────────
@@ -704,6 +725,7 @@ export default function AvaliacaoPage() {
         avaliador: meuFuncionario ? { id: meuFuncionario.id, full_name: meuFuncionario.full_name } : null,
         funcionario_id: avaliacao.funcionario?.id,
         ciclo_id: avaliacao.ciclo?.id,
+        completa: avaliacao.completa,
       } as Avaliacao,
       cicloNome: avaliacao.ciclo?.nome ?? '',
       papelAvaliador: true,
@@ -809,6 +831,7 @@ export default function AvaliacaoPage() {
               <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', avalStatusColor[av.status] ?? 'bg-muted text-muted-foreground')}>
                 {labelStatusAvaliacao(av.status, av.tipo)}
               </span>
+              {av.completa && <BadgeConcluida />}
               <span className="text-xs text-muted-foreground">{av.ciclo?.nome}</span>
             </div>
           </div>
@@ -863,6 +886,7 @@ export default function AvaliacaoPage() {
               <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', avalStatusColor[av.status] ?? 'bg-muted text-muted-foreground')}>
                 {avalStatusLabel[av.status] ?? av.status}
               </span>
+              {av.completa && <BadgeConcluida />}
             </div>
           </div>
           <button
@@ -921,6 +945,7 @@ export default function AvaliacaoPage() {
                     <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', avalStatusColor[av.status] ?? 'bg-muted text-muted-foreground')}>
                       {avalStatusLabel[av.status] ?? av.status}
                     </span>
+                    {av.completa && <BadgeConcluida />}
                     {av.vertical && (
                       <span className="text-xs text-muted-foreground">
                         {VERTICAIS_CTZ[av.vertical]?.label ?? av.vertical}
@@ -1251,6 +1276,7 @@ export default function AvaliacaoPage() {
                             <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', avalStatusColor[av.status] ?? 'bg-muted text-muted-foreground')}>
                               {labelStatusAvaliacao(av.status, av.tipo)}
                             </span>
+                            {av.completa && <BadgeConcluida />}
                             <button
                               onClick={() => abrirAvaliacao(av, ciclo.nome, ciclo.id)}
                               className="px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:opacity-90 transition-opacity"

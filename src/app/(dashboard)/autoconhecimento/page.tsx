@@ -366,7 +366,7 @@ export default function AutoconhecimentoPage() {
                                 <div className="pt-3 border-t border-border/50">
                                   <div className="flex items-center justify-between gap-2 mb-2">
                                     <p className="text-xs font-semibold text-foreground uppercase tracking-wide">
-                                      O que o Eneagrama ajuda / atrapalha nesse cargo
+                                      Análise do Eneagrama para este cargo
                                     </p>
                                     <button
                                       onClick={(e) => { e.stopPropagation(); gerarDica(p.funcionario_id) }}
