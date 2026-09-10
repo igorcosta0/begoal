@@ -3,7 +3,10 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
-import { User } from 'lucide-react'
+import { getMeuPerfilPublico, upsertMeuPerfilPublico } from '@/lib/queries/perfilPublico'
+import { User, Globe } from 'lucide-react'
+
+const LIMITE_CAMPO_PUBLICO = 1000
 
 export default function PerfilPage() {
   const { empresa } = useEmpresaStore()
@@ -20,6 +23,17 @@ export default function PerfilPage() {
     nova_senha: '',
     confirmar_senha: '',
   })
+
+  // "Perfil público" (pedido 10/09/2026) — texto livre que a própria pessoa
+  // escreve sobre si mesma e que fica visível pra qualquer colega da mesma
+  // empresa (ver tela de Funcionários). Diferente de tudo no Eneagrama, aqui
+  // é público de propósito.
+  const [perfilPublico, setPerfilPublico] = useState({
+    sobre_mim: '',
+    habilidades: '',
+    sonhos: '',
+  })
+  const [salvandoPublico, setSalvandoPublico] = useState(false)
 
   useEffect(() => {
     async function fetchPerfil() {
@@ -38,10 +52,32 @@ export default function PerfilPage() {
       } else {
         setForm({ full_name: '', email: user.email ?? '' })
       }
+
+      const { perfil } = await getMeuPerfilPublico()
+      if (perfil) {
+        setPerfilPublico({
+          sobre_mim: perfil.sobre_mim ?? '',
+          habilidades: perfil.habilidades ?? '',
+          sonhos: perfil.sonhos ?? '',
+        })
+      }
       setLoading(false)
     }
     fetchPerfil()
   }, [])
+
+  async function handleSalvarPerfilPublico(e: React.FormEvent) {
+    e.preventDefault()
+    setSalvandoPublico(true)
+    setMensagem(null)
+    const { error } = await upsertMeuPerfilPublico(perfilPublico)
+    if (error) {
+      setMensagem({ tipo: 'erro', texto: error })
+    } else {
+      setMensagem({ tipo: 'sucesso', texto: 'Perfil público atualizado com sucesso!' })
+    }
+    setSalvandoPublico(false)
+  }
 
   async function handleSalvarPerfil(e: React.FormEvent) {
     e.preventDefault()
@@ -142,6 +178,63 @@ export default function PerfilPage() {
             className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm"
           >
             {salvando ? 'Salvando...' : 'Salvar alterações'}
+          </button>
+        </form>
+      </div>
+
+      {/* Perfil público — visível pra qualquer colega da mesma empresa (ver
+          tela de Funcionários), diferente de tudo mais nesta página. */}
+      <div className="bg-card border border-border rounded-2xl p-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Globe className="w-4 h-4 text-primary" />
+          <h2 className="text-sm font-semibold text-foreground">Perfil público</h2>
+        </div>
+        <p className="text-xs text-muted-foreground mb-4">
+          Visível para qualquer colega da sua empresa na tela de Funcionários — conte um pouco sobre você.
+        </p>
+        <form onSubmit={handleSalvarPerfilPublico} className="space-y-4">
+          <div>
+            <label className="text-xs font-medium text-foreground">Sobre mim</label>
+            <textarea
+              value={perfilPublico.sobre_mim}
+              onChange={(e) => setPerfilPublico({ ...perfilPublico, sobre_mim: e.target.value })}
+              maxLength={LIMITE_CAMPO_PUBLICO}
+              rows={3}
+              placeholder="Quem é você, o que você faz aqui, o que gosta..."
+              className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-y"
+            />
+            <p className="text-[11px] text-muted-foreground mt-1 text-right">{perfilPublico.sobre_mim.length}/{LIMITE_CAMPO_PUBLICO}</p>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-foreground">Minhas habilidades</label>
+            <textarea
+              value={perfilPublico.habilidades}
+              onChange={(e) => setPerfilPublico({ ...perfilPublico, habilidades: e.target.value })}
+              maxLength={LIMITE_CAMPO_PUBLICO}
+              rows={3}
+              placeholder="No que você é bom, o que pode ajudar os colegas..."
+              className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-y"
+            />
+            <p className="text-[11px] text-muted-foreground mt-1 text-right">{perfilPublico.habilidades.length}/{LIMITE_CAMPO_PUBLICO}</p>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-foreground">Meus sonhos</label>
+            <textarea
+              value={perfilPublico.sonhos}
+              onChange={(e) => setPerfilPublico({ ...perfilPublico, sonhos: e.target.value })}
+              maxLength={LIMITE_CAMPO_PUBLICO}
+              rows={3}
+              placeholder="Onde você quer chegar, o que quer conquistar..."
+              className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-y"
+            />
+            <p className="text-[11px] text-muted-foreground mt-1 text-right">{perfilPublico.sonhos.length}/{LIMITE_CAMPO_PUBLICO}</p>
+          </div>
+          <button
+            type="submit"
+            disabled={salvandoPublico}
+            className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm"
+          >
+            {salvandoPublico ? 'Salvando...' : 'Salvar perfil público'}
           </button>
         </form>
       </div>

@@ -5,8 +5,9 @@ import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
 import { getSetoresByEmpresa } from '@/lib/queries/okr'
 import { getTodosCargosPerfil, type FuncionarioCargoPerfil } from '@/lib/queries/cargosPerfil'
+import { getPerfisPublicosPorEmpresa, type PerfilPublico } from '@/lib/queries/perfilPublico'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
-import { User, Building2, Briefcase, MoreHorizontal, Users, Plus, ChevronDown } from 'lucide-react'
+import { User, Building2, Briefcase, MoreHorizontal, Users, Plus, ChevronDown, UserCircle2 } from 'lucide-react'
 import { mensagemErroExclusao } from '@/lib/utils'
 
 const STATUS_OPTIONS = ['Ativo', 'Férias', 'Afastado', 'Desligado']
@@ -193,15 +194,21 @@ export default function FuncionariosPage() {
   const [filtroSetor, setFiltroSetor] = useState('')
   const [busca, setBusca] = useState('')
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
-  // Pedido (10/09/2026): descrição do cargo ao clicar no cargo exibido
-  // embaixo do nome — reaproveita o vínculo pessoa↔cargo de
-  // funcionarios_cargo_perfil (curado à mão em 01/09/2026 pro cruzamento
-  // cargo x Eneagrama, ver getTodosCargosPerfil). Fora da CTZ, ou pra quem
-  // não é admin/piloto, a RLS devolve vazio e o cargo simplesmente continua
-  // sem ficar clicável — sem mensagem de erro, sem pista de que existe algo
-  // a mais por trás (mesmo padrão de silêncio já usado em avaliacao/cargos).
+  // Pedido (10/09/2026): descrição do cargo — reaproveita o vínculo
+  // pessoa↔cargo de funcionarios_cargo_perfil (curado à mão em 01/09/2026
+  // pro cruzamento cargo x Eneagrama, ver getTodosCargosPerfil). Fora da
+  // CTZ, ou pra quem não é admin/piloto, a RLS devolve vazio e a seção de
+  // cargo simplesmente não aparece no perfil expandido — sem mensagem de
+  // erro, sem pista de que existe algo a mais por trás (mesmo padrão de
+  // silêncio já usado em avaliacao/cargos).
   const [cargoPerfilMap, setCargoPerfilMap] = useState<Record<string, FuncionarioCargoPerfil>>({})
-  const [cargoExpandidoId, setCargoExpandidoId] = useState<string | null>(null)
+  // Perfil público (pedido 10/09/2026): Sobre mim/Habilidades/Sonhos que
+  // cada um preenche na aba Perfil — público pra empresa toda, sem
+  // restrição de acesso (ver getPerfisPublicosPorEmpresa).
+  const [perfisPublicosMap, setPerfisPublicosMap] = useState<Record<string, PerfilPublico>>({})
+  // Um só painel de expansão por funcionário, mostrando cargo + perfil
+  // público juntos (antes só o cargo expandia, clicando no próprio texto).
+  const [perfilExpandidoId, setPerfilExpandidoId] = useState<string | null>(null)
 
   const [modalCriar, setModalCriar] = useState(false)
   const [modalEditar, setModalEditar] = useState<{ open: boolean; funcionario: any | null }>({ open: false, funcionario: null })
@@ -235,6 +242,11 @@ export default function FuncionariosPage() {
   useEffect(() => {
     if (!empresa) return
     getTodosCargosPerfil(empresa.id).then(({ mapa }) => setCargoPerfilMap(mapa))
+  }, [empresa])
+
+  useEffect(() => {
+    if (!empresa) return
+    getPerfisPublicosPorEmpresa(empresa.id).then(({ mapa }) => setPerfisPublicosMap(mapa))
   }, [empresa])
 
   useEffect(() => {
@@ -390,89 +402,109 @@ export default function FuncionariosPage() {
           {funcionariosFiltrados.map((f) => (
             <div
               key={f.id}
-              className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between gap-3 hover:shadow-sm transition-shadow"
+              className="bg-card border border-border rounded-2xl p-4 hover:shadow-sm transition-shadow"
             >
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary font-semibold text-sm">
-                  {f.full_name.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground">{f.full_name}</p>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs text-muted-foreground">
-                    {f.cargo && (() => {
-                      const descricaoCargo = cargoPerfilMap[f.id]?.cargo_perfil?.sumario ?? null
-                      if (!descricaoCargo) {
-                        return (
-                          <span className="flex items-center gap-1">
-                            <Briefcase className="w-3 h-3" />
-                            {f.cargo}
-                          </span>
-                        )
-                      }
-                      const aberto = cargoExpandidoId === f.id
-                      return (
-                        <button
-                          type="button"
-                          onClick={() => setCargoExpandidoId(aberto ? null : f.id)}
-                          className="flex items-center gap-1 hover:text-foreground transition-colors"
-                          title="Ver descrição do cargo"
-                        >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary font-semibold text-sm">
+                    {f.full_name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground">{f.full_name}</p>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs text-muted-foreground">
+                      {f.cargo && (
+                        <span className="flex items-center gap-1">
                           <Briefcase className="w-3 h-3" />
-                          <span className="underline decoration-dotted underline-offset-2">{f.cargo}</span>
-                          <ChevronDown className={`w-3 h-3 transition-transform ${aberto ? 'rotate-180' : ''}`} />
+                          {f.cargo}
+                        </span>
+                      )}
+                      {f.setores && (
+                        <span className="flex items-center gap-1">
+                          <Building2 className="w-3 h-3" />
+                          {f.setores.name}
+                        </span>
+                      )}
+                      {f.email && (
+                        <span className="flex items-center gap-1">
+                          <User className="w-3 h-3" />
+                          {f.email}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor(f.status)}`}>
+                    {f.status}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPerfilExpandidoId(perfilExpandidoId === f.id ? null : f.id)}
+                    className="flex items-center gap-1 px-2 py-1.5 rounded-md hover:bg-accent transition-colors text-muted-foreground text-xs font-medium"
+                    title="Ver perfil"
+                  >
+                    <UserCircle2 className="w-3.5 h-3.5" />
+                    Perfil
+                    <ChevronDown className={`w-3 h-3 transition-transform ${perfilExpandidoId === f.id ? 'rotate-180' : ''}`} />
+                  </button>
+                  <div className="relative">
+                    <button
+                      onClick={() => setMenuOpen(menuOpen === f.id ? null : f.id)}
+                      className="p-1.5 rounded-md hover:bg-accent transition-colors text-muted-foreground"
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </button>
+                    {menuOpen === f.id && (
+                      <div className="absolute right-0 top-8 bg-popover border border-border rounded-xl shadow-lg z-10 min-w-36 py-1">
+                        <button
+                          onClick={() => { setModalEditar({ open: true, funcionario: f }); setMenuOpen(null) }}
+                          className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors"
+                        >
+                          Editar
                         </button>
-                      )
-                    })()}
-                    {f.setores && (
-                      <span className="flex items-center gap-1">
-                        <Building2 className="w-3 h-3" />
-                        {f.setores.name}
-                      </span>
-                    )}
-                    {f.email && (
-                      <span className="flex items-center gap-1">
-                        <User className="w-3 h-3" />
-                        {f.email}
-                      </span>
+                        <button
+                          onClick={() => { setModalExcluir({ open: true, funcionario: f, loading: false, erro: null }); setMenuOpen(null) }}
+                          className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-destructive"
+                        >
+                          Excluir
+                        </button>
+                      </div>
                     )}
                   </div>
-                  {cargoExpandidoId === f.id && cargoPerfilMap[f.id]?.cargo_perfil?.sumario && (
-                    <p className="text-xs text-muted-foreground mt-1.5 bg-muted/40 border border-border/60 rounded-lg px-2.5 py-1.5 max-w-lg">
-                      {cargoPerfilMap[f.id]!.cargo_perfil!.sumario}
-                    </p>
-                  )}
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor(f.status)}`}>
-                  {f.status}
-                </span>
-                <div className="relative">
-                  <button
-                    onClick={() => setMenuOpen(menuOpen === f.id ? null : f.id)}
-                    className="p-1.5 rounded-md hover:bg-accent transition-colors text-muted-foreground"
-                  >
-                    <MoreHorizontal className="w-4 h-4" />
-                  </button>
-                  {menuOpen === f.id && (
-                    <div className="absolute right-0 top-8 bg-popover border border-border rounded-xl shadow-lg z-10 min-w-36 py-1">
-                      <button
-                        onClick={() => { setModalEditar({ open: true, funcionario: f }); setMenuOpen(null) }}
-                        className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => { setModalExcluir({ open: true, funcionario: f, loading: false, erro: null }); setMenuOpen(null) }}
-                        className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-destructive"
-                      >
-                        Excluir
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
+              {/* Perfil expandido (pedido 10/09/2026): descrição do cargo
+                  (quando mapeada, ver cargoPerfilMap) + o "perfil público"
+                  que a própria pessoa escreveu sobre si (Sobre mim/
+                  Habilidades/Sonhos, ver funcionarios_perfil_publico) — só
+                  mostra as seções que têm conteúdo, pra não poluir com
+                  "ainda não preenchido" repetido. */}
+              {perfilExpandidoId === f.id && (() => {
+                const descricaoCargo = cargoPerfilMap[f.id]?.cargo_perfil?.sumario ?? null
+                const pubico = perfisPublicosMap[f.id]
+                const secoes: { label: string; texto: string }[] = []
+                if (descricaoCargo) secoes.push({ label: 'Cargo', texto: descricaoCargo })
+                if (pubico?.sobre_mim) secoes.push({ label: 'Sobre mim', texto: pubico.sobre_mim })
+                if (pubico?.habilidades) secoes.push({ label: 'Minhas habilidades', texto: pubico.habilidades })
+                if (pubico?.sonhos) secoes.push({ label: 'Meus sonhos', texto: pubico.sonhos })
+
+                return (
+                  <div className="mt-3 pt-3 border-t border-border/60 space-y-2.5">
+                    {secoes.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">Este colaborador ainda não preencheu o perfil.</p>
+                    ) : (
+                      secoes.map((s) => (
+                        <div key={s.label}>
+                          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{s.label}</p>
+                          <p className="text-sm text-foreground whitespace-pre-line">{s.texto}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )
+              })()}
             </div>
           ))}
         </div>

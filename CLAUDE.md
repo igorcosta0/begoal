@@ -140,6 +140,38 @@
   - `npm run type-check` passou limpo. Commitado localmente junto do commit anterior desta mesma
     entrada (ver `git log`) — **ainda não enviado a `master`**, mesma pendência de rodar a migration
     antes.
+- Migration `PENDENTE_20260910010000` rodada pelo Igor, confirmada — commit `f95fdc0` enviado a
+  `master` (deploy no ar).
+- **Pedido novo, mesma sessão**: 3 caixas de texto na aba "Perfil" — "Sobre mim" / "Minhas
+  Habilidades" / "Meus sonhos" — que cada usuário preenche sobre si mesmo, salvas e **públicas pra
+  todo mundo da empresa ler** (oposto do padrão "cada um só vê o seu" do Eneagrama/avaliação — aqui
+  é conteúdo que a própria pessoa escreve de propósito pra ser lido). Sem trava de CTZ — `Perfil` e
+  `Funcionários` são páginas genéricas de toda empresa da plataforma, o pedido não mencionou
+  restringir a nenhuma.
+  - **Achado importante antes de implementar**: a policy de ESCRITA de `public.funcionarios`
+    ("Unified Write Policy for Funcionarios", pré-existente, fora do que os `supabase/migrations/`
+    documentam) exige `permission_level = 'administrador'` — ou seja, um funcionário comum **não
+    consegue hoje** atualizar nem a PRÓPRIA linha ali. Isso já era um bug preexistente e silencioso
+    no "Salvar alterações" (Nome completo) da aba Perfil pra qualquer usuário não-admin (a
+    atualização não dá erro, só não muda nada — RLS bloqueia 0 linhas, sem exception) — não mexi
+    nisso (fora do escopo pedido), só evitei repetir o mesmo problema nos campos novos.
+  - Implementado numa tabela nova, `funcionarios_perfil_publico` (migration
+    `PENDENTE_20260910020000_perfil_publico.sql`, **ainda não rodada no Supabase, avisar o Igor**):
+    RLS de leitura libera qualquer um da MESMA empresa (`client_id` via `user_company_roles`,
+    mesmo padrão de leitura já usado em `funcionarios`); RLS de escrita libera só a PRÓPRIA linha
+    (`user_id = auth.uid()`, sem depender de ser administrador) — é o motivo de ser tabela separada
+    em vez de colunas em `funcionarios`. Query nova `src/lib/queries/perfilPublico.ts`
+    (`getMeuPerfilPublico`, `upsertMeuPerfilPublico`, `getPerfisPublicosPorEmpresa`).
+  - `perfil/page.tsx`: card novo "Perfil público" com as 3 caixas (textarea, limite de 1000
+    caracteres cada, contador visível), salvamento próprio (upsert), separado do card "Dados
+    pessoais" de sempre.
+  - `funcionarios/page.tsx`: consolidei a expansão por linha — antes (09/09) só o texto do cargo
+    era clicável e expandia a descrição do cargo; agora um botão "Perfil" dedicado em cada card
+    expande TUDO junto (descrição do cargo, quando mapeada, + Sobre mim/Habilidades/Sonhos), só
+    mostrando as seções que têm conteúdo (sem "ainda não preenchido" repetido pra cada campo vazio).
+  - `npm run type-check` passou limpo. Commit ainda não feito no momento deste registro.
+  - **Pendente antes do próximo push**: rodar `PENDENTE_20260910020000_perfil_publico.sql` no SQL
+    Editor do Supabase.
 
 ### 2026-09-09
 - Corrigido bug relatado pelo usuário: Finato não conseguia preencher a própria autoavaliação
