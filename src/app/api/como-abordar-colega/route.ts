@@ -3,25 +3,24 @@ import { createClient } from '@/lib/supabase/server'
 import { souPilotoAutoconhecimento } from '@/lib/utils'
 import { TIPOS_ENEAGRAMA } from '@/lib/eneagrama/tipos'
 
-// Protótipo (09/09/2026, pedido do Igor): "preciso falar com o Fulano sobre
-// X, qual a melhor forma de abordar?" — diferente de /api/assistente-
-// eneagrama (que só fala do tipo de QUEM PERGUNTA), aqui a pessoa pergunta
-// sobre OUTRO colega. Regra central, explícita no pedido: quem pergunta
-// NUNCA pode saber o tipo do colega — só o "sistema" (esta rota, no
-// servidor) sabe. O tipo entra no prompt só como contexto interno pro
-// Gemini calibrar o CONSELHO, nunca aparece na resposta.
+// "Preciso falar com o Fulano sobre X, qual a melhor forma de abordar?" —
+// diferente de /api/assistente-eneagrama (que só fala do tipo de QUEM
+// PERGUNTA), aqui a pessoa pergunta sobre OUTRO colega. Regra central,
+// explícita no pedido original (09/09/2026): quem pergunta NUNCA pode saber
+// o tipo do colega — só o "sistema" (esta rota, no servidor) sabe. O tipo
+// entra no prompt só como contexto interno pro Gemini calibrar o CONSELHO,
+// nunca aparece na resposta.
 //
-// Acesso: mesma trava de souPilotoAutoconhecimento do resto do módulo
-// (protótipo restrito a Igor/Priscila por enquanto). A leitura do tipo do
-// ALVO usa o cliente Supabase da sessão (RLS normal) em vez de uma função
-// security-definer nova — funciona porque a RLS de funcionarios_eneagrama já
-// libera SELECT de qualquer linha pra quem tem pode_ver_todos_eneagrama_ctz()
-// (mesma política que already alimenta a tabela "Perfis da equipe" desta
-// página). Se este recurso um dia abrir pra quem NÃO é piloto, essa parte
-// precisa virar uma função security-definer que devolve só o necessário pro
-// prompt, nunca o tipo em si pro cliente — o contrato desta rota (nunca
-// incluir `tipo` no JSON de resposta) já foi pensado pra sobreviver a essa
-// mudança sem precisar mexer no front-end.
+// Acesso (10/09/2026): diferente do Mapa 1 (que só fala do tipo de quem
+// pergunta e por isso abriu geral), o Mapa 3 fala do tipo de OUTRA pessoa —
+// o Igor pediu pra manter isso restrito a Igor/Priscila por enquanto,
+// mesmo com a trava técnica (nunca devolve `tipo` no JSON) já funcionando:
+// o filtro de "nunca mencionar Eneagrama/tipo N" é uma rede de segurança,
+// não garantia, e isso nunca foi testado com uso real de mais gente. A
+// leitura do tipo do ALVO usa a RPC security-definer
+// obter_tipo_colega_mesma_empresa (migration PENDENTE_20260910010000, já
+// pensada pra funcionar sem depender da lista de piloto quando esse dia
+// chegar) — só o gate abaixo que continua restrito por enquanto.
 export async function POST(req: NextRequest) {
   try {
     const apiKey = process.env.GEMINI_API_KEY
@@ -51,16 +50,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Situação ausente' }, { status: 400 })
     }
 
-    const { data: perfilAlvo, error: erroPerfil } = await supabase
-      .from('funcionarios_eneagrama')
-      .select('tipo, subtipo_sequencia')
-      .eq('funcionario_id', funcionarioAlvoId)
-      .maybeSingle()
+    const { data: perfisAlvo, error: erroPerfil } = await supabase
+      .rpc('obter_tipo_colega_mesma_empresa', { p_funcionario_alvo_id: funcionarioAlvoId })
 
     if (erroPerfil) {
       console.error('Erro ao buscar perfil do colega:', erroPerfil)
       return NextResponse.json({ error: 'Erro ao buscar dados dessa pessoa' }, { status: 500 })
     }
+    const perfilAlvo = perfisAlvo?.[0]
     if (!perfilAlvo) {
       return NextResponse.json({ error: 'Essa pessoa ainda não tem perfil mapeado' }, { status: 404 })
     }

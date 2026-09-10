@@ -97,10 +97,14 @@ export function isEmpresaCTZ(companyName?: string | null): boolean {
   return !!companyName && companyName.toLowerCase().includes('ctz')
 }
 
-// Módulo de Autoconhecimento (Eneagrama) é protótipo em teste (pedido 31/08) —
-// por enquanto só Igor e Priscila Santos devem ver que ele existe, ninguém
-// mais na CTZ. Mesmo padrão de lista fixa já usado em souGestorDaCalibragem
-// (avaliacao/page.tsx). Remover/ampliar essa lista quando o piloto acabar.
+// Módulo de Autoconhecimento (Eneagrama): o protótipo em teste (pedido 31/08)
+// graduou em 10/09/2026 — os 3 mapas (Autoliderança, Liderando o time,
+// Relacionando com o time) abriram pra toda a CTZ. Esta lista continua viva,
+// mas com escopo menor: só controla a visão de ADMIN do protótipo dentro da
+// própria página (tabela "Perfis da equipe" com o tipo de todo mundo, pra
+// conferência de mapeamento, e o cruzamento cargo x Eneagrama) — nunca mais
+// o acesso ao módulo inteiro. Mesmo padrão de lista fixa já usado em
+// souGestorDaCalibragem (avaliacao/page.tsx).
 const EMAILS_PILOTO_AUTOCONHECIMENTO = ['igorecosta1@gmail.com', 'priscila.santos@behive.net.br']
 export function souPilotoAutoconhecimento(email?: string | null): boolean {
   return !!email && EMAILS_PILOTO_AUTOCONHECIMENTO.includes(email.toLowerCase())

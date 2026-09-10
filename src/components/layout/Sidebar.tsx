@@ -93,7 +93,11 @@ export default function Sidebar({ permissionLevel, userEmail }: SidebarProps) {
           if (item.href === '/importar-lancamentos' && permissionLevel !== 'administrador') return null
           if (item.href === '/cargos' && !(isEmpresaCTZ(empresa?.company_name) && (permissionLevel === 'administrador' || souPilotoAutoconhecimento(userEmail)))) return null
           if (item.href === '/avaliacao' && !isEmpresaCTZ(empresa?.company_name)) return null
-          if (item.href === '/autoconhecimento' && !(isEmpresaCTZ(empresa?.company_name) && souPilotoAutoconhecimento(userEmail))) return null
+          // Graduação do protótipo (10/09/2026): módulo abriu de Igor/Priscila
+          // pra qualquer CTZ (3 mapas — ver autoconhecimento/page.tsx). A
+          // visão de admin do protótipo (Perfis da equipe/cruzamento cargo)
+          // continua restrita por dentro da própria página, não aqui no menu.
+          if (item.href === '/autoconhecimento' && !isEmpresaCTZ(empresa?.company_name)) return null
           const isActive = pathname.startsWith(item.href)
           const Icon = item.icon
           return (

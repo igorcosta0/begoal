@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { souPilotoAutoconhecimento } from '@/lib/utils'
 import { TIPOS_ENEAGRAMA, NOME_INSTINTO, type Instinto } from '@/lib/eneagrama/tipos'
 
 // Diferente de /api/sugerir-icp (que não autentica ninguém), esta rota devolve
@@ -22,12 +21,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
-    // Protótipo em teste (ago/2026): só quem está em souPilotoAutoconhecimento
-    // pode usar esta rota, ninguém mais — ver lib/utils.ts.
-    if (!souPilotoAutoconhecimento(user.email)) {
-      return NextResponse.json({ error: 'Módulo ainda não disponível' }, { status: 403 })
-    }
-
+    // Graduação do protótipo (10/09/2026): o Mapa 1 "Autoliderança" agora é
+    // pra qualquer um com tipo mapeado, não só Igor/Priscila — a trava real
+    // já era (e continua sendo) "seu perfil precisa existir" logo abaixo
+    // (404 se não tiver linha em funcionarios_eneagrama), então o gate de
+    // souPilotoAutoconhecimento aqui virou redundante e foi removido. A
+    // visão "Perfis da equipe"/cruzamento cargo x Eneagrama continua
+    // restrita a Igor/Priscila, mas por RLS (pode_ver_todos_eneagrama_ctz),
+    // não por esta rota.
     const { data: perfil, error: perfilError } = await supabase
       .from('funcionarios_eneagrama')
       .select('tipo, subtipo_sequencia')

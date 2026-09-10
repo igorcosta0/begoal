@@ -75,9 +75,71 @@
      `auth.uid()` contra 2 UUIDs fixos), o Igor já consegue ver a descrição de cargo de qualquer
      funcionário HOJE, sem esperar essa migration — ela só é necessária pra outros administradores
      da CTZ além de Igor/Priscila. `npm run type-check` passou limpo.
-- **Pendente antes do próximo push com este commit**: rodar
-  `PENDENTE_20260910000000_funcionarios_cargo_perfil_acesso_admin.sql` no SQL Editor do Supabase
-  (não bloqueia o Igor testar, só os demais administradores da CTZ).
+- Migration `PENDENTE_20260910000000` rodada pelo Igor no SQL Editor — na primeira tentativa deu
+  `40P01 deadlock detected` (colisão de lock com outra sessão ativa no banco, provavelmente o
+  próprio app em produção lendo `funcionarios_cargo_perfil`/`user_company_roles` no mesmo
+  instante — o Postgres aborta uma das duas transações automaticamente, não deixa nada aplicado
+  pela metade). Segunda tentativa (retry simples, sem mudar nada) passou. Commit `9887452`,
+  enviado a `master` (deploy no ar).
+- **Nova demanda, mesma sessão**: "subir a metodologia" de `Adições futuras/Abordagem .pdf`
+  (pitch da BeHive sobre liderar a partir do Eneagrama) em 3 mapas dentro do Autoconhecimento —
+  Autoliderança (todos), Liderando o time (só líderes), Relacionando com o time (todos). Antes de
+  implementar, confirmado com o Igor via `AskUserQuestion`: (1) "líder" pro Mapa 2 = organograma
+  (`funcionarios.gestor_id`, tem liderado direto), não a marcação manual `lider_avaliacao`
+  (pensada pra Avaliação de Pares); (2) quem ainda não tem tipo mapeado continua vendo o menu
+  "Autoconhecimento" normalmente, com aviso de "ainda não mapeado", em vez de sumir o módulo
+  inteiro (diferente do padrão de "esconder que existe" usado em calibragem/cargos — aqui não é
+  dado sensível, só falta de cadastro).
+  - Isso GRADUA o protótipo (restrito a Igor/Priscila desde 31/08) pra CTZ inteira nos Mapas 1 e
+    3, e pra quem lidera gente no Mapa 2 — decisão grande o suficiente pra valer o registro aqui:
+    `EMAILS_PILOTO_AUTOCONHECIMENTO` (`lib/utils.ts`) continua existindo, mas seu escopo encolheu
+    pra só controlar a visão de admin do protótipo DENTRO da página ("Perfis da equipe" com o tipo
+    de todo mundo, cruzamento cargo x Eneagrama) — não mais o acesso ao módulo inteiro (menu no
+    `Sidebar.tsx` e as duas rotas de API que geravam os chats de Mapa 1/3 tiveram o gate de piloto
+    removido).
+  - Mapas 1 e 3 já existiam de fato (card do tipo + chat "Pergunte ao assistente" = Mapa 1; chat
+    "Como abordar um colega", de 09/09 = Mapa 3) — só reenquadrados com o vocabulário do PDF.
+    Mapa 2 é novo: rota `/api/liderar-liderado` (mesma mecânica de "abordar colega", mas o alvo
+    PRECISA ser liderado direto de quem pergunta — checado no servidor, não só confiando no
+    dropdown) com prompt voltado a delegação/desenvolvimento/decisão em vez de relação entre pares.
+  - Achado ao abrir pra todo mundo: as duas rotas de chat liam o tipo da OUTRA pessoa direto pelo
+    cliente Supabase da sessão, o que só funcionava porque a RLS de `funcionarios_eneagrama`
+    liberava qualquer linha pra quem tinha `pode_ver_todos_eneagrama_ctz()` (só Igor/Priscila) —
+    o próprio comentário da rota de 09/09 já previa isso ("se abrir pra quem não é piloto, precisa
+    virar função security-definer"). Migration nova
+    `PENDENTE_20260910010000_autoconhecimento_3_mapas.sql` (**ainda não rodada no Supabase, avisar
+    o Igor**) cria: `sou_lider_de_alguem()` (gate do Mapa 2), `listar_colegas_com_perfil_mapeado()`
+    / `listar_meus_liderados_com_perfil_mapeado()` (só nome, nunca tipo — alimentam os dropdowns
+    dos Mapas 3/2), e `obter_tipo_colega_mesma_empresa()` / `obter_tipo_liderado()` (as ÚNICAS que
+    devolvem tipo de outra pessoa — chamadas só dentro das rotas de API, nunca do navegador; a
+    segunda confere organograma de verdade via `e_gestor_do_funcionario()`, não confia no
+    `funcionarioAlvoId` vindo do cliente). RLS de `funcionarios_eneagrama`/`funcionarios_cargo_perfil`
+    em si não mudou nada — só somaram funções por cima.
+  - `npm run type-check` passou limpo. Commitado localmente (ver `git log` — mensagem começa com
+    "feat: 3 mapas do Autoconhecimento"), **ainda não enviado a `master`**.
+  - **Pendente antes do próximo push com este commit**: rodar
+    `PENDENTE_20260910010000_autoconhecimento_3_mapas.sql` no SQL Editor do Supabase.
+- Pergunta do Igor, mesma sessão, logo depois de eu descrever o plano acima: "o quão perigoso pode
+  ser liberar a CTZ pra ver essa adição?". Dei o risco de verdade (não é bug de código): o filtro
+  que bloqueia "Eneagrama"/"tipo N" na resposta da IA é rede de segurança, não garantia — um modelo
+  pode descrever alguém de um jeito reconhecível sem usar essas palavras; e é a primeira vez que o
+  sistema usa o perfil psicológico de alguém pra aconselhar OUTRA pessoa sobre como lidar com ela,
+  sem a pessoa saber — isso nunca foi testado com uso real além de Igor/Priscila. Recomendei abrir
+  só o Mapa 1 (só fala do próprio tipo de quem pergunta, risco ~zero) e manter 2/3 restritos.
+  Confirmado com o Igor via `AskUserQuestion` — foi a opção escolhida.
+  - Implementado: `/api/como-abordar-colega` (Mapa 3) e a rota nova `/api/liderar-liderado`
+    (Mapa 2) voltaram a ter o gate `souPilotoAutoconhecimento` (o Mapa 2 nunca tinha tido esse
+    gate, já nasceu sem ele por engano no primeiro commit desta sessão). `/api/assistente-eneagrama`
+    (Mapa 1) continua SEM esse gate — é o único que só fala do tipo de quem pergunta. Na página, as
+    seções dos Mapas 2 e 3 (e a busca de colegas/liderados que as alimenta) ficaram atrás de
+    `souAdminPiloto` também — antes disso `souLider` sozinho já bastava pra mostrar o Mapa 2 pra
+    qualquer líder da CTZ, o que teria contrariado a decisão. RLS/funções do banco
+    (`PENDENTE_20260910010000`) não mudaram — a restrição é só de acesso à funcionalidade (rotas +
+    página), a proteção técnica de nunca vazar o tipo pro navegador continua valendo pros 3 mapas
+    igual.
+  - `npm run type-check` passou limpo. Commitado localmente junto do commit anterior desta mesma
+    entrada (ver `git log`) — **ainda não enviado a `master`**, mesma pendência de rodar a migration
+    antes.
 
 ### 2026-09-09
 - Corrigido bug relatado pelo usuário: Finato não conseguia preencher a própria autoavaliação
