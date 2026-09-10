@@ -169,9 +169,18 @@
     era clicável e expandia a descrição do cargo; agora um botão "Perfil" dedicado em cada card
     expande TUDO junto (descrição do cargo, quando mapeada, + Sobre mim/Habilidades/Sonhos), só
     mostrando as seções que têm conteúdo (sem "ainda não preenchido" repetido pra cada campo vazio).
-  - `npm run type-check` passou limpo. Commit ainda não feito no momento deste registro.
-  - **Pendente antes do próximo push**: rodar `PENDENTE_20260910020000_perfil_publico.sql` no SQL
-    Editor do Supabase.
+  - `npm run type-check` passou limpo. Commit `cd2b662`, enviado a `master` (deploy no ar,
+    migration `PENDENTE_20260910020000` rodada e confirmada pelo Igor).
+- Pedido do Igor, mesma sessão: corrigir o bug preexistente achado acima (funcionário comum não
+  conseguia salvar o próprio nome na aba Perfil). Em vez de mexer na policy de escrita de
+  `funcionarios` (arriscado — abrir "qualquer um edita a própria linha" deixaria também
+  status/cargo/gestor_id editáveis pela própria pessoa, não só o nome), criada função
+  security-definer estreita `atualizar_meu_nome(p_full_name)` (migration
+  `PENDENTE_20260910030000_funcionarios_atualizar_meu_nome.sql`, **ainda não rodada no Supabase,
+  avisar o Igor**) que só atualiza `full_name` da PRÓPRIA linha, sem depender de ser administrador
+  — mesmo raciocínio de tabela/função separada já usado em `funcionarios_perfil_publico`.
+  `perfil/page.tsx` trocou o `update` direto na tabela por `supabase.rpc('atualizar_meu_nome', ...)`.
+  `npm run type-check` passou limpo.
 
 ### 2026-09-09
 - Corrigido bug relatado pelo usuário: Finato não conseguia preencher a própria autoavaliação

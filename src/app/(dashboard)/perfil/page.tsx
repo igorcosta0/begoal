@@ -88,10 +88,15 @@ export default function PerfilPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Usuário não encontrado')
 
-      await supabase
-        .from('funcionarios')
-        .update({ full_name: form.full_name })
-        .eq('user_id', user.id)
+      // Achado 10/09/2026: um update direto na tabela funcionarios (como
+      // este era antes) nunca funcionava pra quem não é administrador — a
+      // policy de escrita da tabela exige permission_level='administrador',
+      // e o RLS bloqueia a linha sem lançar erro (o botão "parecia" salvar,
+      // mas não mudava nada no banco). Rota corrigida: RPC security-definer
+      // que só atualiza full_name da PRÓPRIA linha (migration
+      // PENDENTE_20260910030000), sem depender de ser admin.
+      const { error } = await supabase.rpc('atualizar_meu_nome', { p_full_name: form.full_name })
+      if (error) throw error
 
       setMensagem({ tipo: 'sucesso', texto: 'Perfil atualizado com sucesso!' })
     } catch {
