@@ -28,6 +28,57 @@
 
 ## Log de Sessões
 
+### 2026-09-10
+- Pedido: Finato relatou não conseguir avaliar a liderada (Carolina Zanette) — ao preencher a
+  nota de gestor, o sistema exigia calibragem no mesmo clique. Era o MESMO tipo de bug corrigido
+  em 09/09 (achado com o Finato naquela sessão), só que do lado da nota de gestor em vez da
+  autoavaliação: o fix de 09/09 (`validarCampos()` só exige calibragem quando a nota base da
+  mesma seção "já está completa") olhava pro estado AO VIVO do formulário
+  (`scoresC`/`scoresT`), não pro que já estava salvo no banco — então preencher a nota base pela
+  PRIMEIRA vez e clicar Salvar fazia ela "virar completa" no mesmo instante em que a calibragem
+  passava a ser exigida junto, sem nunca dar pra separar as duas ações. Confirmado via SQL
+  direto: avaliação da Carolina em status `calibragem`, 0 pilares de gestor preenchidos — mesmo
+  padrão do incidente de 09/09.
+- Corrigido guardando `scoresCOriginal`/`scoresTOriginal` (snapshot do banco no momento em que o
+  `ModalAvaliacao` abre, nunca tocado pelos inputs) e usando esse snapshot — não mais o estado ao
+  vivo — pra decidir se a nota base já estava completa ANTES desta edição. Agora dá pra avaliar
+  como líder e salvar sem calibragem junto; a calibragem só passa a ser exigida num salvamento
+  posterior, depois que a nota base já estiver de fato salva no banco. Só front-end, sem
+  migration. `npm run type-check` passou limpo. Commit `1c5efec`, enviado a `master` (deploy no
+  ar, confirmado pelo usuário).
+- Dois pedidos de design/UX, mesma sessão (commit ainda não enviado a `master` no momento deste
+  registro — ver Pendências):
+  1. **Redesenho da aba "Cargos"** (pedido "melhorar o design pra ficar mais bonito") — trocou a
+     lista em accordion de largura cheia por um grid de 2 colunas com cor por área (7 áreas da
+     planilha, cada uma com uma cor fixa só decorativa — não representa hierarquia nenhuma),
+     sumário em destaque (callout), autonomia/experiência/formação como mini-tiles com ícone em
+     vez de texto corrido, e competências técnicas/comportamentais como chips em vez de bullets
+     soltos (fazia sentido dado que cada item é curto — "Excel avançado", "Organização" — conferido
+     via SQL direto antes de decidir). Nenhuma mudança de acesso/dado, só apresentação.
+  2. **Descrição do cargo na tela de Funcionários** — clicar no cargo exibido embaixo do nome (o
+     mesmo `f.cargo`, texto livre, que já aparecia ali) expande o sumário do cargo abaixo do nome.
+     Reaproveita o vínculo pessoa↔cargo já curado à mão em `funcionarios_cargo_perfil`
+     (01/09/2026) via `getTodosCargosPerfil` — não tenta casar o texto livre de `funcionarios.cargo`
+     com `cargo_base` na hora (conferido por SQL direto: só 3 de 26 batem por igualdade de texto,
+     ex. "Especialista em Agrimensura" vs "Especialista de Agrimensura" na planilha — preposição
+     diferente já quebra). Cargo sem vínculo mapeado continua como texto simples, sem indicação de
+     que poderia ser clicável.
+  3. Achado no meio do caminho: a RLS de `funcionarios_cargo_perfil` (migration
+     `PENDENTE_20260901000000`) só liberava SELECT pro dono da própria linha ou pro piloto do
+     Autoconhecimento (`pode_ver_todos_eneagrama_ctz()`, só Igor/Priscila) — qualquer outro
+     administrador real da CTZ (ex. Filippe Réus) abriria a tela de Funcionários sem conseguir ler
+     a descrição de cargo de mais ninguém. Migration nova
+     `PENDENTE_20260910000000_funcionarios_cargo_perfil_acesso_admin.sql` (**ainda não rodada no
+     Supabase, avisar o Igor**) soma o mesmo OR de "administrador real escopado por `client_id`"
+     já usado em `PENDENTE_20260909010000` pra `cargos_perfil` — mesmo padrão, tabela irmã.
+     Como `pode_ver_todos_eneagrama_ctz()` não depende de linha nenhuma (é só checar
+     `auth.uid()` contra 2 UUIDs fixos), o Igor já consegue ver a descrição de cargo de qualquer
+     funcionário HOJE, sem esperar essa migration — ela só é necessária pra outros administradores
+     da CTZ além de Igor/Priscila. `npm run type-check` passou limpo.
+- **Pendente antes do próximo push com este commit**: rodar
+  `PENDENTE_20260910000000_funcionarios_cargo_perfil_acesso_admin.sql` no SQL Editor do Supabase
+  (não bloqueia o Igor testar, só os demais administradores da CTZ).
+
 ### 2026-09-09
 - Corrigido bug relatado pelo usuário: Finato não conseguia preencher a própria autoavaliação
   nem a avaliação de gestor da liderada (Carolina Zanette) sem também preencher a calibragem no

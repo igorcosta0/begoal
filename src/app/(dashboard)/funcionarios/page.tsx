@@ -4,8 +4,9 @@ import { useEffect, useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
 import { getSetoresByEmpresa } from '@/lib/queries/okr'
+import { getTodosCargosPerfil, type FuncionarioCargoPerfil } from '@/lib/queries/cargosPerfil'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
-import { User, Building2, Briefcase, MoreHorizontal, Users, Plus } from 'lucide-react'
+import { User, Building2, Briefcase, MoreHorizontal, Users, Plus, ChevronDown } from 'lucide-react'
 import { mensagemErroExclusao } from '@/lib/utils'
 
 const STATUS_OPTIONS = ['Ativo', 'Férias', 'Afastado', 'Desligado']
@@ -192,6 +193,15 @@ export default function FuncionariosPage() {
   const [filtroSetor, setFiltroSetor] = useState('')
   const [busca, setBusca] = useState('')
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
+  // Pedido (10/09/2026): descrição do cargo ao clicar no cargo exibido
+  // embaixo do nome — reaproveita o vínculo pessoa↔cargo de
+  // funcionarios_cargo_perfil (curado à mão em 01/09/2026 pro cruzamento
+  // cargo x Eneagrama, ver getTodosCargosPerfil). Fora da CTZ, ou pra quem
+  // não é admin/piloto, a RLS devolve vazio e o cargo simplesmente continua
+  // sem ficar clicável — sem mensagem de erro, sem pista de que existe algo
+  // a mais por trás (mesmo padrão de silêncio já usado em avaliacao/cargos).
+  const [cargoPerfilMap, setCargoPerfilMap] = useState<Record<string, FuncionarioCargoPerfil>>({})
+  const [cargoExpandidoId, setCargoExpandidoId] = useState<string | null>(null)
 
   const [modalCriar, setModalCriar] = useState(false)
   const [modalEditar, setModalEditar] = useState<{ open: boolean; funcionario: any | null }>({ open: false, funcionario: null })
@@ -220,6 +230,11 @@ export default function FuncionariosPage() {
   useEffect(() => {
     if (!empresa) return
     getSetoresByEmpresa(empresa.id).then(({ data }) => setSetores(data ?? []))
+  }, [empresa])
+
+  useEffect(() => {
+    if (!empresa) return
+    getTodosCargosPerfil(empresa.id).then(({ mapa }) => setCargoPerfilMap(mapa))
   }, [empresa])
 
   useEffect(() => {
@@ -384,12 +399,30 @@ export default function FuncionariosPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground">{f.full_name}</p>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs text-muted-foreground">
-                    {f.cargo && (
-                      <span className="flex items-center gap-1">
-                        <Briefcase className="w-3 h-3" />
-                        {f.cargo}
-                      </span>
-                    )}
+                    {f.cargo && (() => {
+                      const descricaoCargo = cargoPerfilMap[f.id]?.cargo_perfil?.sumario ?? null
+                      if (!descricaoCargo) {
+                        return (
+                          <span className="flex items-center gap-1">
+                            <Briefcase className="w-3 h-3" />
+                            {f.cargo}
+                          </span>
+                        )
+                      }
+                      const aberto = cargoExpandidoId === f.id
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => setCargoExpandidoId(aberto ? null : f.id)}
+                          className="flex items-center gap-1 hover:text-foreground transition-colors"
+                          title="Ver descrição do cargo"
+                        >
+                          <Briefcase className="w-3 h-3" />
+                          <span className="underline decoration-dotted underline-offset-2">{f.cargo}</span>
+                          <ChevronDown className={`w-3 h-3 transition-transform ${aberto ? 'rotate-180' : ''}`} />
+                        </button>
+                      )
+                    })()}
                     {f.setores && (
                       <span className="flex items-center gap-1">
                         <Building2 className="w-3 h-3" />
@@ -403,6 +436,11 @@ export default function FuncionariosPage() {
                       </span>
                     )}
                   </div>
+                  {cargoExpandidoId === f.id && cargoPerfilMap[f.id]?.cargo_perfil?.sumario && (
+                    <p className="text-xs text-muted-foreground mt-1.5 bg-muted/40 border border-border/60 rounded-lg px-2.5 py-1.5 max-w-lg">
+                      {cargoPerfilMap[f.id]!.cargo_perfil!.sumario}
+                    </p>
+                  )}
                 </div>
               </div>
 
