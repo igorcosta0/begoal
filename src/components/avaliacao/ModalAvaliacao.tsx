@@ -413,6 +413,24 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
     '4': { auto: null, gestor: null, media_pares: null, calibragem: null, observacoes: '' },
   })
   const [scoresT, setScoresT] = useState<ScoresT>({})
+  // Pedido (10/09/2026, Finato): snapshot do que já estava salvo no banco
+  // quando o modal abriu (setado só em loadData, nunca pelos inputs) — usado
+  // em validarCampos pra decidir se a calibragem é obrigatória. Antes disso
+  // o gate olhava pro estado AO VIVO do formulário (scoresC/scoresT), então
+  // um calibrador restrito preenchendo a nota de gestor do próprio liderado
+  // pela PRIMEIRA vez ficava obrigado a preencher a calibragem no MESMO
+  // clique (a nota base virava "completa" no instante em que ele terminava
+  // de digitar, disparando a exigência antes mesmo de existir uma nota base
+  // salva de verdade). Com o snapshot, só exige calibragem quando a nota
+  // base JÁ estava completa ANTES desta sessão de edição — dá pra avaliar
+  // como líder agora e calibrar depois, em outro salvamento.
+  const [scoresCOriginal, setScoresCOriginal] = useState<ScoresC>({
+    '1': { auto: null, gestor: null, media_pares: null, calibragem: null, observacoes: '' },
+    '2': { auto: null, gestor: null, media_pares: null, calibragem: null, observacoes: '' },
+    '3': { auto: null, gestor: null, media_pares: null, calibragem: null, observacoes: '' },
+    '4': { auto: null, gestor: null, media_pares: null, calibragem: null, observacoes: '' },
+  })
+  const [scoresTOriginal, setScoresTOriginal] = useState<ScoresT>({})
   const [pdiItems, setPdiItems] = useState<PdiItem[]>([])
   const [newPdi, setNewPdi] = useState({ acao: '', indicador_sucesso: '', prazo: '', suporte_necessario: '' })
   const [showNewPdi, setShowNewPdi] = useState(false)
@@ -523,6 +541,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
       }
     })
     setScoresC(newScoresC)
+    setScoresCOriginal(newScoresC)
 
     const newScoresT: ScoresT = {}
     tecnica.data?.forEach((row: { criterio_key: string; nota_auto: number | null; nota_gestor: number | null; media_pares: number | null; nota_calibragem: number | null; observacoes: string | null }) => {
@@ -535,6 +554,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
       }
     })
     setScoresT(newScoresT)
+    setScoresTOriginal(newScoresT)
 
     setPdiItems((pdi.data ?? []) as PdiItem[])
     setLoading(false)
@@ -597,25 +617,36 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
     const emEtapaCalibragem = avaliacao ? ['calibragem', 'finalizada'].includes(avaliacao.status) : false
     let pilaresCalibragemFaltando: number[] = []
     let criteriosCalibragemFaltando: string[] = []
-    // Achado (09/09/2026, Finato): antes disso, um calibrador que também
-    // avalia (calibrador restrito preenchendo pela PRIMEIRA vez a nota do
-    // próprio liderado, ou a própria autoavaliação — caso que só não
-    // acontece mais por causa do escopo em avaliacao/page.tsx) ficava
-    // travado, porque o "Iniciar Calibragem" em lote (27/08) avança o status
-    // pra 'calibragem' sem checar se auto/gestor já foi preenchido, e este
-    // gate exigia calibragem no MESMO clique que a nota base, mesmo quando
-    // essa nota nunca tinha sido salva antes. Só exige calibragem numa
-    // seção (cultural/técnica) quando a nota base dessa MESMA seção já está
-    // completa — ou seja, dá pra salvar a nota base sozinha primeiro, e a
-    // calibragem fica obrigatória só a partir de quando ela também estiver
-    // preenchida (no mesmo clique ou num salvamento posterior).
-    if (podeCalibrar && emEtapaCalibragem && !pilaresComNotaFaltando.length) {
+    // Achado (09/09/2026, Finato) e correção (10/09/2026, mesmo caso): um
+    // calibrador que também avalia (calibrador restrito preenchendo a nota
+    // do próprio liderado, ou a própria autoavaliação) ficava travado,
+    // porque o "Iniciar Calibragem" em lote (27/08) avança o status pra
+    // 'calibragem' sem checar se auto/gestor já foi preenchido. A correção
+    // de 09/09 só olhava pro estado AO VIVO do formulário
+    // (pilaresComNotaFaltando/criteriosComNotaFaltando) pra decidir se a
+    // nota base "já está completa" — mas isso inclui o que a pessoa acabou
+    // de digitar neste mesmo clique, então preencher a nota base pela
+    // primeira vez e salvar continuava forçando a calibragem junto (a nota
+    // virava "completa" no instante em que ela terminava de digitar). Agora
+    // usa scoresCOriginal/scoresTOriginal (snapshot do que já estava salvo
+    // no banco QUANDO O MODAL ABRIU, nunca tocado pelos inputs) — só exige
+    // calibragem numa seção quando a nota base dessa seção já estava
+    // completa ANTES desta edição. Assim dá pra avaliar como líder agora e
+    // calibrar depois, num salvamento futuro.
+    const pilaresComNotaBaseJaCompleta =
+      [1, 2, 3, 4].filter((p) =>
+        isAdmin ? scoresCOriginal[String(p)]?.gestor == null : scoresCOriginal[String(p)]?.auto == null
+      ).length === 0
+    if (podeCalibrar && emEtapaCalibragem && pilaresComNotaBaseJaCompleta) {
       pilaresCalibragemFaltando = [1, 2, 3, 4].filter((p) => scoresC[String(p)]?.calibragem == null)
       if (pilaresCalibragemFaltando.length) {
         faltando.push('nota de calibragem em todos os pilares culturais')
       }
     }
-    if (podeCalibrar && emEtapaCalibragem && criteriosAtuais.length && !criteriosComNotaFaltando.length) {
+    const criteriosComNotaBaseJaCompleta =
+      !criteriosAtuais.length ||
+      criteriosAtuais.filter((c) => (isAdmin ? scoresTOriginal[c.key]?.gestor == null : scoresTOriginal[c.key]?.auto == null)).length === 0
+    if (podeCalibrar && emEtapaCalibragem && criteriosAtuais.length && criteriosComNotaBaseJaCompleta) {
       criteriosCalibragemFaltando = criteriosAtuais.filter((c) => scoresT[c.key]?.calibragem == null).map((c) => c.key)
       if (criteriosCalibragemFaltando.length) {
         faltando.push('nota de calibragem em todos os critérios técnicos')
