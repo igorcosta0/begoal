@@ -24,8 +24,9 @@ import ModalNineBox from '@/components/avaliacao/ModalNineBox'
 import ModalCalibragem from '@/components/avaliacao/ModalCalibragem'
 import ModalMontarAvaliacoes, { type LinhaMontagem, type OpcaoAvaliador, type ParPares } from '@/components/avaliacao/ModalMontarAvaliacoes'
 import ModalGerenciarLideres from '@/components/avaliacao/ModalGerenciarLideres'
+import GraficosAvaliacao from '@/components/avaliacao/GraficosAvaliacao'
 import { cn, isEmpresaCTZ } from '@/lib/utils'
-import { LayoutGrid, Plus, ChevronRight, Trash2, Users2, ArrowRightLeft, X, Crown, UserCheck, Pencil, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
+import { LayoutGrid, Plus, ChevronRight, Trash2, Users2, ArrowRightLeft, X, Crown, UserCheck, Pencil, Eye, EyeOff, CheckCircle2, BarChart3, ListChecks } from 'lucide-react'
 import { VERTICAIS_CTZ } from '@/components/avaliacao/ModalAvaliacao'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
@@ -236,6 +237,11 @@ export default function AvaliacaoPage() {
   // não tem volta). Começa true (bloqueado) até a checagem confirmar que
   // está tudo pronto — default seguro enquanto ainda não carregou.
   const [calibragemPendente, setCalibragemPendente] = useState(true)
+  // Aba dentro do painel expandido do ciclo: lista de avaliações (padrão,
+  // sempre existiu) ou gráficos (pedido 11/09/2026) — reseta pra
+  // "avaliacoes" toda vez que troca/fecha o ciclo expandido, senão trocar de
+  // ciclo com "Gráficos" selecionado mantinha a aba errada aberta.
+  const [abaCiclo, setAbaCiclo] = useState<'avaliacoes' | 'graficos'>('avaliacoes')
 
   const [modalCriarCiclo, setModalCriarCiclo] = useState<{ open: boolean; ciclo: Ciclo | null }>({ open: false, ciclo: null })
   const [modalAvaliacao, setModalAvaliacao] = useState<{
@@ -1078,7 +1084,10 @@ export default function AvaliacaoPage() {
                   'flex items-center justify-between p-4 cursor-pointer hover:bg-accent/30 transition-colors',
                   cicloAtivo?.id === ciclo.id && 'bg-accent/40'
                 )}
-                onClick={() => setCicloAtivo(cicloAtivo?.id === ciclo.id ? null : ciclo)}
+                onClick={() => {
+                  setCicloAtivo(cicloAtivo?.id === ciclo.id ? null : ciclo)
+                  setAbaCiclo('avaliacoes')
+                }}
               >
                 <div className="flex items-center gap-3">
                   <ChevronRight
@@ -1221,8 +1230,40 @@ export default function AvaliacaoPage() {
                     </div>
                   </div>
 
+                  {/* Abas do painel do ciclo: lista de avaliações (padrão) ou
+                      gráficos (pedido 11/09/2026 — contagem fechada/aberta +
+                      média cultural/performance). */}
+                  <div className="flex items-center gap-1 border-b border-border">
+                    <button
+                      onClick={() => setAbaCiclo('avaliacoes')}
+                      className={cn(
+                        'flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 -mb-px transition-colors',
+                        abaCiclo === 'avaliacoes'
+                          ? 'border-primary text-foreground'
+                          : 'border-transparent text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      <ListChecks className="w-3.5 h-3.5" />
+                      Avaliações
+                    </button>
+                    <button
+                      onClick={() => setAbaCiclo('graficos')}
+                      className={cn(
+                        'flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 -mb-px transition-colors',
+                        abaCiclo === 'graficos'
+                          ? 'border-primary text-foreground'
+                          : 'border-transparent text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      <BarChart3 className="w-3.5 h-3.5" />
+                      Gráficos
+                    </button>
+                  </div>
+
+                  {abaCiclo === 'graficos' && <GraficosAvaliacao avaliacoes={avaliacoes} />}
+
                   {/* Avaliações existentes */}
-                  {avaliacoes.length > 0 && (
+                  {abaCiclo === 'avaliacoes' && avaliacoes.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Avaliações</p>
                       {avaliacoes.map((av) => (
@@ -1299,7 +1340,7 @@ export default function AvaliacaoPage() {
                   )}
 
                   {/* Funcionários sem avaliação */}
-                  {funcionariosSemAvaliacao.length > 0 && (
+                  {abaCiclo === 'avaliacoes' && funcionariosSemAvaliacao.length > 0 && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
