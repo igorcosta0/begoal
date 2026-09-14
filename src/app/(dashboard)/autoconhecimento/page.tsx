@@ -10,12 +10,16 @@ import {
   getSouLiderDeAlguem,
   getColegasComPerfilMapeado,
   getMeusLideradosComPerfilMapeado,
+  getResumoTimeLiderado,
+  getOrganogramaEmpresa,
   type PerfilEneagramaComNome,
   type ColegaComPerfilMapeado,
+  type ResumoTime,
+  type FuncionarioOrganograma,
 } from '@/lib/queries/eneagrama'
 import { getTodosCargosPerfil, getMinhaDicaCargo, type FuncionarioCargoPerfil } from '@/lib/queries/cargosPerfil'
 import { TIPOS_ENEAGRAMA, NOME_INSTINTO, type Instinto } from '@/lib/eneagrama/tipos'
-import { Sparkles, Loader2, Send, ChevronDown, ChevronRight, Wand2, Crown, Handshake } from 'lucide-react'
+import { Sparkles, Loader2, Send, ChevronDown, ChevronRight, Wand2, Crown } from 'lucide-react'
 
 interface Mensagem {
   role: 'user' | 'model'
@@ -46,11 +50,56 @@ const SITUACOES_SUGERIDAS_LIDERANCA = [
   'Como conduzo uma decisão que essa pessoa provavelmente não vai gostar?',
 ]
 
+// Mapa 2, chat "Pergunte sobre o seu time" (pedido 14/09/2026) — sobre o
+// time como um todo, não uma pessoa específica.
+const PERGUNTAS_SOBRE_TIME = [
+  'Como esse time costuma reagir a mudança de prioridade em cima da hora?',
+  'Como eu conduzo uma reunião de decisão em grupo com esse time?',
+  'O que esse time mais precisa de mim como líder agora?',
+]
+
 function formatarSequencia(sequencia: string) {
   return sequencia
     .split('/')
     .map((i) => NOME_INSTINTO[i.trim() as Instinto] ?? i.trim())
     .join(' → ')
+}
+
+// Mapa 2 (pedido 14/09/2026): transforma os 5 números agregados de
+// resumo_time_liderado() num parágrafo em português — nunca cita tipo
+// individual, só a composição em conjunto do time, agrupada nos 3 centros do
+// Eneagrama (mesmo agrupamento de TIPOS_ENEAGRAMA[n].centro): Racional
+// (5/6/7, "mais técnico/analítico"), Emocional (2/3/4, "mais
+// sentimental/relacional") e Instintivo (8/9/1, "mais orientado à ação e ao
+// resultado prático" — o pedido original também citou "mais cultural", mas
+// isso não é uma categoria formal do Eneagrama, então virou esta 3ª opção,
+// mais próxima do que os centros realmente descrevem). Time com menos de 3
+// pessoas mapeadas não é resumido — a quebra em 3 grupos já daria pra
+// adivinhar quem é quem.
+function resumirTime(resumo: ResumoTime): string {
+  const { instintivo, emocional, racional, totalLiderados, totalMapeados } = resumo
+  if (totalMapeados === 0) {
+    return totalLiderados > 0
+      ? 'Nenhum dos seus liderados diretos tem perfil de Eneagrama mapeado ainda.'
+      : 'Você não tem liderados diretos no organograma.'
+  }
+  if (totalMapeados < 3) {
+    return 'Seu time mapeado ainda é pequeno demais (menos de 3 pessoas) pra resumir sem risco de dar pra identificar quem é quem individualmente.'
+  }
+  const pct = (n: number) => Math.round((n / totalMapeados) * 100)
+  const centros = [
+    { nome: 'mais técnico e analítico', valor: racional, pct: pct(racional) },
+    { nome: 'mais sentimental e relacional', valor: emocional, pct: pct(emocional) },
+    { nome: 'mais orientado à ação e ao resultado prático', valor: instintivo, pct: pct(instintivo) },
+  ]
+    .filter((c) => c.valor > 0)
+    .sort((a, b) => b.valor - a.valor)
+
+  const frasePartes = centros.map((c) => `${c.pct}% ${c.nome}`).join(', ')
+  const naoMapeados = totalLiderados - totalMapeados
+  return `Seu time (${totalMapeados} de ${totalLiderados} liderados diretos com perfil mapeado) tende a ser ${frasePartes}.${
+    naoMapeados > 0 ? ` ${naoMapeados} ainda não tem perfil mapeado.` : ''
+  }`
 }
 
 // Card do Mapa 1 — extraído pra ser reaproveitado tanto no "meu perfil"
@@ -132,10 +181,264 @@ function CardTipoMapa1({
   )
 }
 
-// Bloco de chat reaproveitado pelos Mapas 2 e 3 — a única diferença entre
-// "Liderando o time" e "Relacionando com o time" é a lista de pessoas, a
-// rota de API chamada e o texto de apresentação; a mecânica de conversa
-// (seleção de pessoa, sugestões, histórico, envio) é idêntica.
+// Chat livre, sem seleção de pessoa — reaproveitado pelo Mapa 2 ("Pergunte
+// sobre o seu time", pedido 14/09/2026). Mais simples que os outros dois
+// chats desta página porque não tem seletor nenhum: sempre manda só
+// {pergunta, historico} pro endpoint.
+function ChatGeral({
+  endpoint,
+  sugestoes,
+  placeholder,
+}: {
+  endpoint: string
+  sugestoes: string[]
+  placeholder: string
+}) {
+  const [texto, setTexto] = useState('')
+  const [mensagens, setMensagens] = useState<Mensagem[]>([])
+  const [enviando, setEnviando] = useState(false)
+  const [erro, setErro] = useState('')
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+  }, [mensagens, enviando])
+
+  async function enviar(msg: string) {
+    if (!msg.trim() || enviando) return
+    setErro('')
+    const historicoAnterior = mensagens.slice(-8)
+    setMensagens((prev) => [...prev, { role: 'user', texto: msg }])
+    setTexto('')
+    setEnviando(true)
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pergunta: msg, historico: historicoAnterior }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || 'Erro ao consultar o assistente.')
+      }
+      const data = await res.json()
+      setMensagens((prev) => [...prev, { role: 'model', texto: data.resposta }])
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : 'Erro ao consultar o assistente. Tente novamente.')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {mensagens.length === 0 && (
+        <div className="flex flex-wrap gap-2">
+          {sugestoes.map((s) => (
+            <button
+              key={s}
+              onClick={() => setTexto(s)}
+              className="px-3 py-1.5 text-xs rounded-full border border-border text-muted-foreground hover:bg-accent transition-colors text-left"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {mensagens.length > 0 && (
+        <div ref={scrollRef} className="max-h-96 overflow-y-auto space-y-3 pr-1">
+          {mensagens.map((m, i) => (
+            <div
+              key={i}
+              className={cn(
+                'max-w-[85%] px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap',
+                m.role === 'user' ? 'ml-auto bg-primary text-primary-foreground' : 'bg-secondary text-foreground'
+              )}
+            >
+              {m.texto}
+            </div>
+          ))}
+          {enviando && (
+            <div className="bg-secondary text-muted-foreground max-w-[85%] px-4 py-2.5 rounded-2xl text-sm flex items-center gap-2">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Pensando...
+            </div>
+          )}
+        </div>
+      )}
+
+      {erro && <p className="text-xs text-destructive">{erro}</p>}
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          enviar(texto)
+        }}
+        className="flex items-center gap-2"
+      >
+        <input
+          type="text"
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+          placeholder={placeholder}
+          disabled={enviando}
+          className="flex-1 px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+        />
+        <button
+          type="submit"
+          disabled={enviando || !texto.trim()}
+          className="shrink-0 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm flex items-center justify-center"
+        >
+          {enviando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+        </button>
+      </form>
+    </div>
+  )
+}
+
+// Chat unificado do Mapa 1 (pedido 14/09/2026: Mapa 3 "Relacionando com o
+// time" deixou de ser seção própria e virou um MODO deste mesmo chat). Um
+// seletor só: "Eu mesmo" (padrão, sempre disponível — chama
+// /api/assistente-eneagrama) ou um colega da lista (só aparece a opção
+// quando `colegas` não está vazia — hoje só pra quem carrega colegas,
+// souAdminPiloto — chama /api/como-abordar-colega). O seletor some sozinho
+// quando não há colega nenhum pra oferecer, e o chat vira só sobre si mesmo,
+// idêntico ao antigo "Pergunte ao assistente".
+function ChatMapa1Unificado({ colegas }: { colegas: ColegaComPerfilMapeado[] }) {
+  const [alvoId, setAlvoId] = useState('')
+  const [texto, setTexto] = useState('')
+  const [mensagens, setMensagens] = useState<Mensagem[]>([])
+  const [enviando, setEnviando] = useState(false)
+  const [erro, setErro] = useState('')
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+  }, [mensagens, enviando])
+
+  function selecionarAlvo(id: string) {
+    setAlvoId(id)
+    setMensagens([])
+    setErro('')
+  }
+
+  async function enviar(msg: string) {
+    if (!msg.trim() || enviando) return
+    setErro('')
+    const historicoAnterior = mensagens.slice(-8)
+    setMensagens((prev) => [...prev, { role: 'user', texto: msg }])
+    setTexto('')
+    setEnviando(true)
+    try {
+      const endpoint = alvoId ? '/api/como-abordar-colega' : '/api/assistente-eneagrama'
+      const body = alvoId
+        ? { funcionarioAlvoId: alvoId, situacao: msg, historico: historicoAnterior }
+        : { pergunta: msg, historico: historicoAnterior }
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        throw new Error(errBody.error || 'Erro ao consultar o assistente.')
+      }
+      const data = await res.json()
+      setMensagens((prev) => [...prev, { role: 'model', texto: data.resposta }])
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : 'Erro ao consultar o assistente. Tente novamente.')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  const sugestoes = alvoId ? SITUACOES_SUGERIDAS : PERGUNTAS_SUGERIDAS
+
+  return (
+    <div className="space-y-4">
+      {colegas.length > 0 && (
+        <select
+          value={alvoId}
+          onChange={(e) => selecionarAlvo(e.target.value)}
+          className="w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="">Eu mesmo (autoliderança)</option>
+          {[...colegas]
+            .sort((a, b) => a.full_name.localeCompare(b.full_name))
+            .map((p) => (
+              <option key={p.funcionario_id} value={p.funcionario_id}>
+                {p.full_name}
+              </option>
+            ))}
+        </select>
+      )}
+
+      {mensagens.length === 0 && (
+        <div className="flex flex-wrap gap-2">
+          {sugestoes.map((s) => (
+            <button
+              key={s}
+              onClick={() => setTexto(s)}
+              className="px-3 py-1.5 text-xs rounded-full border border-border text-muted-foreground hover:bg-accent transition-colors text-left"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {mensagens.length > 0 && (
+        <div ref={scrollRef} className="max-h-96 overflow-y-auto space-y-3 pr-1">
+          {mensagens.map((m, i) => (
+            <div
+              key={i}
+              className={cn(
+                'max-w-[85%] px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap',
+                m.role === 'user' ? 'ml-auto bg-primary text-primary-foreground' : 'bg-secondary text-foreground'
+              )}
+            >
+              {m.texto}
+            </div>
+          ))}
+          {enviando && (
+            <div className="bg-secondary text-muted-foreground max-w-[85%] px-4 py-2.5 rounded-2xl text-sm flex items-center gap-2">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Pensando...
+            </div>
+          )}
+        </div>
+      )}
+
+      {erro && <p className="text-xs text-destructive">{erro}</p>}
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          enviar(texto)
+        }}
+        className="flex items-center gap-2"
+      >
+        <input
+          type="text"
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+          placeholder={alvoId ? 'Descreva a situação...' : 'Escreva sua pergunta...'}
+          disabled={enviando}
+          className="flex-1 px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+        />
+        <button
+          type="submit"
+          disabled={enviando || !texto.trim()}
+          className="shrink-0 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm flex items-center justify-center"
+        >
+          {enviando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+        </button>
+      </form>
+    </div>
+  )
+}
+
+// Bloco de chat reaproveitado só pelo Mapa 2 (escolher um liderado
+// específico e descrever a situação).
 function ChatSobreOutraPessoa({
   pessoas,
   placeholder,
@@ -300,10 +603,19 @@ export default function AutoconhecimentoPage() {
   // souAdminPiloto (ver decisão abaixo).
   const [souLider, setSouLider] = useState(false)
   const [liderados, setLiderados] = useState<ColegaComPerfilMapeado[]>([])
-  // Mapa 3 "Relacionando com o time": qualquer colega da mesma empresa com
-  // tipo mapeado. Mesmo raciocínio do Mapa 2 — só carregado/mostrado pra
-  // souAdminPiloto.
+  // Resumo do time (pedido 14/09/2026) — agregado, nunca tipo individual
+  // (ver resumo_time_liderado(), migration PENDENTE_20260914030000).
+  const [resumoTime, setResumoTime] = useState<ResumoTime | null>(null)
+  // Colegas de QUALQUER pessoa (não só liderado direto) — desde 14/09/2026
+  // isso deixou de ser "Mapa 3" separado e virou um modo do chat do Mapa 1
+  // (ChatMapa1Unificado). Mesmo raciocínio de acesso — só carregado/mostrado
+  // pra souAdminPiloto.
   const [colegas, setColegas] = useState<ColegaComPerfilMapeado[]>([])
+  // Organograma da empresa inteira (id + gestor_id) — só pra simulação de
+  // administrador (souVeDicaMapa1, mais abaixo), pra achar os liderados do
+  // Felipe Marques sem precisar de RPC nova (a RLS de leitura de
+  // `funcionarios` já libera qualquer membro da mesma empresa).
+  const [organograma, setOrganograma] = useState<FuncionarioOrganograma[]>([])
 
   // Visão de administrador do PROTÓTIPO — controla 2 coisas diferentes desde
   // 10/09/2026: (1) a tabela "Perfis da equipe"/cruzamento cargo x Eneagrama
@@ -319,12 +631,6 @@ export default function AutoconhecimentoPage() {
   const [expandidoId, setExpandidoId] = useState<string | null>(null)
   const [gerandoId, setGerandoId] = useState<string | null>(null)
   const [erroGeracao, setErroGeracao] = useState<string | null>(null)
-
-  const [pergunta, setPergunta] = useState('')
-  const [mensagens, setMensagens] = useState<Mensagem[]>([])
-  const [enviando, setEnviando] = useState(false)
-  const [erroChat, setErroChat] = useState('')
-  const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!ctz) {
@@ -374,44 +680,18 @@ export default function AutoconhecimentoPage() {
         setColegas(colegasMapeados)
         if (liderDeAlguem) {
           getMeusLideradosComPerfilMapeado().then(({ liderados: l }) => setLiderados(l))
+          getResumoTimeLiderado().then(({ resumo }) => setResumoTime(resumo))
         }
         if (!erroTodos) setTodosPerfis(perfis)
         setCargosPerfil(mapa)
+        if (veDicaMapa1) {
+          getOrganogramaEmpresa(empresa.id).then(({ organograma: o }) => setOrganograma(o))
+        }
       }
       setLoading(false)
     }
     carregar()
   }, [ctz, empresa?.id])
-
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
-  }, [mensagens, enviando])
-
-  async function enviarPergunta(texto: string) {
-    if (!texto.trim() || enviando) return
-    setErroChat('')
-    const historicoAnterior = mensagens.slice(-8)
-    setMensagens((prev) => [...prev, { role: 'user', texto }])
-    setPergunta('')
-    setEnviando(true)
-    try {
-      const res = await fetch('/api/assistente-eneagrama', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pergunta: texto, historico: historicoAnterior }),
-      })
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.error || 'Erro ao consultar o assistente.')
-      }
-      const data = await res.json()
-      setMensagens((prev) => [...prev, { role: 'model', texto: data.resposta }])
-    } catch (err) {
-      setErroChat(err instanceof Error ? err.message : 'Erro ao consultar o assistente. Tente novamente.')
-    } finally {
-      setEnviando(false)
-    }
-  }
 
   async function gerarDica(funcionarioId: string) {
     setErroGeracao(null)
@@ -471,7 +751,7 @@ export default function AutoconhecimentoPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight">Autoconhecimento</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            3 mapas baseados no seu perfil de Eneagrama: Autoliderança, Liderando o time e Relacionando com o time
+            2 mapas baseados no seu perfil de Eneagrama: Autoliderança e Relacionamento, e Liderando o time
           </p>
         </div>
       </div>
@@ -502,7 +782,15 @@ export default function AutoconhecimentoPage() {
             <ul className="list-disc list-inside space-y-1 text-foreground">
               <li>"Líder" pro Mapa 2 = tem pelo menos 1 liderado direto no organograma (funcionarios.gestor_id), não a marcação manual usada em Avaliação de Pares — confirmado com o Igor.</li>
               <li>Quem ainda não tem tipo mapeado continua vendo o menu "Autoconhecimento" normalmente, com um aviso de que o perfil ainda não foi cadastrado, em vez de esconder o módulo inteiro — confirmado com o Igor.</li>
-              <li>Nos Mapas 2 e 3, o tipo da OUTRA pessoa nunca é devolvido pro navegador — só é lido dentro de funções do banco chamadas pelas rotas de API, que embutem o perfil no prompt da IA e nunca no JSON de resposta (mesma regra desde 09/09/2026). Mesmo assim, o acesso aos Mapas 2 e 3 ficou restrito a Igor/Priscila (ver item de acesso acima) — a proteção técnica reduz o risco, mas não elimina a falta de teste com uso real.</li>
+              <li>Nos Mapas 1 e 2, o tipo da OUTRA pessoa nunca é devolvido pro navegador — só é lido dentro de funções do banco chamadas pelas rotas de API, que embutem o perfil no prompt da IA e nunca no JSON de resposta (mesma regra desde 09/09/2026). Mesmo assim, falar de outra pessoa ficou restrito a Igor/Priscila (ver item de acesso acima) — a proteção técnica reduz o risco, mas não elimina a falta de teste com uso real.</li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Atualização (14/09/2026)</p>
+            <ul className="list-disc list-inside space-y-1 text-foreground">
+              <li>O antigo Mapa 3 ("Relacionando com o time") deixou de ser seção própria — virou um MODO do mesmo chat do Mapa 1: o seletor agora tem "Eu mesmo" (padrão) ou um colega, em vez de duas caixas de chat separadas.</li>
+              <li>Mapa 2 ganhou um resumo do time (agregado nos 3 centros do Eneagrama — nunca o tipo de ninguém individualmente) e um segundo chat, mais livre, pra perguntas sobre o time como um todo (não uma pessoa específica). O chat de pessoa específica passou a considerar também o próprio perfil do líder, não só o do liderado, pra sugerir a melhor forma de dialogar entre os dois estilos.</li>
+              <li>Os dois blocos de "Simulação (visão de administrador)" — como a tela apareceria pro Felipe Marques Santos — continuam restritos a Igor/Priscila, mesmo raciocínio de validar antes de abrir geral.</li>
             </ul>
           </div>
         </div>
@@ -514,13 +802,15 @@ export default function AutoconhecimentoPage() {
         </div>
       )}
 
-      {/* Mapa 1 — Autoliderança (todos) */}
+      {/* Mapa 1 — Autoliderança e Relacionamento (todos). Desde 14/09/2026 o
+          antigo Mapa 3 ("Relacionando com o time") deixou de ser seção
+          própria e virou um MODO do mesmo chat (ver ChatMapa1Unificado). */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-primary" />
-          <h2 className="text-sm font-bold text-foreground uppercase tracking-wide">Mapa 1 · Autoliderança</h2>
+          <h2 className="text-sm font-bold text-foreground uppercase tracking-wide">Mapa 1 · Autoliderança e Relacionamento</h2>
         </div>
-        <p className="text-xs text-muted-foreground -mt-2">Como VOCÊ funciona: motivações, forças e pontos cegos — pra todo mundo com tipo mapeado.</p>
+        <p className="text-xs text-muted-foreground -mt-2">Como VOCÊ funciona, e como se relacionar melhor com qualquer colega mapeado — pra todo mundo com tipo mapeado.</p>
 
         {tipo ? (
           <CardTipoMapa1 tipo={tipo} subtipoSequencia={subtipoSequencia} dica={souVeDicaMapa1 ? minhaDica : null} />
@@ -573,68 +863,14 @@ export default function AutoconhecimentoPage() {
 
         {tipo && (
           <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Pergunte ao assistente</h3>
-
-            {mensagens.length === 0 && (
-              <div className="flex flex-wrap gap-2">
-                {PERGUNTAS_SUGERIDAS.map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => enviarPergunta(p)}
-                    className="px-3 py-1.5 text-xs rounded-full border border-border text-muted-foreground hover:bg-accent transition-colors"
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {mensagens.length > 0 && (
-              <div ref={scrollRef} className="max-h-96 overflow-y-auto space-y-3 pr-1">
-                {mensagens.map((m, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      'max-w-[85%] px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap',
-                      m.role === 'user' ? 'ml-auto bg-primary text-primary-foreground' : 'bg-secondary text-foreground'
-                    )}
-                  >
-                    {m.texto}
-                  </div>
-                ))}
-                {enviando && (
-                  <div className="bg-secondary text-muted-foreground max-w-[85%] px-4 py-2.5 rounded-2xl text-sm flex items-center gap-2">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Pensando...
-                  </div>
-                )}
-              </div>
-            )}
-
-            {erroChat && <p className="text-xs text-destructive">{erroChat}</p>}
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                enviarPergunta(pergunta)
-              }}
-              className="flex items-center gap-2"
-            >
-              <input
-                type="text"
-                value={pergunta}
-                onChange={(e) => setPergunta(e.target.value)}
-                placeholder="Escreva sua pergunta..."
-                disabled={enviando}
-                className="flex-1 px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
-              />
-              <button
-                type="submit"
-                disabled={enviando || !pergunta.trim()}
-                className="shrink-0 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm flex items-center justify-center"
-              >
-                {enviando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              </button>
-            </form>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Pergunte ao assistente</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Sobre você mesmo (padrão) ou, se disponível, escolha um colega pra saber a melhor forma de conduzir
+                uma conversa com ele — sem nunca revelar o tipo comportamental dele.
+              </p>
+            </div>
+            <ChatMapa1Unificado colegas={colegas} />
           </div>
         )}
       </div>
@@ -647,7 +883,8 @@ export default function AutoconhecimentoPage() {
           ninguém (ex.: Igor, que não tem liderado direto no organograma de
           nenhuma empresa) via o mapa sumir sem explicação nenhuma — agora o
           cabeçalho sempre aparece pra piloto, e some só o conteúdo, com um
-          aviso explicando o motivo. */}
+          aviso explicando o motivo. Ganhou (14/09/2026) o resumo do time e um
+          segundo chat mais livre — ver comentários abaixo. */}
       {souAdminPiloto && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
@@ -656,23 +893,51 @@ export default function AutoconhecimentoPage() {
           </div>
           <p className="text-xs text-muted-foreground -mt-2">Como orientar quem lidera pra VOCÊ — delegação, feedback, desenvolvimento — pra quem tem liderado direto no organograma.</p>
           {souLider ? (
-            <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-              <p className="text-xs text-muted-foreground">
-                Escolha um dos seus liderados diretos e descreva a situação — a resposta orienta como delegar, dar
-                feedback, desenvolver ou conduzir um conflito com essa pessoa, sem nunca revelar o tipo comportamental
-                dela.
-              </p>
-              {liderados.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Nenhum dos seus liderados diretos tem tipo mapeado ainda.</p>
-              ) : (
-                <ChatSobreOutraPessoa
-                  pessoas={liderados}
-                  placeholder="Selecione um liderado..."
-                  situacoesSugeridas={SITUACOES_SUGERIDAS_LIDERANCA}
-                  endpoint="/api/liderar-liderado"
+            <>
+              {/* Resumo do time (pedido 14/09/2026) — agregado, nunca tipo
+                  individual (ver resumirTime() e resumo_time_liderado()). */}
+              <div className="bg-card border border-border rounded-2xl p-4">
+                <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-1">Resumo do seu time</p>
+                <p className="text-sm text-foreground">{resumoTime ? resumirTime(resumoTime) : 'Carregando...'}</p>
+              </div>
+
+              {/* Chat geral sobre o time (pedido 14/09/2026) — diferente do
+                  chat abaixo, que fala de UMA pessoa. */}
+              <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Pergunte sobre o seu time</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Perguntas gerais sobre como liderar o time como um todo — não sobre uma pessoa específica.
+                  </p>
+                </div>
+                <ChatGeral
+                  endpoint="/api/perguntar-sobre-time"
+                  sugestoes={PERGUNTAS_SOBRE_TIME}
+                  placeholder="Escreva sua pergunta sobre o time..."
                 />
-              )}
-            </div>
+              </div>
+
+              <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Falar sobre uma pessoa específica</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Escolha um dos seus liderados diretos e descreva a situação — a resposta orienta como delegar,
+                    dar feedback, desenvolver ou conduzir um conflito com essa pessoa (considerando também o seu
+                    próprio jeito de liderar), sem nunca revelar o tipo comportamental dela.
+                  </p>
+                </div>
+                {liderados.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhum dos seus liderados diretos tem tipo mapeado ainda.</p>
+                ) : (
+                  <ChatSobreOutraPessoa
+                    pessoas={liderados}
+                    placeholder="Selecione um liderado..."
+                    situacoesSugeridas={SITUACOES_SUGERIDAS_LIDERANCA}
+                    endpoint="/api/liderar-liderado"
+                  />
+                )}
+              </div>
+            </>
           ) : (
             <div className="rounded-2xl border border-dashed border-border bg-card/50 p-6 text-center">
               <p className="text-muted-foreground text-sm">
@@ -681,36 +946,53 @@ export default function AutoconhecimentoPage() {
               </p>
             </div>
           )}
-        </div>
-      )}
 
-      {/* Mapa 3 — Relacionando com o time. Mesmo raciocínio do Mapa 2: fala
-          do tipo de OUTRA pessoa, restrito a Igor/Priscila por enquanto
-          (pedido 10/09/2026) — ver comentário na declaração de `colegas`
-          acima e nas rotas de API dos Mapas 2/3. */}
-      {souAdminPiloto && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Handshake className="w-4 h-4 text-primary" />
-            <h2 className="text-sm font-bold text-foreground uppercase tracking-wide">Mapa 3 · Relacionando com o time</h2>
-          </div>
-          <p className="text-xs text-muted-foreground -mt-2">Como se relacionar melhor com QUALQUER colega mapeado — feedback, pedido, alinhamento de expectativa.</p>
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-            <p className="text-xs text-muted-foreground">
-              Escolha a pessoa e descreva a situação — a resposta orienta a melhor forma de conduzir a conversa, sem
-              nunca revelar o tipo comportamental dela.
-            </p>
-            {colegas.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Ainda não há colegas com tipo mapeado nesta empresa.</p>
-            ) : (
-              <ChatSobreOutraPessoa
-                pessoas={colegas}
-                placeholder="Selecione um colega..."
-                situacoesSugeridas={SITUACOES_SUGERIDAS}
-                endpoint="/api/como-abordar-colega"
-              />
-            )}
-          </div>
+          {/* Simulação (pedido 14/09/2026) — mesmo raciocínio do bloco
+              equivalente no Mapa 1: como a tela apareceria pro Felipe
+              Marques Santos, sem precisar logar como ele. Usa o organograma
+              (busca 14/09/2026, só pra piloto) + todosPerfis (já carregado)
+              pra achar os liderados dele e computar o mesmo resumo
+              agregado que resumirTime() usa pro time de verdade — nenhuma
+              RPC nova, nenhum tipo individual exposto além do que o admin
+              piloto já vê em "Perfis da equipe". */}
+          {souVeDicaMapa1 && (() => {
+            const felipe = todosPerfis.find((p) => p.full_name === 'Felipe Marques Santos')
+            if (!felipe) {
+              return (
+                <div className="rounded-2xl border border-dashed border-amber-500/50 bg-amber-500/5 p-4">
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide">
+                    Simulação (visão de administrador) — só você/Priscila veem este bloco
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Felipe Marques Santos não apareceu nos perfis carregados — confira "Perfis da equipe" mais abaixo.
+                  </p>
+                </div>
+              )
+            }
+            const idsLiderados = organograma.filter((o) => o.gestor_id === felipe.funcionario_id).map((o) => o.funcionario_id)
+            const perfisLiderados = todosPerfis.filter((p) => idsLiderados.includes(p.funcionario_id))
+            const resumoSimulado: ResumoTime = {
+              instintivo: perfisLiderados.filter((p) => [8, 9, 1].includes(p.tipo)).length,
+              emocional: perfisLiderados.filter((p) => [2, 3, 4].includes(p.tipo)).length,
+              racional: perfisLiderados.filter((p) => [5, 6, 7].includes(p.tipo)).length,
+              totalLiderados: idsLiderados.length,
+              totalMapeados: perfisLiderados.length,
+            }
+            return (
+              <div className="rounded-2xl border border-dashed border-amber-500/50 bg-amber-500/5 p-4 space-y-2">
+                <div>
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide">
+                    Simulação (visão de administrador) — só você/Priscila veem este bloco
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Como o resumo do time apareceria pro Felipe Marques Santos, se ele abrisse a própria tela do Mapa
+                    2 agora.
+                  </p>
+                </div>
+                <p className="text-sm text-foreground">{resumirTime(resumoSimulado)}</p>
+              </div>
+            )
+          })()}
         </div>
       )}
 

@@ -98,3 +98,58 @@ export async function getMeusLideradosComPerfilMapeado(): Promise<{ liderados: C
   if (error) return { liderados: [], error: error.message }
   return { liderados: (data ?? []) as ColegaComPerfilMapeado[], error: null }
 }
+
+export interface ResumoTime {
+  instintivo: number
+  emocional: number
+  racional: number
+  totalLiderados: number
+  totalMapeados: number
+}
+
+// Mapa 2 (pedido 14/09/2026): resumo do time do líder, agregado nos 3
+// centros do Eneagrama — NUNCA o tipo exato de ninguém (ver comentário na
+// migration PENDENTE_20260914030000). A RPC já devolve só os 5 números; o
+// texto qualitativo é montado por resumirTime() (mesmo arquivo da página).
+export async function getResumoTimeLiderado(): Promise<{ resumo: ResumoTime | null; error: string | null }> {
+  const supabase = createClient()
+  const { data, error } = await supabase.rpc('resumo_time_liderado')
+  if (error) return { resumo: null, error: error.message }
+  const linha = data?.[0]
+  if (!linha) return { resumo: null, error: null }
+  return {
+    resumo: {
+      instintivo: linha.instintivo,
+      emocional: linha.emocional,
+      racional: linha.racional,
+      totalLiderados: linha.total_liderados,
+      totalMapeados: linha.total_mapeados,
+    },
+    error: null,
+  }
+}
+
+export interface FuncionarioOrganograma {
+  funcionario_id: string
+  gestor_id: string | null
+}
+
+// Só pra simulação de administrador (Mapa 2, "como o Felipe Marques veria") —
+// lê o organograma inteiro da empresa (id + gestor_id de cada funcionário)
+// pra achar os liderados de outra pessoa sem precisar de RPC nova: a RLS de
+// leitura de `funcionarios` já libera qualquer membro da mesma empresa (ver
+// policy "Members can view employees"), então isso já funcionava mesmo antes
+// — só nunca tinha sido consultado assim.
+export async function getOrganogramaEmpresa(clientId: string): Promise<{ organograma: FuncionarioOrganograma[]; error: string | null }> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('funcionarios')
+    .select('id, gestor_id')
+    .eq('client_id', clientId)
+
+  if (error) return { organograma: [], error: error.message }
+  return {
+    organograma: (data ?? []).map((f: any) => ({ funcionario_id: f.id, gestor_id: f.gestor_id })),
+    error: null,
+  }
+}
