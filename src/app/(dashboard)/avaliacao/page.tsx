@@ -221,6 +221,17 @@ export default function AvaliacaoPage() {
   // PENDENTE_20260902010000) garante que só funciona pros próprios liderados
   // de cada um, mesmo que o front-end erre.
   const [souCalibradorRestrito, setSouCalibradorRestrito] = useState(false)
+  // Pedido (14/09/2026): o Nine Box (matriz Cultural x Performance, nota
+  // calibrada de todo mundo de uma vez) fica restrito a só Igor e Priscila —
+  // mais estreito que souGestorDaCalibragem (que também inclui o Filippe
+  // Réus pra Painel de Calibragem/Iniciar/Finalizar). Antes disso o botão
+  // usava souAdministrador (qualquer administrador de verdade da empresa),
+  // o que deixava 5 outras contas admin da CTZ abrirem o modal — viam tudo
+  // vazio (a nota vem mascarada null pra quem não está em
+  // pode_ver_lado_calibragem), mas ainda assim expunha a existência da tela
+  // e a lista de nomes. Em qualquer outra empresa continua igual a sempre
+  // (souAdministrador) — só a CTZ tem essa lista fixa mais estreita.
+  const [souVejoNineBox, setSouVejoNineBox] = useState(false)
   const [meuFuncionario, setMeuFuncionario] = useState<Funcionario | null>(null)
   const [ciclos, setCiclos] = useState<Ciclo[]>([])
   const [cicloAtivo, setCicloAtivo] = useState<Ciclo | null>(null)
@@ -391,6 +402,11 @@ export default function AvaliacaoPage() {
       setSouCalibradorRestrito(
         empresa!.id === 'ac4ad62b-9b88-44da-ae69-0f26ced07d06' &&
           ['graciela.hoepers@ctz.eng.br', 'felipe.marques@projetosconcretize.com.br', 'felipe.ross@projetosconcretize.com.br', 'felipe.finato@ctz.eng.br'].includes(emailAtual)
+      )
+      setSouVejoNineBox(
+        empresa!.id === 'ac4ad62b-9b88-44da-ae69-0f26ced07d06'
+          ? ['igorecosta1@gmail.com', 'priscila.santos@behive.net.br'].includes(emailAtual)
+          : administrador
       )
 
       await fetchCiclos()
@@ -1216,9 +1232,12 @@ export default function AvaliacaoPage() {
                           Painel de Calibragem
                         </button>
                       )}
-                      {/* Nine Box usa a nota final calibrada — só quem viu a calibragem
-                          (administrador) enxerga algo útil aqui, por isso virou admin-only. */}
-                      {souAdministrador && (
+                      {/* Nine Box usa a nota final calibrada. Na CTZ, restrito a só Igor
+                          e Priscila (souVejoNineBox, pedido 14/09/2026) — mais estreito que
+                          "qualquer administrador", que deixava outras contas admin abrirem
+                          um modal vazio (a nota já vem mascarada pra quem não está em
+                          pode_ver_lado_calibragem) mas ainda expondo a tela e os nomes. */}
+                      {souVejoNineBox && (
                         <button
                           onClick={() => setModalNineBox(true)}
                           className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent transition-colors text-foreground"
