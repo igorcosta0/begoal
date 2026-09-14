@@ -271,7 +271,7 @@ export default function AutoconhecimentoPage() {
       if (piloto) {
         const [{ souLider: liderDeAlguem }, { colegas: colegasMapeados }, { perfis, error: erroTodos }, { mapa }] = await Promise.all([
           getSouLiderDeAlguem(),
-          getColegasComPerfilMapeado(),
+          getColegasComPerfilMapeado(empresa.id),
           getTodosPerfisEneagrama(empresa.id),
           getTodosCargosPerfil(empresa.id),
         ])

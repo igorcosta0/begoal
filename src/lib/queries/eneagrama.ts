@@ -76,10 +76,16 @@ export async function getSouLiderDeAlguem(): Promise<{ souLider: boolean; error:
 }
 
 // Mapa 3 "Relacionando com o time": qualquer colega da mesma empresa com tipo
-// mapeado (menos a própria pessoa).
-export async function getColegasComPerfilMapeado(): Promise<{ colegas: ColegaComPerfilMapeado[]; error: string | null }> {
+// mapeado (menos a própria pessoa). Recebe clientId explícito (a empresa
+// selecionada na UI, mesmo `empresa.id` usado por getTodosPerfisEneagrama/
+// getTodosCargosPerfil) — achado em 14/09/2026: a versão anterior descobria
+// "minha empresa" auto-consultando a própria linha de `funcionarios` de quem
+// chama, o que quebra pra administrador multi-empresa (Igor/Priscila) cuja
+// própria linha pertence a outra empresa que administram, não à CTZ (ver
+// migration PENDENTE_20260914000000).
+export async function getColegasComPerfilMapeado(clientId: string): Promise<{ colegas: ColegaComPerfilMapeado[]; error: string | null }> {
   const supabase = createClient()
-  const { data, error } = await supabase.rpc('listar_colegas_com_perfil_mapeado')
+  const { data, error } = await supabase.rpc('listar_colegas_com_perfil_mapeado', { p_client_id: clientId })
   if (error) return { colegas: [], error: error.message }
   return { colegas: (data ?? []) as ColegaComPerfilMapeado[], error: null }
 }
