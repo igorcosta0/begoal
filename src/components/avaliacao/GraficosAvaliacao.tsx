@@ -36,12 +36,11 @@ interface Props {
   avaliacoes: AvaliacaoParaGrafico[]
 }
 
-// Verde/azul/âmbar (finalizada/concluída/aberta) e índigo/ciano (cultural/
-// performance) — validados via scripts/validate_palette.js da skill de
-// dataviz (os dois trios passam CVD/contraste em claro e escuro; onde
-// sobrou WARN de contraste no escuro, os valores ficam com label direto em
-// cima da barra, que é a mitigação que a própria skill pede).
-const COR_FINALIZADA = '#16a34a'
+// Azul/âmbar (concluída/aberta) e índigo/ciano (cultural/performance) —
+// validados via scripts/validate_palette.js da skill de dataviz (os dois
+// pares passam CVD/contraste em claro e escuro; onde sobrou WARN de
+// contraste no escuro, os valores ficam com label direto em cima da barra,
+// que é a mitigação que a própria skill pede).
 const COR_CONCLUIDA = '#2563eb'
 const COR_ABERTA = '#d97706'
 const COR_CULTURAL = '#4f46e5'
@@ -79,20 +78,17 @@ export default function GraficosAvaliacao({ avaliacoes }: Props) {
   )
 
   const { dadosStatus, dadosMedias, totalCultural, totalTecnica } = useMemo(() => {
-    // Três categorias mutuamente exclusivas (a soma sempre bate com o
-    // total): Finalizada (status já fechou o ciclo pra essa avaliação),
-    // Concluída (todos os campos preenchidos de verdade — completa=true —
-    // mas o status ainda não chegou em "finalizada", ex.: parada em
-    // "calibragem" esperando o admin apertar "Finalizar Calibragem") e Em
-    // aberto (falta preencher alguma coisa). Sem essa separação, avaliação
-    // já concluída na prática ficava escondida dentro de "Em aberto" só
-    // porque o status (que avança em lote, ver CLAUDE.md) ainda não tinha
-    // sido fechado manualmente.
-    const finalizadas = avaliacoesFiltradas.filter((a) => a.status === 'finalizada').length
-    const concluidasNaoFinalizadas = avaliacoesFiltradas.filter(
-      (a) => a.completa && a.status !== 'finalizada'
-    ).length
-    const emAberto = avaliacoesFiltradas.length - finalizadas - concluidasNaoFinalizadas
+    // Duas categorias mutuamente exclusivas, pelo mesmo flag `completa` usado
+    // no BadgeConcluida em toda a tela (avaliacao_completude no banco: TODOS
+    // os campos preenchidos de verdade) — não pelo `status`, que pode
+    // avançar em lote (ex.: "Iniciar Calibragem"/"Finalizar Calibragem") sem
+    // que ninguém tenha preenchido nada ainda (ver CLAUDE.md). Pedido
+    // 14/09/2026: removida a distinção "Finalizada" (status) × "Concluída"
+    // (completa) que existia antes — Concluída aqui já cobre quem finalizou
+    // o ciclo (finalizada normalmente implica completa=true de qualquer
+    // forma) e quem só terminou de preencher mas o ciclo ainda não fechou.
+    const concluidas = avaliacoesFiltradas.filter((a) => a.completa).length
+    const emAberto = avaliacoesFiltradas.length - concluidas
 
     // Mesma cascata de "nota final conhecida até agora" já usada em
     // ModalAvaliacao (notaFinalCultural/notaFinalTecnica): calibragem quando
@@ -107,8 +103,7 @@ export default function GraficosAvaliacao({ avaliacoes }: Props) {
 
     return {
       dadosStatus: [
-        { categoria: 'Finalizada', quantidade: finalizadas, cor: COR_FINALIZADA },
-        { categoria: 'Concluída', quantidade: concluidasNaoFinalizadas, cor: COR_CONCLUIDA },
+        { categoria: 'Concluída', quantidade: concluidas, cor: COR_CONCLUIDA },
         { categoria: 'Em aberto', quantidade: emAberto, cor: COR_ABERTA },
       ],
       dadosMedias: [
@@ -165,9 +160,9 @@ export default function GraficosAvaliacao({ avaliacoes }: Props) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="rounded-2xl border border-border bg-card p-4">
-            <p className="text-sm font-semibold text-foreground">Finalizadas × Concluídas × Em aberto</p>
+            <p className="text-sm font-semibold text-foreground">Concluídas × Em aberto</p>
             <p className="text-xs text-muted-foreground mt-0.5 mb-2">
-              {avaliacoesFiltradas.length} avaliação(ões){verticalAtiva ? ` em ${VERTICAIS_CTZ[verticalAtiva]?.label ?? verticalAtiva}` : ' no ciclo'} · &quot;Concluída&quot; = todos os campos preenchidos, mas o ciclo ainda não fechou essa avaliação
+              {avaliacoesFiltradas.length} avaliação(ões){verticalAtiva ? ` em ${VERTICAIS_CTZ[verticalAtiva]?.label ?? verticalAtiva}` : ' no ciclo'} · &quot;Concluída&quot; = todos os campos preenchidos de verdade, independente do status do ciclo
             </p>
             <div className="h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
