@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
 import { cn, isEmpresaCTZ, souPilotoAutoconhecimento } from '@/lib/utils'
@@ -632,43 +632,42 @@ export default function AutoconhecimentoPage() {
               {erroGeracao}
             </div>
           )}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-muted-foreground border-b border-border">
-                  <th className="py-2 pr-4 font-medium w-6"></th>
-                  <th className="py-2 pr-4 font-medium">Nome</th>
-                  <th className="py-2 pr-4 font-medium">Tipo</th>
-                  <th className="py-2 pr-4 font-medium">Sequência de instintos</th>
-                  <th className="py-2 font-medium">Cargo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {todosPerfis.map((p) => {
-                  const t = TIPOS_ENEAGRAMA[p.tipo]
-                  const cargoInfo = cargosPerfil[p.funcionario_id]
-                  const cp = cargoInfo?.cargo_perfil
-                  const aberto = expandidoId === p.funcionario_id
-                  return (
-                    <Fragment key={p.funcionario_id}>
-                      <tr
-                        onClick={() => setExpandidoId(aberto ? null : p.funcionario_id)}
-                        className="border-b border-border/50 last:border-0 cursor-pointer hover:bg-accent/50"
-                      >
-                        <td className="py-2 pr-4 text-muted-foreground">
-                          {aberto ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                        </td>
-                        <td className="py-2 pr-4 text-foreground whitespace-nowrap">{p.full_name}</td>
-                        <td className="py-2 pr-4 text-foreground whitespace-nowrap">Tipo {p.tipo}{t ? ` — ${t.palavraSintese}` : ''}</td>
-                        <td className="py-2 pr-4 text-muted-foreground whitespace-nowrap">{p.subtipo_sequencia ? formatarSequencia(p.subtipo_sequencia) : '—'}</td>
-                        <td className="py-2 text-muted-foreground whitespace-nowrap">
-                          {cp ? `${cp.cargo_base}${cp.nivel ? ` (${cp.nivel})` : ''}` : 'sem perfil de cargo mapeado'}
-                        </td>
-                      </tr>
-                      {aberto && (
-                        <tr key={`${p.funcionario_id}-detalhe`} className="border-b border-border/50 last:border-0">
-                          <td colSpan={5} className="py-4 px-2 bg-secondary/30 rounded-xl">
-                            {!cp ? (
+          {/* Lista em vez de tabela (achado 14/09/2026): com 4 colunas de
+              texto (nome/tipo/sequência de instintos/cargo), uma tabela
+              exigia rolagem horizontal pra ler em qualquer tela mais estreita
+              que o conteúdo — aqui os campos quebram linha naturalmente
+              (flex-wrap) em vez de forçar nowrap. */}
+          <div className="divide-y divide-border/50">
+            {todosPerfis.map((p) => {
+              const t = TIPOS_ENEAGRAMA[p.tipo]
+              const cargoInfo = cargosPerfil[p.funcionario_id]
+              const cp = cargoInfo?.cargo_perfil
+              const aberto = expandidoId === p.funcionario_id
+              return (
+                <div key={p.funcionario_id}>
+                  <button
+                    type="button"
+                    onClick={() => setExpandidoId(aberto ? null : p.funcionario_id)}
+                    className="w-full flex items-start gap-2 py-2.5 text-left hover:bg-accent/50 rounded-lg px-1.5 -mx-1.5 transition-colors"
+                  >
+                    <span className="text-muted-foreground mt-0.5 shrink-0">
+                      {aberto ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                        <span className="text-sm text-foreground font-medium">{p.full_name}</span>
+                        <span className="text-xs text-muted-foreground">Tipo {p.tipo}{t ? ` — ${t.palavraSintese}` : ''}</span>
+                      </span>
+                      <span className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-xs text-muted-foreground">
+                        <span>{p.subtipo_sequencia ? formatarSequencia(p.subtipo_sequencia) : '—'}</span>
+                        <span>{cp ? `${cp.cargo_base}${cp.nivel ? ` (${cp.nivel})` : ''}` : 'sem perfil de cargo mapeado'}</span>
+                      </span>
+                    </span>
+                  </button>
+                  {aberto && (
+                    <div className="pb-4 px-1.5">
+                      <div className="bg-secondary/30 rounded-xl p-4">
+                        {!cp ? (
                               <p className="text-xs text-muted-foreground">
                                 Essa pessoa ainda não tem perfil de cargo mapeado (cargo dela não bate com nenhuma linha
                                 preenchida na planilha de cargos, ou é um cargo composto de sócio/CEO) — só o tipo de
@@ -726,14 +725,12 @@ export default function AutoconhecimentoPage() {
                                 </div>
                               </div>
                             )}
-                          </td>
-                        </tr>
-                      )}
-                    </Fragment>
-                  )
-                })}
-              </tbody>
-            </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
