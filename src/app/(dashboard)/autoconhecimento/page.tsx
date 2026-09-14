@@ -13,7 +13,7 @@ import {
   type PerfilEneagramaComNome,
   type ColegaComPerfilMapeado,
 } from '@/lib/queries/eneagrama'
-import { getTodosCargosPerfil, type FuncionarioCargoPerfil } from '@/lib/queries/cargosPerfil'
+import { getTodosCargosPerfil, getMinhaDicaCargo, type FuncionarioCargoPerfil } from '@/lib/queries/cargosPerfil'
 import { TIPOS_ENEAGRAMA, NOME_INSTINTO, type Instinto } from '@/lib/eneagrama/tipos'
 import { Sparkles, Loader2, Send, ChevronDown, ChevronRight, Wand2, Crown, Handshake } from 'lucide-react'
 
@@ -204,6 +204,12 @@ export default function AutoconhecimentoPage() {
   const [tipoNumero, setTipoNumero] = useState<number | null>(null)
   const [subtipoSequencia, setSubtipoSequencia] = useState<string | null>(null)
   const [erroPerfil, setErroPerfil] = useState<string | null>(null)
+  // Mapa 1 (pedido 14/09/2026): a análise cargo x Eneagrama que o admin
+  // piloto gera em "Perfis da equipe" (dicas_texto) também aparece pra cada
+  // pessoa sobre si mesma aqui — pra QUALQUER usuário, não só piloto (a RLS
+  // já liberava a própria linha desde 01/09, só nunca tinha sido consultada
+  // fora da visão de admin). Fica vazio pra quem o admin ainda não gerou.
+  const [minhaDica, setMinhaDica] = useState<{ texto: string; geradoEm: string } | null>(null)
 
   // Mapa 2 "Liderando o time": só aparece pra quem tem liderado direto no
   // organograma (funcionarios.gestor_id) — ver sou_lider_de_alguem() no
@@ -259,6 +265,8 @@ export default function AutoconhecimentoPage() {
         setTipoNumero(perfil.tipo)
         setSubtipoSequencia(perfil.subtipo_sequencia)
       }
+
+      getMinhaDicaCargo().then(({ dicas }) => setMinhaDica(dicas))
 
       // Mapas 2 e 3 falam do tipo de OUTRA pessoa (não só de quem pergunta,
       // como o Mapa 1) — pedido explícito do Igor (10/09/2026) pra manter
@@ -463,6 +471,15 @@ export default function AutoconhecimentoPage() {
               <p className="text-xs text-muted-foreground pt-2 border-t border-border">
                 Sequência de instintos: {formatarSequencia(subtipoSequencia)}
               </p>
+            )}
+            {minhaDica && (
+              <div className="pt-3 border-t border-border space-y-1.5">
+                <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Análise para o seu cargo</p>
+                <p className="text-foreground text-sm whitespace-pre-line">{minhaDica.texto}</p>
+                <p className="text-xs text-muted-foreground">
+                  Gerada em {new Date(minhaDica.geradoEm).toLocaleString('pt-BR')}
+                </p>
+              </div>
             )}
           </div>
         ) : (
