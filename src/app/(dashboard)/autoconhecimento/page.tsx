@@ -65,6 +65,11 @@ function CardTipoMapa1({
   subtipoSequencia: string | null
   dica: { texto: string; geradoEm: string } | null
 }) {
+  // Pedido (14/09/2026): o card já tem bastante informação (6 campos do
+  // tipo + sequência de instintos) — a análise de cargo, que é o texto mais
+  // longo de todos, começa OCULTA por padrão, só some/aparece no clique, em
+  // vez de empilhar tudo de uma vez.
+  const [mostrarDica, setMostrarDica] = useState(false)
   return (
     <div className="bg-card border border-border rounded-2xl p-6 space-y-3">
       <div className="flex items-center justify-between gap-2">
@@ -103,10 +108,24 @@ function CardTipoMapa1({
         </p>
       )}
       {dica && (
-        <div className="pt-3 border-t border-border space-y-1.5">
-          <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Análise para o seu cargo</p>
-          <p className="text-foreground text-sm whitespace-pre-line">{dica.texto}</p>
-          <p className="text-xs text-muted-foreground">Gerada em {new Date(dica.geradoEm).toLocaleString('pt-BR')}</p>
+        <div className="pt-3 border-t border-border">
+          <button
+            type="button"
+            onClick={() => setMostrarDica((v) => !v)}
+            className="w-full flex items-center justify-between gap-2 text-left"
+          >
+            <span className="text-xs font-semibold text-foreground uppercase tracking-wide">Análise para o seu cargo</span>
+            <span className="shrink-0 flex items-center gap-1 text-xs text-muted-foreground">
+              {mostrarDica ? 'Ocultar' : 'Revelar'}
+              {mostrarDica ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+            </span>
+          </button>
+          {mostrarDica && (
+            <div className="mt-1.5 space-y-1.5">
+              <p className="text-foreground text-sm whitespace-pre-line">{dica.texto}</p>
+              <p className="text-xs text-muted-foreground">Gerada em {new Date(dica.geradoEm).toLocaleString('pt-BR')}</p>
+            </div>
+          )}
         </div>
       )}
     </div>
