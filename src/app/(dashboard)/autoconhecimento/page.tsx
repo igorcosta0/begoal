@@ -345,11 +345,18 @@ function ChatSobreOutraPessoa({
   placeholder,
   situacoesSugeridas,
   endpoint,
+  corpoExtra,
 }: {
   pessoas: ColegaComPerfilMapeado[]
   placeholder: string
   situacoesSugeridas: string[]
   endpoint: string
+  // Campos extras somados ao corpo da requisição — hoje só usado pela
+  // simulação de administrador do Mapa 2 (pedido 14/09/2026), que precisa
+  // informar QUAL líder está sendo simulado (liderFuncionarioId), já que
+  // /api/simular-liderar-liderado não pode resolver isso pela sessão (quem
+  // está logado é o admin, não o líder de verdade).
+  corpoExtra?: Record<string, string>
 }) {
   const [alvoId, setAlvoId] = useState('')
   const [situacao, setSituacao] = useState('')
@@ -379,7 +386,7 @@ function ChatSobreOutraPessoa({
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ funcionarioAlvoId: alvoId, situacao: texto, historico: historicoAnterior }),
+        body: JSON.stringify({ funcionarioAlvoId: alvoId, situacao: texto, historico: historicoAnterior, ...corpoExtra }),
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
@@ -872,17 +879,33 @@ export default function AutoconhecimentoPage() {
               totalMapeados: perfisLiderados.length,
             }
             return (
-              <div className="rounded-2xl border border-dashed border-amber-500/50 bg-amber-500/5 p-4 space-y-2">
+              <div className="rounded-2xl border border-dashed border-amber-500/50 bg-amber-500/5 p-4 space-y-4">
                 <div>
                   <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide">
                     Simulação (visão de administrador) — só você/Priscila veem este bloco
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Como o resumo do time apareceria pro Felipe Marques Santos, se ele abrisse a própria tela do Mapa
-                    2 agora.
+                    Como o Mapa 2 apareceria pro Felipe Marques Santos, se ele abrisse a própria tela agora — resumo
+                    do time e o chat de verdade, sem precisar logar como ele.
                   </p>
                 </div>
                 <p className="text-sm text-foreground">{resumirTime(resumoSimulado)}</p>
+                {/* Chat de verdade (não só o resumo em texto) — pedido
+                    14/09/2026: sem isso, só o Mapa 1 tinha chat testável pra
+                    quem não lidera ninguém de verdade (Igor/Priscila). Usa
+                    /api/simular-liderar-liderado (admin-only), que recebe o
+                    líder simulado por ID em vez de resolver pela sessão. */}
+                {perfisLiderados.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhum liderado do Felipe Marques tem tipo mapeado ainda.</p>
+                ) : (
+                  <ChatSobreOutraPessoa
+                    pessoas={perfisLiderados}
+                    placeholder="Selecione um liderado do Felipe Marques..."
+                    situacoesSugeridas={SITUACOES_SUGERIDAS_LIDERANCA}
+                    endpoint="/api/simular-liderar-liderado"
+                    corpoExtra={{ liderFuncionarioId: felipe.funcionario_id }}
+                  />
+                )}
               </div>
             )
           })()}
