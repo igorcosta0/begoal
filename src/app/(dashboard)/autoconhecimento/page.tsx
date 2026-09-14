@@ -304,7 +304,18 @@ function ChatGeral({
 // souAdminPiloto — chama /api/como-abordar-colega). O seletor some sozinho
 // quando não há colega nenhum pra oferecer, e o chat vira só sobre si mesmo,
 // idêntico ao antigo "Pergunte ao assistente".
-function ChatMapa1Unificado({ colegas }: { colegas: ColegaComPerfilMapeado[] }) {
+function ChatMapa1Unificado({
+  colegas,
+  permiteSobreSiMesmo,
+}: {
+  colegas: ColegaComPerfilMapeado[]
+  // Achado (14/09/2026): quando quem abre não tem tipo próprio mapeado
+  // (ex.: administrador do sistema), a opção "Eu mesmo" chamaria
+  // /api/assistente-eneagrama, que exige tipo próprio — daria erro. Nesse
+  // caso o seletor nasce SEM essa opção, começando direto num colega (ou o
+  // card nem aparece, se também não há colega nenhum — ver gate na página).
+  permiteSobreSiMesmo: boolean
+}) {
   const [alvoId, setAlvoId] = useState('')
   const [texto, setTexto] = useState('')
   const [mensagens, setMensagens] = useState<Mensagem[]>([])
@@ -323,7 +334,7 @@ function ChatMapa1Unificado({ colegas }: { colegas: ColegaComPerfilMapeado[] }) 
   }
 
   async function enviar(msg: string) {
-    if (!msg.trim() || enviando) return
+    if (!msg.trim() || enviando || (!alvoId && !permiteSobreSiMesmo)) return
     setErro('')
     const historicoAnterior = mensagens.slice(-8)
     setMensagens((prev) => [...prev, { role: 'user', texto: msg }])
@@ -353,6 +364,11 @@ function ChatMapa1Unificado({ colegas }: { colegas: ColegaComPerfilMapeado[] }) 
   }
 
   const sugestoes = alvoId ? SITUACOES_SUGERIDAS : PERGUNTAS_SUGERIDAS
+  // Só dá pra conversar se "eu mesmo" for permitido (alvoId vazio = eu
+  // mesmo) OU se já escolheu um colega específico — sem isso, alguém sem
+  // tipo próprio via o seletor cair automaticamente em "eu mesmo" (valor
+  // inicial '') sem ter escolhido nada, e a pergunta ia pro endpoint errado.
+  const podeConversar = permiteSobreSiMesmo || !!alvoId
 
   return (
     <div className="space-y-4">
@@ -362,7 +378,11 @@ function ChatMapa1Unificado({ colegas }: { colegas: ColegaComPerfilMapeado[] }) 
           onChange={(e) => selecionarAlvo(e.target.value)}
           className="w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         >
-          <option value="">Eu mesmo (autoliderança)</option>
+          {permiteSobreSiMesmo ? (
+            <option value="">Eu mesmo (autoliderança)</option>
+          ) : (
+            <option value="" disabled>Selecione um colega...</option>
+          )}
           {[...colegas]
             .sort((a, b) => a.full_name.localeCompare(b.full_name))
             .map((p) => (
@@ -373,7 +393,7 @@ function ChatMapa1Unificado({ colegas }: { colegas: ColegaComPerfilMapeado[] }) 
         </select>
       )}
 
-      {mensagens.length === 0 && (
+      {podeConversar && mensagens.length === 0 && (
         <div className="flex flex-wrap gap-2">
           {sugestoes.map((s) => (
             <button
@@ -410,29 +430,33 @@ function ChatMapa1Unificado({ colegas }: { colegas: ColegaComPerfilMapeado[] }) 
 
       {erro && <p className="text-xs text-destructive">{erro}</p>}
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          enviar(texto)
-        }}
-        className="flex items-center gap-2"
-      >
-        <input
-          type="text"
-          value={texto}
-          onChange={(e) => setTexto(e.target.value)}
-          placeholder={alvoId ? 'Descreva a situação...' : 'Escreva sua pergunta...'}
-          disabled={enviando}
-          className="flex-1 px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
-        />
-        <button
-          type="submit"
-          disabled={enviando || !texto.trim()}
-          className="shrink-0 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm flex items-center justify-center"
+      {podeConversar ? (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            enviar(texto)
+          }}
+          className="flex items-center gap-2"
         >
-          {enviando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-        </button>
-      </form>
+          <input
+            type="text"
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            placeholder={alvoId ? 'Descreva a situação...' : 'Escreva sua pergunta...'}
+            disabled={enviando}
+            className="flex-1 px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+          />
+          <button
+            type="submit"
+            disabled={enviando || !texto.trim()}
+            className="shrink-0 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm flex items-center justify-center"
+          >
+            {enviando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          </button>
+        </form>
+      ) : (
+        <p className="text-xs text-muted-foreground">Selecione um colega acima pra começar.</p>
+      )}
     </div>
   )
 }
@@ -861,16 +885,23 @@ export default function AutoconhecimentoPage() {
           )
         })()}
 
-        {tipo && (
+        {/* Achado (14/09/2026): antes da fusão, o chat sobre colega (antigo
+            Mapa 3) aparecia pra qualquer souAdminPiloto, mesmo sem tipo
+            próprio mapeado (ex.: Igor, que administra o sistema mas não é
+            um dos 20 funcionários mapeados). Gate errado depois da fusão
+            (`{tipo && (...)}`) fazia o card sumir inteiro pra esses casos —
+            agora aparece se há tipo próprio OU colega pra conversar. */}
+        {(tipo || colegas.length > 0) && (
           <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
             <div>
               <h3 className="text-sm font-semibold text-foreground">Pergunte ao assistente</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Sobre você mesmo (padrão) ou, se disponível, escolha um colega pra saber a melhor forma de conduzir
-                uma conversa com ele — sem nunca revelar o tipo comportamental dele.
+                {tipo
+                  ? 'Sobre você mesmo (padrão) ou, se disponível, escolha um colega pra saber a melhor forma de conduzir uma conversa com ele — sem nunca revelar o tipo comportamental dele.'
+                  : 'Você não tem tipo próprio mapeado, mas pode escolher um colega abaixo pra saber a melhor forma de conduzir uma conversa com ele — sem nunca revelar o tipo comportamental dele.'}
               </p>
             </div>
-            <ChatMapa1Unificado colegas={colegas} />
+            <ChatMapa1Unificado colegas={colegas} permiteSobreSiMesmo={!!tipo} />
           </div>
         )}
       </div>
