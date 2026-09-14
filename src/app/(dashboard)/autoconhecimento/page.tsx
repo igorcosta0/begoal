@@ -425,6 +425,7 @@ export default function AutoconhecimentoPage() {
           <Sparkles className="w-4 h-4 text-primary" />
           <h2 className="text-sm font-bold text-foreground uppercase tracking-wide">Mapa 1 · Autoliderança</h2>
         </div>
+        <p className="text-xs text-muted-foreground -mt-2">Como VOCÊ funciona: motivações, forças e pontos cegos — pra todo mundo com tipo mapeado.</p>
 
         {tipo ? (
           <div className="bg-card border border-border rounded-2xl p-6 space-y-3">
@@ -545,30 +546,45 @@ export default function AutoconhecimentoPage() {
       {/* Mapa 2 — Liderando o time. Fala do tipo de OUTRA pessoa (o
           liderado), por isso o Igor pediu (10/09/2026) pra manter restrito a
           Igor/Priscila por enquanto, além de exigir liderado — diferente do
-          Mapa 1, que só fala de quem pergunta e por isso já abriu geral. */}
-      {souAdminPiloto && souLider && (
+          Mapa 1, que só fala de quem pergunta e por isso já abriu geral.
+          Achado (14/09/2026): antes disso, quem é piloto mas não lidera
+          ninguém (ex.: Igor, que não tem liderado direto no organograma de
+          nenhuma empresa) via o mapa sumir sem explicação nenhuma — agora o
+          cabeçalho sempre aparece pra piloto, e some só o conteúdo, com um
+          aviso explicando o motivo. */}
+      {souAdminPiloto && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Crown className="w-4 h-4 text-amber-600" />
             <h2 className="text-sm font-bold text-foreground uppercase tracking-wide">Mapa 2 · Liderando o time</h2>
           </div>
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-            <p className="text-xs text-muted-foreground">
-              Escolha um dos seus liderados diretos e descreva a situação — a resposta orienta como delegar, dar
-              feedback, desenvolver ou conduzir um conflito com essa pessoa, sem nunca revelar o tipo comportamental
-              dela.
-            </p>
-            {liderados.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Nenhum dos seus liderados diretos tem tipo mapeado ainda.</p>
-            ) : (
-              <ChatSobreOutraPessoa
-                pessoas={liderados}
-                placeholder="Selecione um liderado..."
-                situacoesSugeridas={SITUACOES_SUGERIDAS_LIDERANCA}
-                endpoint="/api/liderar-liderado"
-              />
-            )}
-          </div>
+          <p className="text-xs text-muted-foreground -mt-2">Como orientar quem lidera pra VOCÊ — delegação, feedback, desenvolvimento — pra quem tem liderado direto no organograma.</p>
+          {souLider ? (
+            <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+              <p className="text-xs text-muted-foreground">
+                Escolha um dos seus liderados diretos e descreva a situação — a resposta orienta como delegar, dar
+                feedback, desenvolver ou conduzir um conflito com essa pessoa, sem nunca revelar o tipo comportamental
+                dela.
+              </p>
+              {liderados.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nenhum dos seus liderados diretos tem tipo mapeado ainda.</p>
+              ) : (
+                <ChatSobreOutraPessoa
+                  pessoas={liderados}
+                  placeholder="Selecione um liderado..."
+                  situacoesSugeridas={SITUACOES_SUGERIDAS_LIDERANCA}
+                  endpoint="/api/liderar-liderado"
+                />
+              )}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-border bg-card/50 p-6 text-center">
+              <p className="text-muted-foreground text-sm">
+                Este mapa só aparece pra quem tem pelo menos 1 liderado direto no organograma — você não lidera
+                ninguém em nenhuma empresa hoje, por isso não há nada pra mostrar aqui.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -582,6 +598,7 @@ export default function AutoconhecimentoPage() {
             <Handshake className="w-4 h-4 text-primary" />
             <h2 className="text-sm font-bold text-foreground uppercase tracking-wide">Mapa 3 · Relacionando com o time</h2>
           </div>
+          <p className="text-xs text-muted-foreground -mt-2">Como se relacionar melhor com QUALQUER colega mapeado — feedback, pedido, alinhamento de expectativa.</p>
           <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
             <p className="text-xs text-muted-foreground">
               Escolha a pessoa e descreva a situação — a resposta orienta a melhor forma de conduzir a conversa, sem
