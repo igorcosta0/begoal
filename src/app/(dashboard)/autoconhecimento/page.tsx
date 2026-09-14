@@ -933,7 +933,6 @@ export default function AutoconhecimentoPage() {
               (flex-wrap) em vez de forçar nowrap. */}
           <div className="divide-y divide-border/50">
             {todosPerfis.map((p) => {
-              const t = TIPOS_ENEAGRAMA[p.tipo]
               const cargoInfo = cargosPerfil[p.funcionario_id]
               const cp = cargoInfo?.cargo_perfil
               const aberto = expandidoId === p.funcionario_id
@@ -950,7 +949,7 @@ export default function AutoconhecimentoPage() {
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                         <span className="text-sm text-foreground font-medium">{p.full_name}</span>
-                        <span className="text-xs text-muted-foreground">Tipo {p.tipo}{t ? ` — ${t.palavraSintese}` : ''}</span>
+                        <span className="text-xs text-muted-foreground">Tipo {p.tipo}</span>
                       </span>
                       <span className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-xs text-muted-foreground">
                         <span>{p.subtipo_sequencia ? formatarSequencia(p.subtipo_sequencia) : '—'}</span>
