@@ -50,14 +50,6 @@ const SITUACOES_SUGERIDAS_LIDERANCA = [
   'Como conduzo uma decisão que essa pessoa provavelmente não vai gostar?',
 ]
 
-// Mapa 2, chat "Pergunte sobre o seu time" (pedido 14/09/2026) — sobre o
-// time como um todo, não uma pessoa específica.
-const PERGUNTAS_SOBRE_TIME = [
-  'Como esse time costuma reagir a mudança de prioridade em cima da hora?',
-  'Como eu conduzo uma reunião de decisão em grupo com esse time?',
-  'O que esse time mais precisa de mim como líder agora?',
-]
-
 function formatarSequencia(sequencia: string) {
   return sequencia
     .split('/')
@@ -122,7 +114,7 @@ function CardTipoMapa1({
   return (
     <div className="bg-card border border-border rounded-2xl p-6 space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-foreground">Tipo {tipo.numero} — {tipo.motivacao}</h3>
+        <h3 className="text-sm font-semibold text-foreground">Tipo {tipo.numero}</h3>
         <span className="shrink-0 text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">{tipo.palavraSintese}</span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
@@ -177,121 +169,6 @@ function CardTipoMapa1({
           )}
         </div>
       )}
-    </div>
-  )
-}
-
-// Chat livre, sem seleção de pessoa — reaproveitado pelo Mapa 2 ("Pergunte
-// sobre o seu time", pedido 14/09/2026). Mais simples que os outros dois
-// chats desta página porque não tem seletor nenhum: sempre manda só
-// {pergunta, historico} pro endpoint.
-function ChatGeral({
-  endpoint,
-  sugestoes,
-  placeholder,
-}: {
-  endpoint: string
-  sugestoes: string[]
-  placeholder: string
-}) {
-  const [texto, setTexto] = useState('')
-  const [mensagens, setMensagens] = useState<Mensagem[]>([])
-  const [enviando, setEnviando] = useState(false)
-  const [erro, setErro] = useState('')
-  const scrollRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
-  }, [mensagens, enviando])
-
-  async function enviar(msg: string) {
-    if (!msg.trim() || enviando) return
-    setErro('')
-    const historicoAnterior = mensagens.slice(-8)
-    setMensagens((prev) => [...prev, { role: 'user', texto: msg }])
-    setTexto('')
-    setEnviando(true)
-    try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pergunta: msg, historico: historicoAnterior }),
-      })
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.error || 'Erro ao consultar o assistente.')
-      }
-      const data = await res.json()
-      setMensagens((prev) => [...prev, { role: 'model', texto: data.resposta }])
-    } catch (err) {
-      setErro(err instanceof Error ? err.message : 'Erro ao consultar o assistente. Tente novamente.')
-    } finally {
-      setEnviando(false)
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      {mensagens.length === 0 && (
-        <div className="flex flex-wrap gap-2">
-          {sugestoes.map((s) => (
-            <button
-              key={s}
-              onClick={() => setTexto(s)}
-              className="px-3 py-1.5 text-xs rounded-full border border-border text-muted-foreground hover:bg-accent transition-colors text-left"
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {mensagens.length > 0 && (
-        <div ref={scrollRef} className="max-h-96 overflow-y-auto space-y-3 pr-1">
-          {mensagens.map((m, i) => (
-            <div
-              key={i}
-              className={cn(
-                'max-w-[85%] px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap',
-                m.role === 'user' ? 'ml-auto bg-primary text-primary-foreground' : 'bg-secondary text-foreground'
-              )}
-            >
-              {m.texto}
-            </div>
-          ))}
-          {enviando && (
-            <div className="bg-secondary text-muted-foreground max-w-[85%] px-4 py-2.5 rounded-2xl text-sm flex items-center gap-2">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Pensando...
-            </div>
-          )}
-        </div>
-      )}
-
-      {erro && <p className="text-xs text-destructive">{erro}</p>}
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          enviar(texto)
-        }}
-        className="flex items-center gap-2"
-      >
-        <input
-          type="text"
-          value={texto}
-          onChange={(e) => setTexto(e.target.value)}
-          placeholder={placeholder}
-          disabled={enviando}
-          className="flex-1 px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
-        />
-        <button
-          type="submit"
-          disabled={enviando || !texto.trim()}
-          className="shrink-0 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm flex items-center justify-center"
-        >
-          {enviando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-        </button>
-      </form>
     </div>
   )
 }
@@ -812,9 +689,10 @@ export default function AutoconhecimentoPage() {
           <div>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Atualização (14/09/2026)</p>
             <ul className="list-disc list-inside space-y-1 text-foreground">
-              <li>O antigo Mapa 3 ("Relacionando com o time") deixou de ser seção própria — virou um MODO do mesmo chat do Mapa 1: o seletor agora tem "Eu mesmo" (padrão) ou um colega, em vez de duas caixas de chat separadas.</li>
-              <li>Mapa 2 ganhou um resumo do time (agregado nos 3 centros do Eneagrama — nunca o tipo de ninguém individualmente) e um segundo chat, mais livre, pra perguntas sobre o time como um todo (não uma pessoa específica). O chat de pessoa específica passou a considerar também o próprio perfil do líder, não só o do liderado, pra sugerir a melhor forma de dialogar entre os dois estilos.</li>
+              <li>O antigo Mapa 3 ("Relacionando com o time") deixou de ser seção própria — virou um MODO do mesmo chat do Mapa 1: o seletor agora tem "Eu mesmo" (padrão) ou um colega, em vez de duas caixas de chat separadas. Conceito do Mapa 1: pessoal e colega a colega, NUNCA líder-liderado.</li>
+              <li>Mapa 2 ganhou um resumo do time (agregado nos 3 centros do Eneagrama — nunca o tipo de ninguém individualmente). O chat do Mapa 2 é só pra tratar de UM liderado específico, e passou a considerar também o próprio perfil do líder, não só o do liderado, pra traçar uma abordagem que funcione pros dois estilos (achado 14/09/2026: um segundo chat mais genérico sobre o time como um todo tinha sido adicionado por engano aqui e foi removido — o conceito do Mapa 2 é sempre líder tratando de alguém específico do time, nunca uma conversa solta sobre o time).</li>
               <li>Os dois blocos de "Simulação (visão de administrador)" — como a tela apareceria pro Felipe Marques Santos — continuam restritos a Igor/Priscila, mesmo raciocínio de validar antes de abrir geral.</li>
+              <li>Regra reforçada (14/09/2026): o tipo de uma pessoa NUNCA é revelado pra outra em nenhum dos chats, independente de cargo/posição — nem o chat "Eu mesmo/colega" do Mapa 1, nem o chat líder-liderado do Mapa 2. O único tipo que cada chat pode citar abertamente é o de quem está perguntando (a própria pessoa, ou o próprio líder no Mapa 2).</li>
             </ul>
           </div>
         </div>
@@ -932,25 +810,9 @@ export default function AutoconhecimentoPage() {
                 <p className="text-sm text-foreground">{resumoTime ? resumirTime(resumoTime) : 'Carregando...'}</p>
               </div>
 
-              {/* Chat geral sobre o time (pedido 14/09/2026) — diferente do
-                  chat abaixo, que fala de UMA pessoa. */}
               <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground">Pergunte sobre o seu time</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Perguntas gerais sobre como liderar o time como um todo — não sobre uma pessoa específica.
-                  </p>
-                </div>
-                <ChatGeral
-                  endpoint="/api/perguntar-sobre-time"
-                  sugestoes={PERGUNTAS_SOBRE_TIME}
-                  placeholder="Escreva sua pergunta sobre o time..."
-                />
-              </div>
-
-              <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">Falar sobre uma pessoa específica</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Pergunte ao assistente</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Escolha um dos seus liderados diretos e descreva a situação — a resposta orienta como delegar,
                     dar feedback, desenvolver ou conduzir um conflito com essa pessoa (considerando também o seu
