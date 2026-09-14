@@ -53,6 +53,66 @@ function formatarSequencia(sequencia: string) {
     .join(' → ')
 }
 
+// Card do Mapa 1 — extraído pra ser reaproveitado tanto no "meu perfil"
+// quanto na simulação de administrador (pedido 14/09/2026: ver como outra
+// pessoa veria a própria tela, sem precisar logar como ela).
+function CardTipoMapa1({
+  tipo,
+  subtipoSequencia,
+  dica,
+}: {
+  tipo: (typeof TIPOS_ENEAGRAMA)[number]
+  subtipoSequencia: string | null
+  dica: { texto: string; geradoEm: string } | null
+}) {
+  return (
+    <div className="bg-card border border-border rounded-2xl p-6 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-foreground">Tipo {tipo.numero} — {tipo.motivacao}</h3>
+        <span className="shrink-0 text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">{tipo.palavraSintese}</span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+        <div>
+          <p className="text-xs font-medium text-muted-foreground mb-1">Mecanismo de defesa</p>
+          <p className="text-foreground">{tipo.mecanismoDefesa}</p>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-muted-foreground mb-1">Virtude a desenvolver</p>
+          <p className="text-foreground">{tipo.virtude}</p>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-muted-foreground mb-1">Suas forças</p>
+          <p className="text-foreground">{tipo.forcas}</p>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-muted-foreground mb-1">Sua sombra (fica de olho)</p>
+          <p className="text-foreground">{tipo.sombra}</p>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-muted-foreground mb-1">Talento de autoliderança</p>
+          <p className="text-foreground">{tipo.talentoAutolideranca.nome} — {tipo.talentoAutolideranca.potencial}</p>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-muted-foreground mb-1">Desafio de autoliderança</p>
+          <p className="text-foreground">{tipo.talentoAutolideranca.desafio}</p>
+        </div>
+      </div>
+      {subtipoSequencia && (
+        <p className="text-xs text-muted-foreground pt-2 border-t border-border">
+          Sequência de instintos: {formatarSequencia(subtipoSequencia)}
+        </p>
+      )}
+      {dica && (
+        <div className="pt-3 border-t border-border space-y-1.5">
+          <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Análise para o seu cargo</p>
+          <p className="text-foreground text-sm whitespace-pre-line">{dica.texto}</p>
+          <p className="text-xs text-muted-foreground">Gerada em {new Date(dica.geradoEm).toLocaleString('pt-BR')}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Bloco de chat reaproveitado pelos Mapas 2 e 3 — a única diferença entre
 // "Liderando o time" e "Relacionando com o time" é a lista de pessoas, a
 // rota de API chamada e o texto de apresentação; a mecânica de conversa
@@ -205,10 +265,13 @@ export default function AutoconhecimentoPage() {
   const [subtipoSequencia, setSubtipoSequencia] = useState<string | null>(null)
   const [erroPerfil, setErroPerfil] = useState<string | null>(null)
   // Mapa 1 (pedido 14/09/2026): a análise cargo x Eneagrama que o admin
-  // piloto gera em "Perfis da equipe" (dicas_texto) também aparece pra cada
-  // pessoa sobre si mesma aqui — pra QUALQUER usuário, não só piloto (a RLS
-  // já liberava a própria linha desde 01/09, só nunca tinha sido consultada
-  // fora da visão de admin). Fica vazio pra quem o admin ainda não gerou.
+  // piloto gera em "Perfis da equipe" (dicas_texto) também vai aparecer pra
+  // cada pessoa sobre si mesma aqui — a RLS já libera a própria linha pra
+  // QUALQUER usuário desde 01/09 (não é trava técnica). Mas o Igor pediu
+  // (mesmo dia) pra manter a EXIBIÇÃO restrita só a ele/Priscila por
+  // enquanto, pra validar o tom do texto antes de abrir geral — por isso
+  // este flag é mais estreito que souAdminPiloto (que já inclui a Letícia).
+  const [souVeDicaMapa1, setSouVeDicaMapa1] = useState(false)
   const [minhaDica, setMinhaDica] = useState<{ texto: string; geradoEm: string } | null>(null)
 
   // Mapa 2 "Liderando o time": só aparece pra quem tem liderado direto no
@@ -258,6 +321,9 @@ export default function AutoconhecimentoPage() {
       }
       const piloto = souPilotoAutoconhecimento(user.email)
       setSouAdminPiloto(piloto)
+      const emailAtual = user.email?.toLowerCase() ?? ''
+      const veDicaMapa1 = ['igorecosta1@gmail.com', 'priscila.santos@behive.net.br'].includes(emailAtual)
+      setSouVeDicaMapa1(veDicaMapa1)
 
       const { perfil, error } = await getMeuPerfilEneagrama()
       if (error) setErroPerfil(error)
@@ -266,7 +332,9 @@ export default function AutoconhecimentoPage() {
         setSubtipoSequencia(perfil.subtipo_sequencia)
       }
 
-      getMinhaDicaCargo().then(({ dicas }) => setMinhaDica(dicas))
+      if (veDicaMapa1) {
+        getMinhaDicaCargo().then(({ dicas }) => setMinhaDica(dicas))
+      }
 
       // Mapas 2 e 3 falam do tipo de OUTRA pessoa (não só de quem pergunta,
       // como o Mapa 1) — pedido explícito do Igor (10/09/2026) pra manter
@@ -436,52 +504,7 @@ export default function AutoconhecimentoPage() {
         <p className="text-xs text-muted-foreground -mt-2">Como VOCÊ funciona: motivações, forças e pontos cegos — pra todo mundo com tipo mapeado.</p>
 
         {tipo ? (
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-foreground">Tipo {tipo.numero} — {tipo.motivacao}</h3>
-              <span className="shrink-0 text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">{tipo.palavraSintese}</span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Mecanismo de defesa</p>
-                <p className="text-foreground">{tipo.mecanismoDefesa}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Virtude a desenvolver</p>
-                <p className="text-foreground">{tipo.virtude}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Suas forças</p>
-                <p className="text-foreground">{tipo.forcas}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Sua sombra (fica de olho)</p>
-                <p className="text-foreground">{tipo.sombra}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Talento de autoliderança</p>
-                <p className="text-foreground">{tipo.talentoAutolideranca.nome} — {tipo.talentoAutolideranca.potencial}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Desafio de autoliderança</p>
-                <p className="text-foreground">{tipo.talentoAutolideranca.desafio}</p>
-              </div>
-            </div>
-            {subtipoSequencia && (
-              <p className="text-xs text-muted-foreground pt-2 border-t border-border">
-                Sequência de instintos: {formatarSequencia(subtipoSequencia)}
-              </p>
-            )}
-            {minhaDica && (
-              <div className="pt-3 border-t border-border space-y-1.5">
-                <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Análise para o seu cargo</p>
-                <p className="text-foreground text-sm whitespace-pre-line">{minhaDica.texto}</p>
-                <p className="text-xs text-muted-foreground">
-                  Gerada em {new Date(minhaDica.geradoEm).toLocaleString('pt-BR')}
-                </p>
-              </div>
-            )}
-          </div>
+          <CardTipoMapa1 tipo={tipo} subtipoSequencia={subtipoSequencia} dica={souVeDicaMapa1 ? minhaDica : null} />
         ) : (
           <div className="rounded-2xl border border-dashed border-border bg-card/50 p-6 text-center">
             <p className="text-muted-foreground text-sm">
@@ -491,6 +514,43 @@ export default function AutoconhecimentoPage() {
             </p>
           </div>
         )}
+
+        {/* Simulação (pedido 14/09/2026): a análise de cargo x Eneagrama vai
+            passar a aparecer no Mapa 1 de CADA pessoa (RLS já libera desde
+            01/09), mas o Igor pediu pra validar o tom antes de abrir geral —
+            por enquanto só ele/Priscila veem a própria (souVeDicaMapa1 acima).
+            Este bloco simula como a tela ficaria pro Felipe Marques Santos
+            (que já tem análise gerada) sem precisar logar como ele — usa os
+            dados que a visão de admin ("Perfis da equipe", mais abaixo) já
+            carregou, nenhuma query nova. */}
+        {souVeDicaMapa1 && (() => {
+          const felipe = todosPerfis.find((p) => p.full_name === 'Felipe Marques Santos')
+          const felipeTipo = felipe ? TIPOS_ENEAGRAMA[felipe.tipo] : null
+          const felipeCargo = felipe ? cargosPerfil[felipe.funcionario_id] : undefined
+          const felipeDica = felipeCargo?.dicas_texto && felipeCargo.dicas_gerado_em
+            ? { texto: felipeCargo.dicas_texto, geradoEm: felipeCargo.dicas_gerado_em }
+            : null
+          return (
+            <div className="rounded-2xl border border-dashed border-amber-500/50 bg-amber-500/5 p-4 space-y-3">
+              <div>
+                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide">
+                  Simulação (visão de administrador) — só você/Priscila veem este bloco
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Como o Mapa 1 apareceria pro Felipe Marques Santos, se ele abrisse a própria tela agora — pra validar
+                  o tom da análise antes de abrir esse recurso pra CTZ inteira.
+                </p>
+              </div>
+              {felipeTipo ? (
+                <CardTipoMapa1 tipo={felipeTipo} subtipoSequencia={felipe!.subtipo_sequencia} dica={felipeDica} />
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Felipe Marques Santos não apareceu nos perfis carregados — confira "Perfis da equipe" mais abaixo.
+                </p>
+              )}
+            </div>
+          )
+        })()}
 
         {tipo && (
           <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
