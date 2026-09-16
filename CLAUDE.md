@@ -107,6 +107,21 @@
   além da Início — elas herdam a cor/fonte/chrome novos, mas o miolo de cada uma ainda é o layout
   antigo (cards simples). Se quiser estender o padrão de "cards com hero/KPI" pras outras páginas,
   é trabalho novo, não uma correção.
+- **Pedido de verificação pós-push** ("faça uma última verificação pra ver se houve alguma
+  inconsistência"): achadas e corrigidas 2 coisas reais, ambas já em produção quando encontradas
+  (commit `0a476e9`, enviado a `master` na sequência):
+  1. O card "Avaliação" da Início escolhia o ciclo a mostrar com
+     `ciclos.find(c => c.status !== 'finalizada')` — só que `ciclos_avaliacao.status` nunca tem
+     valor `'finalizada'` (os únicos valores reais são `rascunho`/`ativo`/`encerrado`, confirmado
+     em `avaliacao/page.tsx`), então a condição era sempre verdadeira e o `find()` não filtrava
+     nada — sempre pegava o primeiro da lista (mais recente por ano/período) mesmo se já estivesse
+     `encerrado` ou ainda em `rascunho`. Corrigido pra `c.status === 'ativo'`.
+  2. A `Topbar` nova não tinha o mesmo `max-w-[1440px]` do `<main>` — em tela larga ela ficava mais
+     esticada que o conteúdo abaixo, um descompasso visual visível em monitor grande. Alinhada pra
+     usar exatamente a mesma estrutura de largura (`max-w-[1440px] mx-auto` no `<header>`, padding
+     por fora, igual ao `<main>`) — testado o cálculo manualmente pra garantir alinhamento em pixel.
+  - De brinde, removido `.glass-chrome`/`--chrome-accent` (só existiam pra sidebar antiga, sem uso
+    depois dela ser deletada em 16/09).
 
 ### 2026-09-15
 - Pedido: redesenho visual completo do sistema ("de ponta a ponta"), só aparência — nenhuma
