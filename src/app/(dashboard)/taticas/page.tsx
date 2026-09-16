@@ -376,7 +376,7 @@ export default function TaticasPage() {
   }))
 
   return (
-    <div className="flex flex-col gap-4 h-[calc(100vh-48px)]">
+    <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
@@ -425,13 +425,13 @@ export default function TaticasPage() {
 
       {/* Board Kanban */}
       {loading ? (
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 min-h-0">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-2xl bg-secondary animate-pulse" />
+            <div key={i} className="h-64 rounded-2xl bg-secondary animate-pulse" />
           ))}
         </div>
       ) : taticasFiltradas.length === 0 ? (
-        <div className="flex-1 rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center flex flex-col items-center justify-center">
+        <div className="rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center flex flex-col items-center justify-center">
           <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
             <Zap className="w-6 h-6 text-muted-foreground/40" />
           </div>
@@ -442,7 +442,7 @@ export default function TaticasPage() {
           </button>
         </div>
       ) : (
-        <div data-tour="tour-taticas-board" className="flex-1 min-h-0 flex gap-4 overflow-x-auto pb-1">
+        <div data-tour="tour-taticas-board" className="flex gap-4 overflow-x-auto pb-1">
           {colunas.map(({ status, itens }) => {
             const estilo = COLUNA_ESTILO[status]
             const emFoco = colunaSobre === status
@@ -469,7 +469,7 @@ export default function TaticasPage() {
                 </div>
 
                 {/* Cartões */}
-                <div className="flex-1 min-h-0 overflow-y-auto px-3 pb-3 space-y-2.5">
+                <div className="max-h-[65vh] overflow-y-auto px-3 pb-3 space-y-2.5">
                   {itens.length === 0 && (
                     <div className={cn(
                       'rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground/60 transition-colors',

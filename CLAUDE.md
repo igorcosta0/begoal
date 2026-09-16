@@ -28,6 +28,130 @@
 
 ## Log de Sessões
 
+### 2026-09-16
+- Continuação direta do redesenho de 15/09 (que ainda estava só local, sem push, aguardando
+  aprovação visual). Pedido do Igor: esquecer o caminho do token-swap glassmorphism e seguir, como
+  modelo, um print salvo em `Adições futuras/sharepoint-intranet-layout-6-template.webp` (template
+  de intranet SharePoint — hero escuro com atalhos em ícone, cards de notícia, colunas de
+  documentos/links). Confirmado com o Igor via `AskUserQuestion` antes de mexer: (1) a nova direção
+  **substitui** a tentativa de 15/09 inteira, não é só inspiração pontual; (2) manter as mudanças de
+  15/09 no working tree por enquanto (não descartar ainda); (3) seguir só a **estrutura/composição**
+  do template, cor por minha conta.
+- Primeira tentativa (só a página Início: linha de atalhos em ícone dentro do hero + título grande
+  com palavra-chave colorida) foi rejeitada — "ainda ficou muito do mesmo, não é só borda arredondada
+  e cor, quero uma reestruturação completa". Pedido explícito também: tirar o verde da paleta,
+  **voltar pro azul** ("o azul que funcionava bem", referência à cor de antes do redesenho de 15/09).
+- Pra não gastar mais rodadas de código sem feedback visual (sem Chrome conectado nesta máquina, ver
+  [[iteracao-visual-sem-navegador]]), montei um mockup estático em HTML e publiquei como Artifact
+  ("Central Begoal") — layout novo de verdade: sidebar vertical vira **topbar horizontal** com
+  navegação agrupada (Central / Estratégia / Pessoas / Sinais Vitais / Recursos), hero vira "estado
+  da empresa" (saudação + KPIs), e a navegação principal passa a ser uma **grade de módulos** na
+  própria Home, cada tile já com um número real do módulo (não só ícone bonito). Tipografia trocada
+  pra Sora (títulos) + IBM Plex Sans (texto) + IBM Plex Mono (números). Ajustado uma vez pra ocupar
+  a tela inteira (empresa fictícia "Vórtice Engenharia", dado de exemplo, deixado claro no próprio
+  mockup). Aprovado pelo Igor nessa segunda versão — só então parti pra aplicar no código de
+  verdade — validando o visual antes de mexer em 30+ arquivos, exatamente o passo que faltou na
+  primeira tentativa rejeitada.
+- Pedido do Igor ao aprovar: manter um backup do que existia antes, por precaução. Como o
+  redesenho de 15/09 nunca tinha sido commitado (51 arquivos soltos no working tree o tempo todo),
+  criei a branch `backup/redesign-glassmorphism-2026-09-16` (commit `6272cc5`, só local — não
+  enviada ao GitHub, é só uma rede de segurança) com aquele snapshot via `git add -u` (nunca
+  `git add -A`, pra não versionar os arquivos de `Adições futuras/` que ficam fora do Git de
+  propósito). Depois, `git checkout master` — como o working tree já estava idêntico ao commit
+  recém-criado na branch de backup, o checkout devolveu `master` pro último estado realmente
+  commitado (bem antes do redesenho de 15/09), uma base limpa pra construir a reestruturação nova
+  sem herdar meio-termo do token-swap abandonado.
+- **Achado nessa hora**: o próprio `CLAUDE.md` tinha ~44 linhas de Log de Sessões (entradas de
+  02/09 a 15/09 inteiras) que **nunca tinham sido commitadas** — viviam só como edição local no
+  working tree há semanas, e o `git checkout master` as reverteu de vez junto com o resto. Percebido
+  a tempo (a branch de backup guardou uma cópia) e restaurado a partir de lá antes de escrever esta
+  entrada. **Vale de lição**: o header deste arquivo promete "acrescento uma entrada... sem apagar
+  as anteriores", mas isso só é verdade se o arquivo for commitado de vez em quando — daqui pra
+  frente, incluir `CLAUDE.md` no commit de toda sessão que editar este log, não deixar acumular como
+  edição solta.
+- Reestruturação de verdade aplicada por cima da base limpa:
+  - `src/components/layout/Sidebar.tsx` **deletado**; `src/components/layout/Topbar.tsx` novo —
+    barra horizontal fixa no topo com navegação agrupada em dropdowns (Radix `DropdownMenu`, já era
+    dependência do projeto mas nunca tinha sido usado — não existe `src/components/ui/`, então os
+    dropdowns foram estilizados na mão dentro do próprio componente). Menu de usuário (Perfil/Mudar
+    Empresa/Sair) virou dropdown no avatar, mesma lógica de permissão de sempre
+    (`permission_level`, `isEmpresaCTZ`, `souPilotoAutoconhecimento`).
+  - `src/app/(dashboard)/layout.tsx` simplificado — sem o `p-4 gap-4` que fazia a sidebar "flutuar"
+    como cartão; virou `min-h-screen` normal com scroll de página inteira (não mais
+    `h-screen overflow-hidden` + região de scroll isolada). Isso quebrou dois lugares que dependiam
+    da altura fixa do shell antigo, corrigidos: `useTourStore.ts` (passo do tour apontava pra
+    `tour-sidebar`, que não existe mais — renomeado pra `tour-nav`, texto ajustado pra falar da
+    barra do topo) e o board Kanban de `taticas/page.tsx` (usava `h-[calc(100vh-48px)]` fixo pra
+    cada coluna rolar por conta própria — trocado por `max-h-[65vh] overflow-y-auto` por coluna,
+    não depende mais da altura do shell).
+  - `globals.css`/`tailwind.config.ts`: paleta nova em azul-índigo (`--primary: 231 76% 55%`),
+    radius maior, sombras com tom frio; fontes trocadas de Inter pra **Sora** (títulos, var
+    `--font-display`) + **IBM Plex Sans** (texto, `--font-body`) + **IBM Plex Mono** (números,
+    `--font-mono`) via `next/font/google` em `src/app/layout.tsx` — self-hosted, sem `<link>`
+    externo. Classes `glass-panel`/`glass-chrome`/etc. mantidas de propósito (usadas em ~30
+    arquivos) só com os tokens por trás trocados, pra não precisar editar página por página.
+  - `inicio/page.tsx` virou o "lançador de módulos": hero com 3 KPIs reais (KRs ativos, progresso
+    médio, alertas de Sinais Vitais — calculado com a mesma fórmula de progresso dos KRs, conta
+    quantos sinais vitais estão abaixo de 40%) + grade de até 9 módulos (Objetivos/OKRs/
+    Táticas/Sinais Vitais/Funcionários sempre; Avaliação/Autoconhecimento só CTZ; Cargos só CTZ +
+    piloto/admin), cada tile com número real buscado no Supabase (contagem de táticas não
+    concluídas, funcionários, documentos da biblioteca, nome do ciclo de avaliação ativo). Mantidas
+    intactas todas as funcionalidades que já existiam ali (ChipList de Mercado, Nota Fixada com
+    comentários, CRUD de Valores da empresa) — só a composição visual mudou.
+- `npm run type-check` limpo em cada etapa. Commit enviado a `master` (deploy no ar) — pedido
+  explícito do Igor pra fazer o push depois de aprovar o resultado. Sem migration nesta sessão (foi
+  tudo front-end/design).
+- **Pendências que ficam pro Igor decidir depois, sem pressa** (ele disse que ajustes futuros ficam
+  pra uma próxima sessão): a Topbar/tokens novos valem pra todo o app automaticamente, mas nenhuma
+  outra página (Objetivos, OKR, Funcionários, Avaliação etc.) teve a composição interna redesenhada
+  além da Início — elas herdam a cor/fonte/chrome novos, mas o miolo de cada uma ainda é o layout
+  antigo (cards simples). Se quiser estender o padrão de "cards com hero/KPI" pras outras páginas,
+  é trabalho novo, não uma correção.
+
+### 2026-09-15
+- Pedido: redesenho visual completo do sistema ("de ponta a ponta"), só aparência — nenhuma
+  funcionalidade/regra de negócio poderia mudar. Direção pedida: mais moderno, com profundidade,
+  **glassmorphism**, mas sóbrio/corporativo (sem neon/futurista). Confirmado com o usuário via
+  `AskUserQuestion`: sidebar escura (navy) vira clara; cor primária ficou a meu critério.
+- Levantamento prévio: stack é Tailwind 3.4 + variáveis CSS (`globals.css`/`tailwind.config.ts`),
+  sem biblioteca de componentes (`src/components/ui/` não existe) — cada página escreve suas
+  próprias classes, mas a maioria já usava os tokens (`bg-card`, `border-border` etc.), o que
+  permitiu mudar boa parte do app só trocando os tokens centrais. Não existe dark mode de verdade
+  em uso (sem `next-themes`/toggle) — o bloco `.dark` do `globals.css` é código morto, ignorado.
+- Fundação (poucos arquivos, efeito cascata): `tailwind.config.ts` ganhou o padrão
+  `hsl(var(--x) / <alpha-value>)` nos tokens de cor (necessário pra opacidade tipo `bg-card/70`
+  funcionar) + `boxShadow.glass`/`glass-lg`; `globals.css` ganhou paleta nova (fundo neutro frio,
+  `--primary` indigo-azul profundo `234 62% 47%`, `--sidebar` clara), um gradiente ambiente sutil
+  fixo no `body`, e 3 classes utilitárias novas (`.glass-panel`, `.glass-panel-solid` pra conteúdo
+  denso, `.glass-elevated` pra modais/popovers). Fonte trocada de Inter pra Plus Jakarta Sans
+  (`layout.tsx`). `Sidebar.tsx` reconstruída pra vidro claro (mesma lógica de visibilidade de
+  menu, só CSS mudou). Páginas de auth (login/reset-senha/seleção de empresa) redesenhadas com
+  cartão de vidro sobre o fundo ambiente.
+- Varredura do resto do app (19 páginas + ~30 componentes/modais) tentada via 4 sub-agentes em
+  paralelo (Agent tool, `subagent_type: "fork"`) — achado de plataforma: a primeira chamada de
+  fork nesta sessão "virou" a própria sessão executando aquele lote (não rodou em paralelo
+  visível), e as 3 chamadas seguintes retornaram erro "Fork is not available inside a forked
+  worker". Na prática, porém, os 4 lotes rodaram mesmo assim em background com sucesso (`git
+  status` no fim mostrou quase todo o app já modificado) — comportamento inconsistente do
+  mecanismo de fork neste ambiente, vale desconfiar do texto de erro e checar o estado real dos
+  arquivos antes de refazer trabalho.
+- Pente-fino final (grep em todo `src/` por `bg-black/50`, `bg-card border border-border`,
+  `border-gray-*`, `shadow-xl`, hex antigo da marca `#1e3a5f` etc.) achou só 2 modais esquecidos
+  em `objetivo/page.tsx` (Criar/Editar Objetivo, ainda no padrão antigo) — corrigidos à mão. Resto
+  do app (Sidebar, todas as páginas do dashboard, todos os modais de OKR/Sinais Vitais/Avaliação,
+  `TourOverlay`, `not-found.tsx`) confirmado convertido. Cores semânticas (status de
+  funcionário/KR, área de cargo, nine-box, etc.) foram deliberadamente preservadas — só o
+  "acabamento" de superfície (fundo/borda/sombra dos cards/painéis/modais) mudou.
+- `npm run type-check` limpo do início ao fim (rodado a cada lote). `npm run dev` sobe sem erro
+  (porta 3001, 3000 já em uso) e `/login`, `/reset-senha`, `/selecao-empresa` respondem 200 com o
+  HTML novo. **Não consegui verificar visualmente no navegador nesta sessão** (extensão
+  claude-in-chrome não configurada) — pendente o Igor conferir com os próprios olhos antes do
+  push, principalmente contraste de texto sobre vidro e as páginas autenticadas (não testáveis
+  via curl sem sessão).
+- **Nada foi commitado nem enviado a `master`** — 50 arquivos modificados no working tree,
+  aguardando o Igor revisar visualmente e aprovar (mudança grande demais, e `master` faz deploy
+  automático em produção).
+
 ### 2026-09-10
 - Pedido: Finato relatou não conseguir avaliar a liderada (Carolina Zanette) — ao preencher a
   nota de gestor, o sistema exigia calibragem no mesmo clique. Era o MESMO tipo de bug corrigido

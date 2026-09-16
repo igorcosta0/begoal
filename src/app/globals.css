@@ -4,58 +4,29 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 224 71.4% 4.1%;
+    --background: 228 47% 97%;
+    --foreground: 231 45% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 224 71.4% 4.1%;
+    --card-foreground: 231 45% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 224 71.4% 4.1%;
-    --primary: 220 90% 50%;
-    --primary-foreground: 210 20% 98%;
-    --secondary: 220 14.3% 95.9%;
-    --secondary-foreground: 220.9 39.3% 11%;
-    --muted: 220 14.3% 95.9%;
-    --muted-foreground: 220 8.9% 46.1%;
-    --accent: 220 14.3% 95.9%;
-    --accent-foreground: 220.9 39.3% 11%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 220 90% 50%;
-    --radius: 0.5rem;
-    --sidebar: 224 71.4% 4.1%;
-    --sidebar-foreground: 210 20% 98%;
-    --sidebar-border: 220 13% 15%;
-    --sidebar-accent: 220 13% 15%;
-    --sidebar-accent-foreground: 210 20% 98%;
-  }
-
-  .dark {
-    --background: 224 71.4% 4.1%;
-    --foreground: 210 20% 98%;
-    --card: 224 71.4% 6%;
-    --card-foreground: 210 20% 98%;
-    --popover: 224 71.4% 6%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 220 90% 56%;
-    --primary-foreground: 210 20% 98%;
-    --secondary: 215 27.9% 16.9%;
-    --secondary-foreground: 210 20% 98%;
-    --muted: 215 27.9% 16.9%;
-    --muted-foreground: 217.9 10.6% 64.9%;
-    --accent: 215 27.9% 16.9%;
-    --accent-foreground: 210 20% 98%;
-    --destructive: 0 62.8% 50%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 215 27.9% 16.9%;
-    --input: 215 27.9% 16.9%;
-    --ring: 220 90% 56%;
-    --sidebar: 224 71.4% 4.1%;
-    --sidebar-foreground: 210 20% 98%;
-    --sidebar-border: 220 13% 15%;
-    --sidebar-accent: 220 13% 15%;
-    --sidebar-accent-foreground: 210 20% 98%;
+    --popover-foreground: 231 45% 12%;
+    --primary: 231 76% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 228 40% 95%;
+    --secondary-foreground: 231 30% 20%;
+    --muted: 228 35% 95%;
+    --muted-foreground: 228 12% 45%;
+    --accent: 231 75% 95%;
+    --accent-foreground: 231 55% 33%;
+    --destructive: 5 62% 47%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 228 30% 90%;
+    --input: 228 30% 90%;
+    --ring: 231 76% 55%;
+    --radius: 1.1rem;
+    --chrome: 231 45% 12%;
+    --chrome-foreground: 0 0% 100%;
+    --chrome-accent: 231 40% 22%;
   }
 }
 
@@ -63,7 +34,45 @@
   * {
     @apply border-border;
   }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(1200px 640px at 100% -10%, hsl(231 76% 55% / 0.07), transparent 55%),
+      radial-gradient(900px 520px at -5% 0%, hsl(210 80% 55% / 0.05), transparent 55%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+  }
+  ::selection {
+    background: hsl(var(--primary) / 0.18);
+    color: hsl(var(--foreground));
+  }
+}
+
+@layer components {
+  /* Nomes "glass-*" ficaram da identidade anterior (mantidos pra não editar
+     todas as páginas que já usam essas classes) — hoje nenhum usa vidro de
+     verdade, é sempre superfície branca sólida e nítida. */
+  .glass-panel, .glass-panel-solid {
+    @apply bg-card border border-border shadow-glass;
+  }
+  .glass-elevated {
+    @apply bg-card border border-border shadow-glass-lg;
+  }
+  .glass-chrome {
+    background: hsl(var(--chrome));
+  }
+  .glass-pill {
+    @apply bg-card border border-border shadow-sm;
+  }
+  .glass-interactive {
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+  .glass-interactive:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px -10px hsl(231 45% 20% / 0.16);
+    border-color: hsl(228 30% 80%);
   }
 }

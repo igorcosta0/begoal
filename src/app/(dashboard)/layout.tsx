@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import Sidebar from '@/components/layout/Sidebar'
+import Topbar from '@/components/layout/Topbar'
 import TourOverlay from '@/components/tour/TourOverlay'
 
 export default async function DashboardLayout({
@@ -28,12 +28,10 @@ export default async function DashboardLayout({
   const permissionLevel = roleData?.permission_level ?? 'visualizador'
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      <Sidebar permissionLevel={permissionLevel} userEmail={user.email} />
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-6">
-          {children}
-        </div>
+    <div className="min-h-screen bg-background">
+      <Topbar permissionLevel={permissionLevel} userEmail={user.email} />
+      <main className="max-w-[1440px] mx-auto px-4 md:px-6 py-6">
+        {children}
       </main>
       <TourOverlay />
     </div>

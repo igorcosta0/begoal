@@ -24,10 +24,10 @@ export const TOUR_PASSOS: TourPasso[] = [
   {
     id: 'sidebar',
     pagina: '/inicio',
-    alvo: 'tour-sidebar',
+    alvo: 'tour-nav',
     titulo: 'Seu mapa da cidade',
-    texto: 'O menu lateral é como você se desloca entre as áreas. Cada ícone leva a um lugar diferente — nem todo mundo vê os mesmos itens; alguns são só pra administradores.',
-    posicao: 'right',
+    texto: 'A barra do topo é como você se desloca entre as áreas — Estratégia, Pessoas e Recursos agrupam as páginas relacionadas. Nem todo mundo vê os mesmos itens; alguns são só pra administradores.',
+    posicao: 'bottom',
   },
   {
     id: 'inicio-hero',

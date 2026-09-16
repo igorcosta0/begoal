@@ -4,10 +4,12 @@ import { useEffect, useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
 import { getObjetivos, getKrsByEmpresa } from '@/lib/queries/okr'
-import { formatPercent } from '@/lib/utils'
+import { getCiclosAvaliacao } from '@/lib/queries/avaliacao'
+import { formatPercent, isEmpresaCTZ, souPilotoAutoconhecimento } from '@/lib/utils'
 import {
   Edit2, Check, X, ArrowRight, TrendingUp, Megaphone, Plus, Send, Trash2,
   MapPin, MessageCircle, Sparkles, Library, Compass,
+  Flag, Target, Zap, Activity, Users, Briefcase, ClipboardList,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -201,6 +203,14 @@ export default function InicioPage() {
   const [hora, setHora] = useState('')
   const [dataHoje, setDataHoje] = useState('')
 
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [permissionLevel, setPermissionLevel] = useState('visualizador')
+  const [taticasAtivas, setTaticasAtivas] = useState(0)
+  const [funcionariosCount, setFuncionariosCount] = useState(0)
+  const [alertasSinaisVitais, setAlertasSinaisVitais] = useState(0)
+  const [bibliotecaCount, setBibliotecaCount] = useState(0)
+  const [cicloAvaliacaoNome, setCicloAvaliacaoNome] = useState<string | null>(null)
+
   useEffect(() => {
     const agora = new Date()
     const h = agora.getHours()
@@ -222,14 +232,24 @@ export default function InicioPage() {
     setLoading(true)
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (user) setUserId(user.id)
+    if (user) { setUserId(user.id); setUserEmail(user.email ?? null) }
+
+    const ctz = isEmpresaCTZ(empresa.company_name)
 
     const [
       { data: identidadeData }, { data: objs }, { data: krsData }, { data: funcData },
+      { data: roleData }, { count: taticasCount }, { count: funcCount },
+      { data: sinaisData }, { count: bibCount }, ciclosRes,
     ] = await Promise.all([
       supabase.from('empresa_identidade').select('*').eq('client_id', empresa.id).maybeSingle(),
       getObjetivos(empresa.id), getKrsByEmpresa(empresa.id),
       supabase.from('funcionarios').select('full_name').eq('user_id', user?.id ?? '').maybeSingle(),
+      supabase.from('user_company_roles').select('permission_level').eq('user_id', user?.id ?? '').limit(1).single(),
+      supabase.from('taticas').select('id', { count: 'exact', head: true }).eq('Client_Id', empresa.id).eq('concluida', false),
+      supabase.from('funcionarios').select('id', { count: 'exact', head: true }).eq('client_id', empresa.id),
+      supabase.from('sinais_vitais').select('valor_inicial, valor_atual, meta').eq('client_id', empresa.id),
+      supabase.from('biblioteca_documentos').select('id', { count: 'exact', head: true }).eq('client_id', empresa.id),
+      ctz ? getCiclosAvaliacao(empresa.id) : Promise.resolve({ data: [] as any[] }),
     ])
 
     setIdentidade(identidadeData)
@@ -244,6 +264,27 @@ export default function InicioPage() {
     }
     setObjetivos(objs ?? []); setKrs(krsData ?? [])
     if (funcData) setNomeUsuario(funcData.full_name?.split(' ')[0] ?? '')
+    setPermissionLevel(roleData?.permission_level ?? 'visualizador')
+    setTaticasAtivas(taticasCount ?? 0)
+    setFuncionariosCount(funcCount ?? 0)
+    setBibliotecaCount(bibCount ?? 0)
+
+    const alertas = (sinaisData ?? []).filter((sv: any) => {
+      const atual = sv.valor_atual ?? sv.valor_inicial ?? 0
+      const inicial = sv.valor_inicial ?? 0
+      const meta = sv.meta ?? 0
+      if (meta === inicial) return false
+      const progresso = meta < inicial
+        ? ((inicial - atual) / (inicial - meta)) * 100
+        : ((atual - inicial) / (meta - inicial)) * 100
+      return progresso < 40
+    }).length
+    setAlertasSinaisVitais(alertas)
+
+    const ciclos = (ciclosRes as any)?.data ?? []
+    const cicloAtivo = ciclos.find((c: any) => c.status !== 'finalizada') ?? ciclos[0]
+    setCicloAvaliacaoNome(cicloAtivo ? `${cicloAtivo.periodo ?? ''} ${cicloAtivo.ano ?? ''}`.trim() : null)
+
     setLoading(false)
   }, [empresa])
 
@@ -326,27 +367,44 @@ export default function InicioPage() {
   const krsAtivos = krs.filter((kr: any) => !kr.concluido).length
   const temCampanha = !!(formIdentidade.campanha_titulo || formIdentidade.campanha_descricao)
 
+  const ctz = isEmpresaCTZ(empresa?.company_name)
+  const podeVerCargos = ctz && (permissionLevel === 'administrador' || souPilotoAutoconhecimento(userEmail))
+
+  const modulos = [
+    { href: '/objetivo', label: 'Objetivos', icon: Flag, cor: 'bg-amber-100 text-amber-700', meta: `${objetivos.length} objetivos ativos` },
+    { href: '/okr', label: 'OKRs', icon: Target, cor: 'bg-blue-100 text-blue-700', meta: `${formatPercent(progressoGeral)} de progresso médio` },
+    { href: '/taticas', label: 'Táticas', icon: Zap, cor: 'bg-violet-100 text-violet-700', meta: `${taticasAtivas} em execução` },
+    { href: '/sinais-vitais', label: 'Sinais Vitais', icon: Activity, cor: 'bg-rose-100 text-rose-700', meta: alertasSinaisVitais > 0 ? `${alertasSinaisVitais} indicador${alertasSinaisVitais > 1 ? 'es' : ''} em alerta` : 'Tudo dentro da meta', alerta: alertasSinaisVitais > 0 },
+    { href: '/funcionarios', label: 'Funcionários', icon: Users, cor: 'bg-sky-100 text-sky-700', meta: `${funcionariosCount} pessoas no time` },
+    { href: '/avaliacao', label: 'Avaliação', icon: ClipboardList, cor: 'bg-blue-100 text-blue-700', meta: cicloAvaliacaoNome ? `Ciclo ${cicloAvaliacaoNome}` : 'Nenhum ciclo ativo', hidden: !ctz },
+    { href: '/cargos', label: 'Cargos', icon: Briefcase, cor: 'bg-amber-100 text-amber-700', meta: 'Perfis de cargo mapeados', hidden: !podeVerCargos },
+    { href: '/autoconhecimento', label: 'Autoconhecimento', icon: Sparkles, cor: 'bg-violet-100 text-violet-700', meta: 'Eneagrama da equipe', hidden: !ctz },
+    { href: '/biblioteca', label: 'Biblioteca', icon: Library, cor: 'bg-sky-100 text-sky-700', meta: `${bibliotecaCount} materiais` },
+  ].filter((m) => !m.hidden)
+
   if (loading) {
     return (
-      <div className="flex gap-4 h-[calc(100vh-48px)] animate-pulse">
-        <div className="flex-1 space-y-4">
-          <div className="h-40 rounded-2xl bg-secondary" />
-          <div className="h-24 rounded-2xl bg-secondary" />
-          <div className="h-64 rounded-2xl bg-secondary" />
+      <div className="flex flex-col gap-5 animate-pulse">
+        <div className="h-64 rounded-3xl bg-secondary" />
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+          {Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-24 rounded-2xl bg-secondary" />)}
         </div>
-        <div className="w-72 rounded-2xl bg-secondary" />
+        <div className="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr] gap-4">
+          <div className="space-y-4">
+            <div className="h-72 rounded-2xl bg-secondary" />
+            <div className="h-28 rounded-2xl bg-secondary" />
+          </div>
+          <div className="h-96 rounded-2xl bg-secondary" />
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex gap-4 h-[calc(100vh-48px)]">
+    <div className="flex flex-col gap-5">
 
-      {/* ═══ COLUNA ESQUERDA ═══ */}
-      <div className="flex-1 flex flex-col gap-4 min-w-0 overflow-hidden">
-
-        {/* HERO / CAMPANHA */}
-        {verCampanha ? (
+      {/* ═══ HERO ═══ */}
+      {verCampanha ? (
           <div className="relative rounded-2xl overflow-hidden border border-amber-200/60 shrink-0"
             style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)' }}>
             <div className="absolute right-0 top-0 bottom-0 w-1 bg-amber-400" />
@@ -399,21 +457,21 @@ export default function InicioPage() {
             </div>
           </div>
         ) : (
-          <div data-tour="tour-hero" className="relative rounded-2xl overflow-hidden shrink-0"
-            style={{ background: 'radial-gradient(680px 260px at 88% -10%, rgba(96,165,250,0.35), transparent 60%), linear-gradient(135deg, #1e3a5f 0%, #234b7c 45%, #163863 100%)' }}>
+          <div data-tour="tour-hero" className="relative rounded-3xl overflow-hidden shrink-0 shadow-glass-lg"
+            style={{ background: 'radial-gradient(680px 280px at 88% -15%, rgba(99,132,245,0.35), transparent 60%), linear-gradient(150deg, #0d1330 0%, #1b2c6e 62%, #0d1330 100%)' }}>
             <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
-            <div className="relative z-10 p-5 md:p-6">
-              <div className="flex items-center justify-between mb-4">
+            <div className="relative z-10 p-5 md:p-7">
+              <div className="flex items-start justify-between gap-4 flex-wrap mb-1">
                 <div>
-                  <p className="text-blue-200/60 text-[10px] font-medium uppercase tracking-widest capitalize">{dataHoje}</p>
-                  <p className="text-white/90 text-base font-medium mt-0.5">{hora}{nomeUsuario ? `, ${nomeUsuario}` : ''} 👋</p>
+                  <p className="text-blue-300/60 text-[11px] font-semibold uppercase tracking-widest capitalize">{dataHoje}</p>
+                  <h1 className="font-display text-2xl md:text-[28px] font-bold text-white tracking-tight leading-tight mt-1">
+                    {hora}{nomeUsuario ? <>, <span className="text-blue-300">{nomeUsuario}</span></> : ''}
+                  </h1>
+                  <p className="text-white/50 text-[13px] mt-1">{empresa?.company_name}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <Link href="/guia" className="flex items-center gap-1.5 bg-white/8 hover:bg-white/15 border border-white/15 text-white/70 hover:text-white rounded-xl px-2.5 py-1.5 text-xs font-medium transition-colors">
-                    <Compass className="w-3 h-3" /> Guia de Uso
-                  </Link>
-                  <Link href="/biblioteca" className="flex items-center gap-1.5 bg-white/8 hover:bg-white/15 border border-white/15 text-white/70 hover:text-white rounded-xl px-2.5 py-1.5 text-xs font-medium transition-colors">
-                    <Library className="w-3 h-3" /> Biblioteca
+                    <Compass className="w-3 h-3" /> Guia
                   </Link>
                   {temCampanha ? (
                     <button onClick={() => setVerCampanha(true)} className="flex items-center gap-1.5 bg-amber-400/20 hover:bg-amber-400/30 border border-amber-400/40 text-amber-300 rounded-xl px-2.5 py-1.5 text-xs font-medium transition-colors">
@@ -424,20 +482,25 @@ export default function InicioPage() {
                       <Plus className="w-3 h-3" /> Campanha
                     </button>
                   )}
-                  <div className="bg-white/10 border border-white/10 rounded-xl px-3 py-2 text-center">
-                    <p className="text-lg font-bold text-white tabular-nums">{krsAtivos}</p>
-                    <p className="text-[9px] text-white/50 uppercase tracking-wider">KRs ativos</p>
-                  </div>
-                  <div className="bg-white/10 border border-white/10 rounded-xl px-3 py-2 text-center">
-                    <p className="text-lg font-bold text-white tabular-nums">{formatPercent(progressoGeral)}</p>
-                    <p className="text-[9px] text-white/50 uppercase tracking-wider">Progresso</p>
-                  </div>
                 </div>
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight leading-none mb-4">
-                {empresa?.company_name}
-              </h1>
-              <div className="group relative">
+
+              <div className="flex flex-wrap gap-2.5 mt-5">
+                <div className="bg-white/8 border border-white/10 rounded-2xl px-4 py-2.5 min-w-[104px]">
+                  <p className="font-mono text-xl font-semibold text-white leading-none">{krsAtivos}</p>
+                  <p className="text-[10px] text-white/45 uppercase tracking-wider mt-1.5">KRs ativos</p>
+                </div>
+                <div className="bg-white/8 border border-white/10 rounded-2xl px-4 py-2.5 min-w-[104px]">
+                  <p className="font-mono text-xl font-semibold text-white leading-none">{formatPercent(progressoGeral)}</p>
+                  <p className="text-[10px] text-white/45 uppercase tracking-wider mt-1.5">Progresso médio</p>
+                </div>
+                <div className="bg-white/8 border border-white/10 rounded-2xl px-4 py-2.5 min-w-[104px]">
+                  <p className={`font-mono text-xl font-semibold leading-none ${alertasSinaisVitais > 0 ? 'text-amber-300' : 'text-white'}`}>{alertasSinaisVitais}</p>
+                  <p className="text-[10px] text-white/45 uppercase tracking-wider mt-1.5">Alertas · Sinais Vitais</p>
+                </div>
+              </div>
+
+              <div className="group relative mt-5">
                 {editando === 'visao_futuro' ? (
                   <div className="space-y-2">
                     <textarea value={formIdentidade.visao_futuro} onChange={(e) => handleChange('visao_futuro', e.target.value)} rows={2}
@@ -467,50 +530,40 @@ export default function InicioPage() {
           </div>
         )}
 
-        {/* MERCADO + NOTA — banda única, lado a lado */}
-        <div data-tour="tour-mercado" className="bg-card border border-border rounded-2xl overflow-hidden shrink-0 grid grid-cols-1 md:grid-cols-[1.3fr_1fr]">
-          <div className="p-4 md:p-5">
-            <div className="flex items-center gap-2.5 mb-3">
-              <div className="w-6 h-6 rounded-md bg-blue-50 flex items-center justify-center border border-blue-100 shrink-0">
-                <MapPin className="w-3.5 h-3.5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-foreground">Mercado</p>
-                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Onde a empresa atua</p>
-              </div>
-            </div>
-            <ChipList campo="mercado_posicionamento" itens={mercadoItens} placeholder="Adicione onde atuamos..." onSalvar={handleSalvarLista} />
+        {/* ═══ MÓDULOS — navegação principal ═══ */}
+        <div>
+          <div className="flex items-baseline justify-between mb-3 px-1">
+            <h2 className="font-display text-lg font-bold text-foreground tracking-tight">Seus <span className="text-primary">módulos</span></h2>
           </div>
-          <div className="p-4 md:p-5 border-t md:border-t-0 md:border-l border-border flex flex-col">
-            <div className="flex items-center gap-2.5 mb-3">
-              <div className="w-6 h-6 rounded-md bg-violet-50 flex items-center justify-center border border-violet-100 shrink-0">
-                <MessageCircle className="w-3.5 h-3.5 text-violet-600" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-foreground">Nota fixada</p>
-                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Recado da equipe</p>
-              </div>
-            </div>
-            {empresa && <NotaFixada campo="mercado_posicionamento" clientId={empresa.id} userId={userId} nomeUsuario={nomeUsuario} />}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            {modulos.map((mod) => (
+              <Link key={mod.href} href={mod.href}
+                className="glass-panel glass-interactive rounded-2xl p-4 flex flex-col gap-2.5">
+                <span className={`w-9 h-9 rounded-xl flex items-center justify-center ${mod.cor}`}>
+                  <mod.icon className="w-[18px] h-[18px]" />
+                </span>
+                <span className="font-display text-[13.5px] font-semibold text-foreground">{mod.label}</span>
+                <span className={`text-[11px] leading-snug ${mod.alerta ? 'text-amber-600 font-semibold' : 'text-muted-foreground'}`}>{mod.meta}</span>
+              </Link>
+            ))}
           </div>
         </div>
 
+        {/* ═══ CORPO — ANÁLISE ═══ */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr] gap-4 items-start">
+        <div className="flex flex-col gap-4 min-w-0">
+
         {/* OKRs — GRÁFICO */}
-        <div data-tour="tour-okr-panel" className="bg-card border border-border rounded-2xl p-6 flex-1 min-h-0 flex flex-col shadow-sm">
-          <div className="flex items-center justify-between mb-8 shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shadow-inner">
-                <TrendingUp className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-foreground tracking-tight">Performance de OKRs</p>
-                <p className="text-[11px] text-muted-foreground font-medium">{objetivos.length} objetivos estratégicos ativos</p>
-              </div>
+        <div data-tour="tour-okr-panel" className="glass-panel rounded-2xl p-6 flex flex-col">
+          <div className="flex items-center justify-between mb-8 shrink-0 flex-wrap gap-3">
+            <div>
+              <h2 className="font-display text-lg font-bold text-foreground tracking-tight">Desempenho de <span className="text-primary">OKRs</span></h2>
+              <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{objetivos.length} objetivos estratégicos ativos</p>
             </div>
             <div className="flex items-center gap-5">
               {objetivosComKrs.length > 0 && (
                 <div className="text-right">
-                  <p className="text-xl font-extrabold text-primary tabular-nums leading-none">{formatPercent(progressoGeral)}</p>
+                  <p className="font-mono text-xl font-semibold text-primary tabular-nums leading-none">{formatPercent(progressoGeral)}</p>
                   <p className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">Média geral</p>
                 </div>
               )}
@@ -520,7 +573,7 @@ export default function InicioPage() {
             </div>
           </div>
 
-          <div className="flex-1 relative flex items-end justify-around gap-6 px-4 pb-4">
+          <div className="relative min-h-[220px] flex items-end justify-around gap-6 px-4 pb-4">
             <div className="absolute inset-x-4 inset-y-0 flex flex-col justify-between pointer-events-none opacity-[0.03]">
               {[100, 75, 50, 25, 0].map((line) => (
                 <div key={line} className="w-full border-t border-foreground flex justify-end">
@@ -568,10 +621,39 @@ export default function InicioPage() {
             )}
           </div>
         </div>
-      </div>
 
-      {/* ═══ COLUNA DIREITA — VALORES DA EMPRESA ═══ */}
-      <div data-tour="tour-valores" className="w-72 shrink-0 bg-card border border-border rounded-2xl overflow-hidden flex flex-col">
+        {/* MERCADO + NOTA — banda única, lado a lado */}
+        <div data-tour="tour-mercado" className="glass-panel rounded-2xl overflow-hidden grid grid-cols-1 md:grid-cols-[1.3fr_1fr]">
+          <div className="p-4 md:p-5">
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className="w-6 h-6 rounded-md bg-blue-50 flex items-center justify-center border border-blue-100 shrink-0">
+                <MapPin className="w-3.5 h-3.5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-foreground">Mercado</p>
+                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Onde a empresa atua</p>
+              </div>
+            </div>
+            <ChipList campo="mercado_posicionamento" itens={mercadoItens} placeholder="Adicione onde atuamos..." onSalvar={handleSalvarLista} />
+          </div>
+          <div className="p-4 md:p-5 border-t md:border-t-0 md:border-l border-border flex flex-col">
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className="w-6 h-6 rounded-md bg-violet-50 flex items-center justify-center border border-violet-100 shrink-0">
+                <MessageCircle className="w-3.5 h-3.5 text-violet-600" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-foreground">Nota fixada</p>
+                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Recado da equipe</p>
+              </div>
+            </div>
+            {empresa && <NotaFixada campo="mercado_posicionamento" clientId={empresa.id} userId={userId} nomeUsuario={nomeUsuario} />}
+          </div>
+        </div>
+
+        </div>
+
+        {/* ═══ COLUNA DIREITA — VALORES DA EMPRESA ═══ */}
+        <div data-tour="tour-valores" className="glass-panel rounded-2xl overflow-hidden flex flex-col">
         <div className="relative px-5 py-5 border-b border-border shrink-0 overflow-hidden"
           style={{ background: 'linear-gradient(160deg, rgba(139,92,246,0.14), rgba(139,92,246,0.03) 70%)' }}>
           <div className="absolute inset-0 opacity-[0.35] pointer-events-none"
@@ -585,7 +667,7 @@ export default function InicioPage() {
             <Sparkles className="w-3 h-3" />
             <p className="text-[9.5px] font-bold uppercase tracking-widest">Cultura</p>
           </div>
-          <p className="relative text-lg font-extrabold text-foreground mt-1 tracking-tight">Valores</p>
+          <p className="relative font-display text-lg font-bold text-foreground mt-1 tracking-tight">Valores</p>
           <p className="relative text-[11px] text-muted-foreground mt-1 leading-relaxed">
             O que guia as decisões {empresa?.company_name ? `da ${empresa.company_name}` : 'da empresa'} no dia a dia.
           </p>
@@ -615,7 +697,9 @@ export default function InicioPage() {
           className="mx-3 mb-3 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed border-border text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors text-xs font-semibold shrink-0">
           <Plus className="w-3.5 h-3.5" /> Adicionar valor
         </button>
-      </div>
+        </div>
+
+        </div>
 
       {/* Modal Cadastrar/Editar Valor */}
       {modalValor.open && (
