@@ -26,7 +26,6 @@
     --radius: 1.1rem;
     --chrome: 231 45% 12%;
     --chrome-foreground: 0 0% 100%;
-    --chrome-accent: 231 40% 22%;
   }
 }
 
@@ -60,9 +59,6 @@
   }
   .glass-elevated {
     @apply bg-card border border-border shadow-glass-lg;
-  }
-  .glass-chrome {
-    background: hsl(var(--chrome));
   }
   .glass-pill {
     @apply bg-card border border-border shadow-sm;

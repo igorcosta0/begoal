@@ -282,7 +282,7 @@ export default function InicioPage() {
     setAlertasSinaisVitais(alertas)
 
     const ciclos = (ciclosRes as any)?.data ?? []
-    const cicloAtivo = ciclos.find((c: any) => c.status !== 'finalizada') ?? ciclos[0]
+    const cicloAtivo = ciclos.find((c: any) => c.status === 'ativo') ?? ciclos[0]
     setCicloAvaliacaoNome(cicloAtivo ? `${cicloAtivo.periodo ?? ''} ${cicloAtivo.ano ?? ''}`.trim() : null)
 
     setLoading(false)

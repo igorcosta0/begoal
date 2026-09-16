@@ -85,7 +85,7 @@ export default function Topbar({ permissionLevel, userEmail }: TopbarProps) {
   const isGroupActive = (group: NavGroup) => group.links.some((l) => !l.hidden && pathname.startsWith(l.href))
 
   return (
-    <header className="sticky top-4 z-40 mx-4 mt-4 md:mx-6 md:mt-6">
+    <header className="sticky top-4 z-40 mt-4 md:mt-6 max-w-[1440px] mx-auto px-4 md:px-6">
       <div className="flex items-center gap-2 md:gap-3 bg-card border border-border shadow-glass rounded-full pl-3.5 pr-2 py-2">
 
         {/* Marca */}

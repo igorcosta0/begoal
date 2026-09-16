@@ -46,7 +46,6 @@ const config: Config = {
         chrome: {
           DEFAULT: 'hsl(var(--chrome) / <alpha-value>)',
           foreground: 'hsl(var(--chrome-foreground) / <alpha-value>)',
-          accent: 'hsl(var(--chrome-accent) / <alpha-value>)',
         },
       },
       borderRadius: {
