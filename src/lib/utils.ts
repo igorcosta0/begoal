@@ -105,7 +105,7 @@ export function isEmpresaCTZ(companyName?: string | null): boolean {
 // conferência de mapeamento, e o cruzamento cargo x Eneagrama) — nunca mais
 // o acesso ao módulo inteiro. Mesmo padrão de lista fixa já usado em
 // souGestorDaCalibragem (avaliacao/page.tsx).
-const EMAILS_PILOTO_AUTOCONHECIMENTO = ['igorecosta1@gmail.com', 'priscila.santos@behive.net.br', 'leticialeite2003@yahoo.com.br']
+const EMAILS_PILOTO_AUTOCONHECIMENTO = ['igorecosta1@gmail.com', 'priscila.santos@behive.net.br', 'leticialeite2003@yahoo.com.br', 'eduardo.rigotto@behive.net.br']
 export function souPilotoAutoconhecimento(email?: string | null): boolean {
   return !!email && EMAILS_PILOTO_AUTOCONHECIMENTO.includes(email.toLowerCase())
 }
