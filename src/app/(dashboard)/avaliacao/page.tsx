@@ -389,7 +389,7 @@ export default function AvaliacaoPage() {
       const emailAtual = user.email?.toLowerCase() ?? ''
       const souGestorDaCalibragemAtual =
         empresa!.id === 'ac4ad62b-9b88-44da-ae69-0f26ced07d06'
-          ? ['igorecosta1@gmail.com', 'filippe.reus@ctz.eng.br', 'priscila.santos@behive.net.br', 'leticia.leite@behive.net.br'].includes(emailAtual)
+          ? ['igorecosta1@gmail.com', 'filippe.reus@ctz.eng.br', 'priscila.santos@behive.net.br', 'leticialeite2003@yahoo.com.br'].includes(emailAtual)
           : administrador
 
       setIsAdmin(admin)
@@ -405,7 +405,7 @@ export default function AvaliacaoPage() {
       )
       setSouVejoNineBox(
         empresa!.id === 'ac4ad62b-9b88-44da-ae69-0f26ced07d06'
-          ? ['igorecosta1@gmail.com', 'priscila.santos@behive.net.br', 'leticia.leite@behive.net.br'].includes(emailAtual)
+          ? ['igorecosta1@gmail.com', 'priscila.santos@behive.net.br', 'leticialeite2003@yahoo.com.br'].includes(emailAtual)
           : administrador
       )
 

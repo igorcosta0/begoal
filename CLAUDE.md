@@ -122,6 +122,45 @@
      por fora, igual ao `<main>`) — testado o cálculo manualmente pra garantir alinhamento em pixel.
   - De brinde, removido `.glass-chrome`/`--chrome-accent` (só existiam pra sidebar antiga, sem uso
     depois dela ser deletada em 16/09).
+- **Pedido novo, mesma sessão**: criar um login de verdade pra Letícia Leite (autora do "Programa
+  Foco" da BeHive, fonte do módulo de Autoconhecimento/Eneagrama), e-mail
+  `leticialeite2003@yahoo.com.br`, com "mesmo acesso que eu [Igor] e a Priscila".
+  - Achado antes de implementar: já existia uma migration pendente pra isso de 14/09
+    (`PENDENTE_20260914020000_leticia_acesso_igual_igor_priscila.sql`), nunca aplicada — mas com
+    e-mail diferente (`leticia.leite@behive.net.br`, que **nunca chegou a existir** em
+    `auth.users`, confirmado por SQL direto) e escopo mais estreito (só administrador na CTZ).
+    Reescrita a migration com o e-mail novo e o escopo confirmado com o Igor via
+    `AskUserQuestion`: administrador de verdade em **todas as 11 empresas da plataforma** (não só
+    CTZ) — igual Igor/Priscila, que são admin em toda empresa via `user_company_roles` (o time
+    BeHive administra a plataforma inteira) — mais os privilégios especiais que só existem na CTZ
+    (calibragem do ciclo inteiro, visão de admin do Eneagrama).
+  - Diferente das migrations anteriores dessa família (que assumiam login já criado manualmente
+    pelo Igor no painel do Supabase), esta migration cria o login sozinha (insert em
+    `auth.users`/`auth.identities`, senha aleatória descartada — ninguém fica sabendo, ela define a
+    própria pelo "Esqueci minha senha" da tela de login) porque não temos a service role key nesta
+    máquina (só a anon key em `.env.local`) pra criar o usuário por código/API admin. Não tenho
+    certeza de que criar `auth.users` via SQL direto (em vez da API admin do GoTrue) é 100%
+    equivalente em toda instalação do Supabase — funcionou no formato padrão documentado
+    publicamente e o trigger `on_auth_user_created`/`handle_new_user()` já existente criou a linha
+    de `profiles` sozinho, mas vale o Igor confirmar que o login funciona (tela de login +
+    "Esqueci minha senha") depois de rodar, antes de considerar encerrado.
+  - `user_company_roles` ganhou um `cross join` com `public.clients` em vez de listar client_id um
+    a um (padrão diferente das migrations de calibragem restrita, que sempre usaram UUID literal)
+    — cobre empresa nova que apareça depois sem precisar de outra migration, já que o pedido era
+    "toda empresa", não uma lista fixa.
+  - Front-end: as 3 referências hardcoded ao e-mail antigo dela (`EMAILS_PILOTO_AUTOCONHECIMENTO`
+    em `utils.ts`, e as 2 listas de `souGestorDaCalibragem`/`souVejoNineBox` em
+    `avaliacao/page.tsx`) trocadas pro e-mail novo — ela já estava nessas 3 listas desde 14/09
+    (parte do trabalho da sessão anterior, não desta), só o e-mail estava errado/nunca-existente.
+  - `npm run type-check` passou limpo. Migration rodada pelo Igor no SQL Editor em 17/09 —
+    **confirmado via SQL direto**: login criado e confirmado, `funcionarios` (CTZ, "Consultora
+    Externa (BeHive)"), `user_company_roles` administrador nas 11 empresas com `is_calibrador=true`
+    só na CTZ (igual Priscila), `profiles` com e-mail/nome, e as duas funções
+    (`pode_ver_lado_calibragem`/`pode_ver_todos_eneagrama_ctz`) já com o UUID dela. Criar
+    `auth.users`/`auth.identities` via SQL direto (em vez da API admin do GoTrue) funcionou de
+    primeira — o trigger `on_auth_user_created` criou `profiles` sozinho. **Falta só**: avisar a
+    Letícia pra ir em `/reset-senha` com `leticialeite2003@yahoo.com.br` e definir a própria senha
+    (a que a migration gerou é aleatória e descartada, ninguém sabe qual é).
 
 ### 2026-09-15
 - Pedido: redesenho visual completo do sistema ("de ponta a ponta"), só aparência — nenhuma
