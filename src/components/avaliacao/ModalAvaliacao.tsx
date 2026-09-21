@@ -60,7 +60,7 @@ export const VERTICAIS_CTZ: Record<
   { label: string; criterios: { key: string; label: string; descricao: string }[] }
 > = {
   loteadora: {
-    label: 'Loteadora (Loteamentos)',
+    label: 'Loteamentos',
     criterios: [
       {
         key: 'lot_cronograma',
