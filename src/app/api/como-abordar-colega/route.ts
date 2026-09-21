@@ -4,6 +4,10 @@ import { souPilotoAutoconhecimento } from '@/lib/utils'
 import { TIPOS_ENEAGRAMA } from '@/lib/eneagrama/tipos'
 import { chamarGemini } from '@/lib/gemini'
 
+// Espaço extra pro retry de chamarGemini (até ~7s de espera entre tentativas,
+// mais o tempo de cada chamada em si) não bater no timeout padrão da função.
+export const maxDuration = 30
+
 // "Preciso falar com o Fulano sobre X, qual a melhor forma de abordar?" —
 // diferente de /api/assistente-eneagrama (que só fala do tipo de QUEM
 // PERGUNTA), aqui a pessoa pergunta sobre OUTRO colega. Regra central,

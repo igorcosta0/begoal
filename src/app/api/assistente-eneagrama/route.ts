@@ -3,6 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 import { TIPOS_ENEAGRAMA, NOME_INSTINTO, type Instinto } from '@/lib/eneagrama/tipos'
 import { chamarGemini } from '@/lib/gemini'
 
+// Espaço extra pro retry de chamarGemini (até ~7s de espera entre tentativas,
+// mais o tempo de cada chamada em si) não bater no timeout padrão da função.
+export const maxDuration = 30
+
 // Diferente de /api/sugerir-icp (que não autentica ninguém), esta rota devolve
 // conteúdo pessoal — por isso PRECISA confirmar sessão, e o tipo da pessoa é
 // sempre resolvido aqui no servidor a partir do user_id da sessão, nunca

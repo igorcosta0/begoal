@@ -3,6 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 import { TIPOS_ENEAGRAMA } from '@/lib/eneagrama/tipos'
 import { chamarGemini } from '@/lib/gemini'
 
+// Espaço extra pro retry de chamarGemini (até ~7s de espera entre tentativas,
+// mais o tempo de cada chamada em si) não bater no timeout padrão da função.
+export const maxDuration = 30
+
 // Simulação de administrador pro Mapa 2 (pedido 14/09/2026, mesma ideia já
 // usada em "Perfis da equipe"/simulação do Mapa 1: Igor/Priscila não
 // lideram ninguém no organograma, então o chat de verdade de

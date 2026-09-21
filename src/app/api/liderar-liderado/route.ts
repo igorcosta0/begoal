@@ -4,6 +4,10 @@ import { souPilotoAutoconhecimento } from '@/lib/utils'
 import { TIPOS_ENEAGRAMA } from '@/lib/eneagrama/tipos'
 import { chamarGemini } from '@/lib/gemini'
 
+// Espaço extra pro retry de chamarGemini (até ~7s de espera entre tentativas,
+// mais o tempo de cada chamada em si) não bater no timeout padrão da função.
+export const maxDuration = 30
+
 // Mapa 2 "Liderando o time" (pedido 10/09/2026, metodologia de
 // "Adições futuras/Abordagem .pdf" — mapa "NÓS/Liderança de pessoas" do PDF,
 // separado aqui do Mapa 3 "Relacionando com o time" porque o PDF distingue

@@ -15,7 +15,13 @@ export async function chamarGemini(
   body: unknown
 ): Promise<{ ok: boolean; status: number; text: string }> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`
-  const esperasMs = [500, 1500]
+  // Pedido (21/09/2026, 2ª vez): a janela de retry original (2 tentativas extras,
+  // ~2s de espera total) não bastou — a sobrecarga do lado do Google às vezes
+  // dura mais que isso. Subido pra 3 tentativas extras (~7s de espera total),
+  // acompanhado de `export const maxDuration` maior em cada rota que chama isso
+  // (senão o timeout da própria função na Vercel cortaria o processo no meio do
+  // retry antes mesmo do Gemini responder).
+  const esperasMs = [500, 1500, 3000]
 
   for (let tentativa = 0; ; tentativa++) {
     const response = await fetch(url, {

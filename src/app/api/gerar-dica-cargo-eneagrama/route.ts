@@ -4,6 +4,10 @@ import { souPilotoAutoconhecimento } from '@/lib/utils'
 import { TIPOS_ENEAGRAMA } from '@/lib/eneagrama/tipos'
 import { chamarGemini } from '@/lib/gemini'
 
+// Espaço extra pro retry de chamarGemini (até ~7s de espera entre tentativas,
+// mais o tempo de cada chamada em si) não bater no timeout padrão da função.
+export const maxDuration = 30
+
 // Gera (ou regenera) as "dicas e sugestões" de uma pessoa específica no
 // cruzamento cargo x Eneagrama (pedido do Igor, 01/09/2026 — ver comentário
 // no topo da migration PENDENTE_20260901000000_cargos_perfil_eneagrama.sql).

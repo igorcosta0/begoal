@@ -223,6 +223,18 @@
   - Nenhuma migration nova precisou — ninguém nunca chegou a ter `avaliacoes.vertical = 'lideres'`
     de verdade (confirmado via SQL direto antes de sugerir a mudança), então não existe dado real
     pra limpar no banco, só código de UI/sugestão que nunca foi usado. `npm run type-check` limpo.
+- **"Erro Gemini: 503" de novo no Autoconhecimento**, mesmo depois do retry adicionado mais cedo
+  na sessão (`src/lib/gemini.ts`, 2 tentativas extras, ~2s de espera total) — a sobrecarga do lado
+  do Google às vezes dura mais que essa janela curta. Reforçado: `esperasMs` subiu pra 3 tentativas
+  extras (500ms/1500ms/3000ms, ~7s de espera total) e as 6 rotas que chamam `chamarGemini`
+  ganharam `export const maxDuration = 30` (sem isso, o timeout padrão da função na Vercel podia
+  cortar o processo no meio do retry, antes mesmo do Gemini conseguir responder — não achei
+  `vercel.json` nem `maxDuration` nenhum configurado antes, cada rota rodava no limite padrão da
+  plataforma). Ainda é um problema do lado do Google (não dá pra eliminar 100%, só reduzir a
+  chance), então pode voltar a acontecer em picos de sobrecarga maiores — se persistir, o próximo
+  passo seria um modelo de fallback (e.g. tentar outro Gemini se `gemini-3.6-flash` continuar
+  saturado), mas isso exige confirmar antes qual modelo alternativo está disponível pra esta chave
+  de API. `npm run type-check` limpo.
 
 ### 2026-09-16
 - Continuação direta do redesenho de 15/09 (que ainda estava só local, sem push, aguardando
