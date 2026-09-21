@@ -196,6 +196,15 @@
     inicial de avaliação nova (sempre editável pelo admin no dropdown) — não toca em avaliação já
     existente, então o ciclo ativo (e as calibragens em andamento) ficam intocados, exatamente como
     pedido. `npm run type-check` limpo.
+- Depois disso, pedido do Igor: "ainda não aparece por falta de dados, eu preciso que tenha alguma
+  coisa mostrando, do mesmo jeito que os outros". Sem inventar nota de avaliação real (isso seria
+  fabricar dado de desempenho de pessoa de verdade), a correção foi de COMPORTAMENTO da tela: antes,
+  `detalhamentoPorVertical` em `GraficosAvaliacao.tsx` só criava um card pra vertical que já tinha
+  pelo menos 1 nota — agora a lista de verticais vem de `VERTICAIS_CTZ` inteiro (ou só a que estiver
+  selecionada no filtro de vertical do gráfico), então TODO vertical sempre tem um card, e quem
+  ainda não tem ninguém avaliado (caso do "Líderes" agora) mostra "Ainda sem ninguém avaliado nesse
+  vertical neste ciclo" em vez de simplesmente não aparecer — mesma lógica pros outros 2 gráficos
+  da aba não mudou, só essa seção de detalhamento. `npm run type-check` limpo.
 
 ### 2026-09-16
 - Continuação direta do redesenho de 15/09 (que ainda estava só local, sem push, aguardando
