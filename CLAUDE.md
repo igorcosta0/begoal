@@ -250,6 +250,21 @@
   sem Fluid Compute — pesquisado antes de mudar, não é um chute), porque o pior caso agora é
   ~45s (4 tentativas de até 10s + ~5s de espera entre elas) — 30 não seria suficiente com o timeout
   novo. `npm run type-check` limpo.
+- **"Erro Gemini: 504"** (esse "504" é o meu próprio código sinalizando timeout, não vem do
+  Google) — os 10s por tentativa provavelmente eram curtos demais pra esse modelo específico: os
+  comentários das próprias rotas já registravam que "modelos Gemini novos (2.5+/3.x) gastam parte
+  do maxOutputTokens com 'pensamento' interno antes de escrever a resposta", então uma resposta
+  legítima (não sobrecarregada) podia facilmente passar de 10s com os prompts longos dessas rotas
+  — o timeout tava matando tentativa BOA e repetindo isso as 4 vezes até esgotar, sintoma oposto do
+  que a mudança anterior deveria resolver. Ajustado em `src/lib/gemini.ts`: timeout por tentativa
+  subiu de 10s pra 18s, número de retries caiu de 3 pra 2 (senão o pior caso estouraria os 60s de
+  `maxDuration`) — pior caso agora ~57s, ainda dentro do teto. Também somado log de duração de cada
+  tentativa (antes só logava em erro) — sem isso, o próximo ajuste desse número ia continuar sendo
+  chute às cegas em vez de olhar quanto tempo as respostas normalmente levam nos logs da Vercel.
+  `npm run type-check` limpo. **Não teve como confirmar se resolveu de vez** — não tenho acesso aos
+  logs de runtime da Vercel nesta sessão pra ver o tempo real de resposta, só o raciocínio a partir
+  dos comentários já existentes no código; se persistir, log de duração já está lá pra próxima vez
+  não ser chute de novo.
 
 ### 2026-09-16
 - Continuação direta do redesenho de 15/09 (que ainda estava só local, sem push, aguardando
