@@ -202,30 +202,6 @@ export const VERTICAIS_CTZ: Record<
       },
     ],
   },
-  // Vertical nova (pedido 21/09/2026), no lugar de "Secretária Executiva" —
-  // critérios em rascunho genérico (o usuário pediu uma sugestão inicial em
-  // vez de ditar a régua oficial), ajustar depois se a régua real da empresa
-  // for diferente.
-  lideres: {
-    label: 'Líderes',
-    criterios: [
-      {
-        key: 'lid_equipe',
-        label: 'Gestão e Desenvolvimento de Equipe',
-        descricao: 'Formação, acompanhamento e evolução dos liderados, com feedback constante e plano de desenvolvimento ativo.',
-      },
-      {
-        key: 'lid_decisao',
-        label: 'Tomada de Decisão e Delegação',
-        descricao: 'Clareza e agilidade nas decisões da vertical, com delegação eficaz e autonomia bem calibrada pra cada liderado.',
-      },
-      {
-        key: 'lid_resultados',
-        label: 'Resultados da Vertical Liderada',
-        descricao: 'Entrega das metas da área sob sua liderança, com previsibilidade e gestão de riscos.',
-      },
-    ],
-  },
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────

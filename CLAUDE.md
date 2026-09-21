@@ -205,6 +205,24 @@
   ainda não tem ninguém avaliado (caso do "Líderes" agora) mostra "Ainda sem ninguém avaliado nesse
   vertical neste ciclo" em vez de simplesmente não aparecer — mesma lógica pros outros 2 gráficos
   da aba não mudou, só essa seção de detalhamento. `npm run type-check` limpo.
+- **Revertido logo em seguida** — o Igor repensou: "essa visualização é referente a verticais e não
+  há vertical Líder". Correto — "Líderes" nunca foi uma área/vertical real da empresa como
+  Loteamentos ou CSC/Financeiro, foi uma sugestão MINHA de rascunho (pedido 21/09, quando perguntei
+  quais critérios usar e o Igor aceitou a sugestão genérica em vez de ditar a régua oficial — ver
+  entrada acima) pra preencher o espaço que sobrou depois de unir Secretária Executiva em CSC/
+  Financeiro. Revertidos os 3 pontos relacionados a "Líderes" especificamente (mantido tudo o resto
+  da sessão, inclusive o merge Secretária→CSC/Financeiro, que é decisão diferente e válida):
+  1. Entrada `lideres` removida de `VERTICAIS_CTZ` (`ModalAvaliacao.tsx`) — CSC/Financeiro continua
+     com os 6 critérios unidos (isso NÃO foi revertido).
+  2. `ModalMontarAvaliacoes.tsx` — sugestão automática de vertical por liderança no organograma
+     (commit `705dc6a`) revertida, voltou a usar só `verticalDoFuncionario` (por setor), igual
+     antes.
+  3. `GraficosAvaliacao.tsx` — "mostrar todo vertical sempre" (commit `c0a9f2b`) revertido, o card
+     "Maior e menor nota por vertical" volta a só listar vertical que já tem pelo menos 1 nota
+     preenchida (comportamento original, de quando essa seção nasceu em 21/09).
+  - Nenhuma migration nova precisou — ninguém nunca chegou a ter `avaliacoes.vertical = 'lideres'`
+    de verdade (confirmado via SQL direto antes de sugerir a mudança), então não existe dado real
+    pra limpar no banco, só código de UI/sugestão que nunca foi usado. `npm run type-check` limpo.
 
 ### 2026-09-16
 - Continuação direta do redesenho de 15/09 (que ainda estava só local, sem push, aguardando

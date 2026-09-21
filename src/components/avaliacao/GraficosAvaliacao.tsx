@@ -192,16 +192,7 @@ export default function GraficosAvaliacao({ avaliacoes, cicloId }: Props) {
       return pilar ? `Pilar ${pilar.numero} — ${pilar.titulo}` : `Pilar ${chave}`
     }
 
-    // Pedido (21/09/2026): mostrar um card por vertical SEMPRE — mesmo sem
-    // ninguém avaliado ali ainda (ex.: "Líderes", vertical nova) — em vez de
-    // só listar quem já tem dado. Antes disso o card só nascia quando havia
-    // nota; agora a lista de verticais vem de VERTICAIS_CTZ inteiro (ou só a
-    // selecionada no filtro), e quem ainda não tem nota mostra um aviso em
-    // vez de sumir da tela.
-    const chavesVerticais = verticalAtiva ? [verticalAtiva] : Object.keys(VERTICAIS_CTZ)
-
-    const resultado = chavesVerticais.map((vertical) => {
-      const grupo = porVertical.get(vertical) ?? { cultural: new Map<string, number[]>(), tecnica: new Map<string, number[]>() }
+    const resultado = Array.from(porVertical.entries()).map(([vertical, grupo]) => {
       const labelTecnica = (chave: string) => VERTICAIS_CTZ[vertical]?.criterios.find((c) => c.key === chave)?.label ?? chave
       return {
         vertical,
@@ -351,9 +342,6 @@ export default function GraficosAvaliacao({ avaliacoes, cicloId }: Props) {
                           <PerguntaLinha icon={ArrowDown} cor="text-red-600" item={v.tecnica.pior} />
                         )}
                       </div>
-                    )}
-                    {!v.cultural && !v.tecnica && (
-                      <p className="text-[11px] text-muted-foreground italic">Ainda sem ninguém avaliado nesse vertical neste ciclo.</p>
                     )}
                   </div>
                 ))}
