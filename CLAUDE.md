@@ -265,6 +265,23 @@
   logs de runtime da Vercel nesta sessão pra ver o tempo real de resposta, só o raciocínio a partir
   dos comentários já existentes no código; se persistir, log de duração já está lá pra próxima vez
   não ser chute de novo.
+- **"Erro Gemini: 429"** — esse SIM é um código real do Google (diferente do "504" acima, que era
+  meu), significa cota/limite de taxa estourado, não instabilidade momentânea. Pesquisado: plano
+  gratuito do Gemini Flash é só **~15 requisições/minuto e ~1.500/dia** — bem plausível de ter
+  estourado só com a própria bateria de testes desta sessão (mais o fato de o meu retry, até essa
+  hora, tentar de novo em 429 também — cada mensagem do usuário virava até 3 chamadas reais contra
+  essa cota em vez de 1, piorando o próprio problema que devia resolver). Corrigido: **removido 429
+  do conjunto de status retry-ável** em `chamarGemini` (`src/lib/gemini.ts`) — a janela de rate
+  limit do Google só libera depois de dezenas de segundos, nosso backoff de poucos segundos nunca
+  teria como ajudar, só queimava cota à toa. Continua tentando de novo em 503 (infra sobrecarregada,
+  isso sim costuma liberar em segundos) e no timeout de 18s por tentativa (nosso).
+  **Isso é diferente dos bugs anteriores**: não dá pra resolver só ajustando este código — se a
+  chave `GEMINI_API_KEY` estiver mesmo no tier gratuito, um app com uso real de várias pessoas da
+  CTZ vai bater nesse limite de novo com uso normal, sem precisar de bateria de teste nenhuma.
+  Recomendado ao Igor: conferir o tier/uso dessa chave no Google AI Studio
+  (aistudio.google.com/apikey) ou Google Cloud Console — se for gratuito, migrar pra um tier pago
+  (billing habilitado) é o que resolve de verdade, não tem ajuste de código que contorne cota
+  esgotada. `npm run type-check` limpo.
 
 ### 2026-09-16
 - Continuação direta do redesenho de 15/09 (que ainda estava só local, sem push, aguardando

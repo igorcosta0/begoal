@@ -16,12 +16,16 @@ const TIMEOUT_POR_TENTATIVA_MS = 18000
 
 /**
  * Chama o Gemini com retry automático em erros transitórios do lado do Google
- * (503 "the model is overloaded", 429 rate limit, e timeout de uma tentativa
- * individual) — a própria documentação do Google recomenda "wait and retry
- * with exponential backoff" pra 503/429, não indicam request malformado nem
- * cota estourada de verdade. Qualquer outro status (400, 401, 404, chave
- * inválida etc.) não é retry-ável — não adianta tentar de novo, volta na
- * primeira tentativa igual antes.
+ * — 503 "the model is overloaded" e timeout de uma tentativa individual
+ * (nosso, ver acima). NÃO tenta de novo em 429: rate limit do Gemini
+ * (pesquisado 21/09/2026: plano gratuito do Flash é ~15 requisições/minuto,
+ * ~1.500/dia) só libera depois de dezenas de segundos — nosso backoff de
+ * poucos segundos nunca teria tempo de ajudar, só queimaria mais 2 chamadas
+ * contra uma cota que já estourou (achado depois que o retry em 429 só
+ * piorava: cada mensagem do usuário virava até 3 chamadas reais no Google em
+ * vez de 1). Qualquer outro status (400, 401, 404, chave inválida etc.)
+ * também não é retry-ável — não adianta tentar de novo, volta na primeira
+ * tentativa igual antes.
  *
  * 2 tentativas extras (~2.8s de espera total) + timeout de 18s por tentativa
  * — pior caso ~57s (3 × 18s + 2.8s de espera), por isso as 6 rotas que chamam
@@ -70,7 +74,7 @@ export async function chamarGemini(
     }
 
     const ok = status >= 200 && status < 300
-    const transitorio = status === 503 || status === 429 || status === 504
+    const transitorio = status === 503 || status === 504
     if (ok || !transitorio || tentativa >= esperasMs.length) {
       return { ok, status, text }
     }
