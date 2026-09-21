@@ -282,6 +282,23 @@
   (aistudio.google.com/apikey) ou Google Cloud Console — se for gratuito, migrar pra um tier pago
   (billing habilitado) é o que resolve de verdade, não tem ajuste de código que contorne cota
   esgotada. `npm run type-check` limpo.
+- Pedido urgente do Igor logo em seguida ("usa outra, preciso mostrar isso funcionando" — tinha
+  demo marcada): já que cota do Gemini é por MODELO (não por chave inteira), implementei fallback
+  automático de modelo em `chamarGemini` — tenta `gemini-3.6-flash` primeiro, e só se ELE falhar
+  (429, 503, timeout, qualquer motivo) cai pra `gemini-3.1-flash-lite` (confirmado via busca que
+  existe de verdade e é recomendado pelo Google pra "alto volume" — bom encaixe). Não é troca
+  definitiva: a próxima chamada volta a tentar o principal primeiro, a cota dele pode já ter
+  resetado. Reestruturado pra 1 tentativa por modelo (sem retry dentro do mesmo modelo) — com 2
+  modelos na lista, manter o retry duplo de antes daria até ~114s de pior caso, muito acima do
+  `maxDuration = 60`; a troca de modelo já cumpre o papel de "tentar de novo" e de um jeito melhor
+  (insistir no MESMO modelo sobrecarregado/sem cota não ajudaria mesmo). Pior caso agora: 2 × 18s =
+  36s, com folga boa dentro do teto de 60s.
+  **Ressalva importante, não deu pra confirmar**: não tenho a `GEMINI_API_KEY` nem acesso pra testar
+  se `gemini-3.1-flash-lite` está mesmo disponível pra ESTA chave especificamente — é um modelo
+  público real (não uma sigla inventada), mas essa mesma app já foi pega de surpresa antes com
+  modelo existente-mas-desativado-pra-esse-projeto (gemini-1.5-flash/2.5-flash viraram 404). Se
+  bater 404 no fallback também, avisar que preciso trocar o nome do modelo de novo. `npm run
+  type-check` limpo.
 
 ### 2026-09-16
 - Continuação direta do redesenho de 15/09 (que ainda estava só local, sem push, aguardando

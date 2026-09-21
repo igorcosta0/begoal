@@ -1,85 +1,91 @@
-const GEMINI_MODEL = 'gemini-3.6-flash'
+// Pedido (21/09/2026, urgente pra demo): "gemini-3.6-flash" bateu 429 (cota
+// esgotada — plano gratuito do Flash é ~15 requisições/minuto, ~1.500/dia,
+// pesquisado nesta sessão). Cota do Gemini é por MODELO, então um modelo
+// diferente tem cota própria, ainda intacta. `gemini-3.1-flash-lite`
+// (confirmado existente e recomendado pelo Google pra "tarefas de alto
+// volume" — bom encaixe como fallback) entra como segunda opção: se o
+// primeiro falhar (qualquer motivo — 429, 503, timeout), tenta o segundo
+// antes de desistir. Não é uma troca definitiva: na PRÓXIMA chamada volta a
+// tentar o principal primeiro (a cota dele pode já ter resetado).
+const MODELOS_EM_ORDEM = ['gemini-3.6-flash', 'gemini-3.1-flash-lite']
 
 // Tempo máximo de UMA tentativa contra o Gemini. Sem isso, `fetch` não tem
 // timeout nenhum por padrão — se o Google ficar lento/travado em vez de
-// devolver um 503 rápido (o caso que o retry abaixo já cobria), a função
-// inteira ficava pendurada até o `maxDuration` da rota matar o processo no
-// meio, sem nunca chegar a tentar de novo (achado 21/09/2026).
+// devolver um erro rápido, a função inteira ficava pendurada até o
+// `maxDuration` da rota matar o processo no meio (achado 21/09/2026). 18s dá
+// espaço suficiente pra uma resposta legítima (esse modelo "pensa" antes de
+// escrever, ver comentário sobre maxOutputTokens nas rotas que chamam isso)
+// sem cortar cedo demais.
 //
-// Ajustado de 10s pra 18s no mesmo dia: 10s se mostrou curto demais — esse
-// modelo "pensa" antes de escrever a resposta (ver comentário sobre
-// maxOutputTokens nas rotas que chamam isso) e pode legitimamente passar de
-// 10s numa resposta que ia funcionar, então 10s tava matando tentativa boa e
-// cascateando pra "Erro Gemini: 504" depois de esgotar os retries — sintoma
-// oposto do que o timeout deveria resolver.
+// Cada modelo da lista leva NO MÁXIMO 1 tentativa (sem retry dentro do mesmo
+// modelo) — o fallback pro próximo modelo já cumpre o papel de "tentar de
+// novo", e de um jeito melhor: se o motivo foi 429 (cota) ou 503 (sobrecarga
+// DESSE modelo específico), insistir no mesmo modelo não ajudaria mesmo,
+// trocar de modelo sim. Com 2 modelos × 18s = 36s de pior caso, sobra bastante
+// margem dentro do `maxDuration = 60` de cada rota.
 const TIMEOUT_POR_TENTATIVA_MS = 18000
 
+async function tentarUmModelo(
+  apiKey: string,
+  modelo: string,
+  body: unknown
+): Promise<{ ok: boolean; status: number; text: string }> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_POR_TENTATIVA_MS)
+  const inicio = Date.now()
+
+  let status: number
+  let text: string
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+    status = response.status
+    text = await response.text()
+  } catch (err) {
+    // AbortError (nosso timeout) e qualquer outro erro de rede (DNS, conexão
+    // recusada etc.) caem aqui — 504 sinaliza "não conseguimos nem terminar
+    // de conversar com o Google", diferente de um status que o Google de
+    // fato devolveu.
+    status = 504
+    text = err instanceof Error ? err.message : String(err)
+  } finally {
+    clearTimeout(timer)
+  }
+
+  const duracaoMs = Date.now() - inicio
+  // Log de duração (não só de erro): sem isso, o próximo ajuste desses
+  // números vira chute de novo em vez de olhar quanto tempo as respostas
+  // normalmente levam nos logs da Vercel.
+  if (duracaoMs > 5000 || status !== 200) {
+    console.warn(`Gemini (${modelo}): ${duracaoMs}ms, status ${status}`)
+  }
+
+  return { ok: status >= 200 && status < 300, status, text }
+}
+
 /**
- * Chama o Gemini com retry automático em erros transitórios do lado do Google
- * — 503 "the model is overloaded" e timeout de uma tentativa individual
- * (nosso, ver acima). NÃO tenta de novo em 429: rate limit do Gemini
- * (pesquisado 21/09/2026: plano gratuito do Flash é ~15 requisições/minuto,
- * ~1.500/dia) só libera depois de dezenas de segundos — nosso backoff de
- * poucos segundos nunca teria tempo de ajudar, só queimaria mais 2 chamadas
- * contra uma cota que já estourou (achado depois que o retry em 429 só
- * piorava: cada mensagem do usuário virava até 3 chamadas reais no Google em
- * vez de 1). Qualquer outro status (400, 401, 404, chave inválida etc.)
- * também não é retry-ável — não adianta tentar de novo, volta na primeira
- * tentativa igual antes.
- *
- * 2 tentativas extras (~2.8s de espera total) + timeout de 18s por tentativa
- * — pior caso ~57s (3 × 18s + 2.8s de espera), por isso as 6 rotas que chamam
- * isso precisam de `maxDuration = 60` (o teto do plano Hobby da Vercel sem
- * Fluid Compute) — ajustar os dois números juntos se mudar um deles.
+ * Chama o Gemini tentando cada modelo de `MODELOS_EM_ORDEM` em sequência —
+ * primeiro o principal, e só se ele falhar (por qualquer motivo: 429 de cota,
+ * 503 de sobrecarga, timeout) cai pro próximo. Sem retry dentro do mesmo
+ * modelo de propósito: pra 429/503 insistir no mesmo modelo não costuma
+ * ajudar, e trocar de modelo já cumpre esse papel melhor. Devolve o
+ * resultado do ÚLTIMO modelo tentado se todos falharem.
  */
 export async function chamarGemini(
   apiKey: string,
   body: unknown
 ): Promise<{ ok: boolean; status: number; text: string }> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`
-  const esperasMs = [800, 2000]
-
-  for (let tentativa = 0; ; tentativa++) {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), TIMEOUT_POR_TENTATIVA_MS)
-    const inicio = Date.now()
-
-    let status: number
-    let text: string
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      })
-      status = response.status
-      text = await response.text()
-    } catch (err) {
-      // AbortError (nosso timeout) é tratado como transitório, igual 503 —
-      // qualquer outro erro de rede (DNS, conexão recusada etc.) também, não
-      // tem por que assumir que é permanente.
-      status = 504
-      text = err instanceof Error ? err.message : String(err)
-    } finally {
-      clearTimeout(timer)
-    }
-
-    const duracaoMs = Date.now() - inicio
-    // Log de duração (não só de erro): sem isso, da próxima vez que precisar
-    // reajustar TIMEOUT_POR_TENTATIVA_MS vai ser chute de novo em vez de
-    // olhar quanto tempo as respostas normalmente levam.
-    if (duracaoMs > 5000 || status !== 200) {
-      console.warn(`Gemini: tentativa ${tentativa + 1} levou ${duracaoMs}ms, status ${status}`)
-    }
-
-    const ok = status >= 200 && status < 300
-    const transitorio = status === 503 || status === 504
-    if (ok || !transitorio || tentativa >= esperasMs.length) {
-      return { ok, status, text }
-    }
-
-    console.warn(`Gemini ${status} (tentativa ${tentativa + 1}/${esperasMs.length + 1}) — tentando de novo em ${esperasMs[tentativa]}ms`)
-    await new Promise((resolve) => setTimeout(resolve, esperasMs[tentativa]))
+  let resultado: { ok: boolean; status: number; text: string } | null = null
+  for (const modelo of MODELOS_EM_ORDEM) {
+    resultado = await tentarUmModelo(apiKey, modelo, body)
+    if (resultado.ok) return resultado
+    const ultimo = modelo === MODELOS_EM_ORDEM[MODELOS_EM_ORDEM.length - 1]
+    console.warn(`Gemini: modelo ${modelo} não respondeu (status ${resultado.status})${ultimo ? '' : ' — tentando o próximo modelo'}`)
   }
+  return resultado!
 }
