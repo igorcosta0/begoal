@@ -131,8 +131,8 @@
      upsert — reenviar substitui, sem acumular órfão — + cache-busting `?v=timestamp` na URL salva,
      senão o navegador continuaria servindo a foto antiga do mesmo path).
   3. **Cargos ganhou CRUD** (Adicionar/Editar/Excluir) — a aba nasceu somente-leitura em 09/09.
-     Migration `PENDENTE_20260921030000_cargos_perfil_escrita.sql` (**ainda não rodada, avisar o
-     Igor**) soma INSERT/UPDATE/DELETE em `cargos_perfil` pro MESMO grupo que já lê (administrador
+     Migration `PENDENTE_20260921030000_cargos_perfil_escrita.sql` soma INSERT/UPDATE/DELETE em
+     `cargos_perfil` pro MESMO grupo que já lê (administrador
      real da empresa OU piloto do Autoconhecimento) — não abre escrita pra ninguém que não visse a
      tela toda. Modal novo `src/components/cargos/ModalCargoPerfil.tsx` (criar e editar no mesmo
      componente) + botão "Adicionar Cargo" no cabeçalho e "Editar"/"Excluir" dentro do card
@@ -152,12 +152,27 @@
      o Igor optou pela sugestão pronta em vez de ditar a régua oficial, então isso é ponto de
      partida, não uma régua validada pela empresa. Tudo em `VERTICAIS_CTZ`
      (`ModalAvaliacao.tsx`). Migration `PENDENTE_20260921010000_avaliacao_merge_secretaria_lideres.sql`
-     (**ainda não rodada, avisar o Igor**) só reaponta `avaliacoes.vertical` de
-     `'secretaria_executiva'` pra `'csc_financeiro'` pra quem já estava lá — não mexe em
-     `avaliacoes_tecnica` (não precisa, as chaves de critério não mudaram).
-  5. `npm run type-check` limpo em cada etapa. **3 migrations pendentes** desta rodada (foto de
-     perfil, cargos escrita, merge secretária/líderes) — nenhuma rodada ainda, avisar antes do
-     próximo push.
+     só reaponta `avaliacoes.vertical` de `'secretaria_executiva'` pra `'csc_financeiro'` pra quem
+     já estava lá — não mexe em `avaliacoes_tecnica` (não precisa, as chaves de critério não
+     mudaram).
+  5. `npm run type-check` limpo em cada etapa. As 3 migrations desta rodada (foto de perfil, cargos
+     escrita, merge secretária/líderes) foram rodadas pelo Igor e o commit `8c30846` foi enviado a
+     `master` (deploy no ar).
+- **Bug encontrado pelo Igor logo depois do deploy**: upload de foto na aba Perfil retornava "Erro
+  ao enviar a foto: new row violates row-level security policy". Causa raiz não dava pra achar só
+  lendo o código — confirmada consultando o banco direto (via MCP do Supabase, só leitura):
+  `select * from storage.objects where bucket_id = 'avatars'` vinha vazio (o INSERT nunca se
+  efetivava) mesmo com as policies de INSERT/UPDATE/DELETE corretas (conferidas em `pg_policies`,
+  sintaxe batendo com o padrão oficial `(storage.foldername(name))[1] = auth.uid()::text`). Busca na
+  documentação do Supabase confirmou: `uploadMinhaFotoPerfil` usa `upsert: true`, e a API de Storage
+  faz esse upload como `INSERT ... ON CONFLICT ... RETURNING *` por baixo — o `RETURNING` exige uma
+  policy de **SELECT** na linha, mesmo em upload novo, e a migration `PENDENTE_20260921020000` só
+  tinha criado INSERT/UPDATE/DELETE pro bucket `avatars`, sem SELECT (raciocínio errado na hora:
+  "bucket público dispensa RLS de leitura" vale só pra URL pública de download, não pra essa leitura
+  interna que o próprio upload faz). Corrigido com migration nova
+  `PENDENTE_20260921040000_avatars_select_policy.sql` (**ainda não rodada, avisar o Igor antes do
+  próximo push** — sem risco, é só SELECT geral no bucket, que já é público por design). Sem
+  mudança de código front-end, só a policy que faltava.
 
 ### 2026-09-16
 - Continuação direta do redesenho de 15/09 (que ainda estava só local, sem push, aguardando
