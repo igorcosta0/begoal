@@ -41,7 +41,7 @@ export default function ObjetivoCard({
   onVerTaticasKr,
   onEditarLancamentosKr,
 }: ObjetivoCardProps) {
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, setExpanded] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
   const progresso = objetivo.progresso ?? 0

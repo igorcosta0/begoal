@@ -69,9 +69,30 @@
      existentes, um mini-card por vertical, respeitando o mesmo filtro de vertical que os outros 2
      já tinham (pedido de 11/09). Só front-end + a migration nova — nenhuma tabela/RLS existente foi
      tocada, `get_calibragem_ciclo_cultural/tecnica` (usadas no Painel de Calibragem) não mudaram.
-  5. `npm run type-check` limpo em cada etapa. **Nada commitado/enviado ainda nesta sessão** —
-     pendente decisão do Igor sobre quando dar push (a migration do item 4 precisa rodar no
-     Supabase antes, mesma regra de sempre).
+  5. `npm run type-check` limpo em cada etapa. Migration do item 4 rodada pelo Igor no SQL Editor,
+     confirmada — commit `56c58e6` enviado a `master` (deploy no ar).
+- Dois pedidos novos, mesma sessão, depois do push acima:
+  1. **Redesign de "Nosso jeito de ser"** (pedido "melhore o design... pra ficar mais organizada e
+     atrativa") — a assimetria herdada da Início (coluna 1.7fr com Visão de Futuro em card escuro +
+     Mercado/Nota espremidos, coluna 1fr só com Valores) não fazia mais sentido como página própria.
+     Criado um cabeçalho colorido reutilizável (`CabecalhoSecao`, componente local no próprio
+     arquivo — faixa em degradê + textura de pontos + selo/título/descrição, só troca o tom) e
+     aplicado nas 4 seções: Visão de Futuro virou um banner de largura cheia no topo (tom azul,
+     ícone `Compass`, texto grande com um `Quote` decorativo de fundo — antes era um cartão escuro
+     estilo "hero" que não combinava mais com o resto da página, todo em tons claros); embaixo, grid
+     de 3 colunas iguais — Mercado (azul), Nota Fixada (âmbar, antes dividia card com Mercado, agora
+     card próprio) e Valores (violeta, já existia, só passou a usar o cabeçalho compartilhado). Só
+     CSS/composição — nenhum dado, handler ou RLS mudou.
+  2. **OKRs fecham por padrão** (pedido: "sempre que entrar nessa página os OKRs fiquem fechados
+     mostrando só os objetivos") — `ObjetivoCard.tsx` tinha um único `useState(true)` controlando o
+     accordion de KRs por card; trocado pra `useState(false)`. Cada objetivo carrega colapsado
+     (só título + barra de progresso), usuário expande manualmente pra ver os KRs — sem mudança de
+     dado, só o estado inicial do accordion.
+  3. `npm run type-check` limpo. Tentativa de conferir via `npm run dev` esbarrou de novo na falta
+     de sessão autenticada nesta máquina (middleware redireciona pra `/login` antes de compilar a
+     página em si, então o `curl` só confirma que nada quebrou o build, não o visual) — mesma
+     limitação de sempre (ver [[iteracao-visual-sem-navegador]]), sem Chrome conectado nem service
+     role key aqui pra simular login.
 
 ### 2026-09-16
 - Continuação direta do redesenho de 15/09 (que ainda estava só local, sem push, aguardando
