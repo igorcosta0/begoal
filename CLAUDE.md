@@ -169,10 +169,33 @@
   policy de **SELECT** na linha, mesmo em upload novo, e a migration `PENDENTE_20260921020000` só
   tinha criado INSERT/UPDATE/DELETE pro bucket `avatars`, sem SELECT (raciocínio errado na hora:
   "bucket público dispensa RLS de leitura" vale só pra URL pública de download, não pra essa leitura
-  interna que o próprio upload faz). Corrigido com migration nova
-  `PENDENTE_20260921040000_avatars_select_policy.sql` (**ainda não rodada, avisar o Igor antes do
-  próximo push** — sem risco, é só SELECT geral no bucket, que já é público por design). Sem
-  mudança de código front-end, só a policy que faltava.
+  interna que o próprio upload faz). Corrigido com migration `PENDENTE_20260921040000_avatars_select_policy.sql`
+  (rodada pelo Igor, commit `e9ca653` enviado a `master`) — sem mudança de código front-end, só a
+  policy que faltava.
+- **"Loteadora (Loteamentos)" → só "Loteamentos"** — pedido simples de rótulo em `VERTICAIS_CTZ`
+  (`ModalAvaliacao.tsx`), commit `bac2426` enviado a `master`.
+- **Dúvida do Igor**: "não vejo o de Líderes" no card "Maior e menor nota por vertical". Não era bug
+  — confirmado via SQL direto (`select * from avaliacoes where vertical = 'lideres'` vinha vazio):
+  o card só mostra vertical com pelo menos uma nota técnica já preenchida, e ninguém tinha sido
+  colocado no vertical "Líderes" ainda (ele já existia e já era selecionável desde a sessão
+  anterior, só sem dado). Pedido de acompanhamento: "coloque baseado nos dados das avaliações dos
+  líderes" — achado importante antes de agir: os 7 nomes marcados com `lider_avaliacao=true` (flag
+  pensado pra Avaliação de Pares, não pra liderança de verdade — um deles, Jean Patrick, não lidera
+  ninguém no organograma) **já tinham avaliação real e avançada no ciclo ativo** (a maioria em
+  `calibragem`), cada um no próprio vertical (Concretize Comercial/Técnica, Novos Negócios, CSC/
+  Financeiro, Loteamentos, Investimentos) — reatribuir o vertical deles pra "Líderes" agora
+  apagaria a VISIBILIDADE das notas técnicas já preenchidas (critérios completamente diferentes),
+  no meio de uma calibragem em andamento. Não fiz isso sem confirmar — `AskUserQuestion` (2
+  perguntas): confirmado que "líder" = quem lidera gente de verdade no organograma
+  (`funcionarios.gestor_id`), não o flag de pares, e confirmado NÃO mexer no ciclo ativo agora, só
+  deixar pronto pro próximo.
+  - Implementado em `ModalMontarAvaliacoes.tsx` (tela de montar ciclo/adicionar gente ao ciclo): a
+    sugestão automática de vertical (que já existia por setor, `verticalDoFuncionario`) ganhou
+    prioridade nova — quem aparece como `gestor_id` de pelo menos um funcionário no lote sendo
+    montado é sugerido pra `'lideres'` antes de cair na sugestão por setor. Só afeta o PALPITE
+    inicial de avaliação nova (sempre editável pelo admin no dropdown) — não toca em avaliação já
+    existente, então o ciclo ativo (e as calibragens em andamento) ficam intocados, exatamente como
+    pedido. `npm run type-check` limpo.
 
 ### 2026-09-16
 - Continuação direta do redesenho de 15/09 (que ainda estava só local, sem push, aguardando

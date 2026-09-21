@@ -61,14 +61,23 @@ export default function ModalMontarAvaliacoes({
   useEffect(() => {
     if (!open) return
     const nomeById = new Map(opcoesAvaliador.map((o) => [o.id, o.full_name]))
+    // Pedido (21/09/2026): quem lidera gente de verdade no organograma (aparece
+    // como gestor_id de pelo menos um funcionário deste lote) é sugerido pra
+    // vertical "Líderes", com prioridade sobre a sugestão por setor abaixo —
+    // só o palpite inicial na montagem de avaliação NOVA, nunca mexe em quem
+    // já tem avaliação criada (o ciclo ativo não passa por aqui de novo).
+    const lideresDoOrganograma = new Set(funcionarios.map((f) => f.gestor_id).filter((id): id is string => !!id))
     const iniciais: Record<string, LinhaMontagem> = {}
     for (const f of funcionarios) {
       const gestorId = f.gestor_id ?? ''
+      const verticalSugerida = lideresDoOrganograma.has(f.id)
+        ? 'lideres'
+        : (verticalDoFuncionario(f.setor?.name, f.full_name, gestorId ? nomeById.get(gestorId) : undefined) ?? '')
       iniciais[f.id] = {
         funcionario_id: f.id,
         incluir: true,
         avaliador_id: gestorId,
-        vertical: verticalDoFuncionario(f.setor?.name, f.full_name, gestorId ? nomeById.get(gestorId) : undefined) ?? '',
+        vertical: verticalSugerida,
       }
     }
     setLinhas(iniciais)
