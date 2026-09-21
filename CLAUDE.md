@@ -93,6 +93,21 @@
      página em si, então o `curl` só confirma que nada quebrou o build, não o visual) — mesma
      limitação de sempre (ver [[iteracao-visual-sem-navegador]]), sem Chrome conectado nem service
      role key aqui pra simular login.
+- **Relato do Igor**: "Erro Gemini: 503" de novo no Autoconhecimento (ele disse "autoavaliação",
+  mas a Avaliação de Desempenho não chama IA nenhuma — só o módulo de Eneagrama chama). Pesquisado
+  via WebSearch (não é algo que dá pra diagnosticar só lendo o código): `gemini-3.6-flash` (nome já
+  usado no código desde 09/09) é modelo real e atual — 503 nesse contexto é a própria infra
+  compartilhada do Google sobrecarregada, erro documentado e recomendação oficial é "retry com
+  backoff exponencial", não indica bug daqui nem cota estourada. Confirmado com o Igor via
+  `AskUserQuestion` que valia adicionar o retry (já tinha acontecido mais de uma vez).
+  - Criado `src/lib/gemini.ts` (`chamarGemini`), único lugar que monta a URL/model do Gemini agora
+    — até 2 retries (500ms, depois 1500ms) só pra status 503/429 (os únicos documentados como
+    transitórios); qualquer outro erro (400/401/404/chave inválida) continua devolvendo na primeira
+    tentativa, sem esperar à toa. As 6 rotas que chamavam a API Gemini direto
+    (`assistente-eneagrama`, `como-abordar-colega`, `liderar-liderado`,
+    `simular-liderar-liderado`, `gerar-dica-cargo-eneagrama`, `sugerir-icp`) trocaram o `fetch` cru
+    por esse helper — só a chamada de rede mudou, prompt/body/regras de cada rota continuam
+    intocados. `npm run type-check` limpo.
 
 ### 2026-09-16
 - Continuação direta do redesenho de 15/09 (que ainda estava só local, sem push, aguardando

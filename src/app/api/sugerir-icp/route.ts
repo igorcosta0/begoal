@@ -1,6 +1,7 @@
 // v2 - gemini
 
 import { NextRequest, NextResponse } from 'next/server'
+import { chamarGemini } from '@/lib/gemini'
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,30 +35,17 @@ Responda APENAS com um JSON válido, sem texto adicional, sem markdown, sem expl
   "ticket_medio": "..."
 }`
 
-    const response = await fetch(
-      // gemini-1.5-flash e depois gemini-2.5-flash foram desativados pelo
-      // Google (ambos passaram a devolver 404 — 2.5-flash com a mensagem
-      // "no longer available to new users"). Erro real do Google (09/09/2026)
-      // recomendou explicitamente gemini-3.6-flash como substituto.
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          // Ver comentário em /api/como-abordar-colega: modelos Gemini novos
-          // (2.5+/3.x) gastam parte do maxOutputTokens com "pensamento"
-          // interno antes de escrever a resposta — subido pra não cortar.
-          generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
-        }),
-      }
-    )
+    const { ok, status, text: responseText } = await chamarGemini(apiKey, {
+      contents: [{ parts: [{ text: prompt }] }],
+      // Ver comentário em /api/como-abordar-colega: modelos Gemini novos
+      // (2.5+/3.x) gastam parte do maxOutputTokens com "pensamento"
+      // interno antes de escrever a resposta — subido pra não cortar.
+      generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
+    })
 
-    const responseText = await response.text()
-
-    if (!response.ok) {
+    if (!ok) {
       console.error('Gemini error:', responseText)
-      return NextResponse.json({ error: `Erro Gemini: ${response.status}` }, { status: 500 })
+      return NextResponse.json({ error: `Erro Gemini: ${status}` }, { status: 500 })
     }
 
     const data = JSON.parse(responseText)

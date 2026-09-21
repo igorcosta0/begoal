@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { TIPOS_ENEAGRAMA } from '@/lib/eneagrama/tipos'
+import { chamarGemini } from '@/lib/gemini'
 
 // Simulação de administrador pro Mapa 2 (pedido 14/09/2026, mesma ideia já
 // usada em "Perfis da equipe"/simulação do Mapa 1: Igor/Priscila não
@@ -86,23 +87,14 @@ export async function POST(req: NextRequest) {
       { role: 'user', parts: [{ text: situacao }] },
     ]
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemInstruction }] },
-          contents,
-          generationConfig: { temperature: 0.6, maxOutputTokens: 2048 },
-        }),
-      }
-    )
-
-    const responseText = await response.text()
-    if (!response.ok) {
+    const { ok, status, text: responseText } = await chamarGemini(apiKey, {
+      systemInstruction: { parts: [{ text: systemInstruction }] },
+      contents,
+      generationConfig: { temperature: 0.6, maxOutputTokens: 2048 },
+    })
+    if (!ok) {
       console.error('Gemini error:', responseText)
-      return NextResponse.json({ error: `Erro Gemini: ${response.status}` }, { status: 500 })
+      return NextResponse.json({ error: `Erro Gemini: ${status}` }, { status: 500 })
     }
 
     const data = JSON.parse(responseText)

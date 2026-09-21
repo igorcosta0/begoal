@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { souPilotoAutoconhecimento } from '@/lib/utils'
 import { TIPOS_ENEAGRAMA } from '@/lib/eneagrama/tipos'
+import { chamarGemini } from '@/lib/gemini'
 
 // Mapa 2 "Liderando o time" (pedido 10/09/2026, metodologia de
 // "Adições futuras/Abordagem .pdf" — mapa "NÓS/Liderança de pessoas" do PDF,
@@ -85,26 +86,17 @@ export async function POST(req: NextRequest) {
       { role: 'user', parts: [{ text: situacao }] },
     ]
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemInstruction }] },
-          contents,
-          // Mesmo achado de 09/09 em como-abordar-colega/assistente-eneagrama:
-          // modelos Gemini novos gastam parte do maxOutputTokens com
-          // "pensamento" interno antes de escrever a resposta.
-          generationConfig: { temperature: 0.6, maxOutputTokens: 2048 },
-        }),
-      }
-    )
-
-    const responseText = await response.text()
-    if (!response.ok) {
+    const { ok, status, text: responseText } = await chamarGemini(apiKey, {
+      systemInstruction: { parts: [{ text: systemInstruction }] },
+      contents,
+      // Mesmo achado de 09/09 em como-abordar-colega/assistente-eneagrama:
+      // modelos Gemini novos gastam parte do maxOutputTokens com
+      // "pensamento" interno antes de escrever a resposta.
+      generationConfig: { temperature: 0.6, maxOutputTokens: 2048 },
+    })
+    if (!ok) {
       console.error('Gemini error:', responseText)
-      return NextResponse.json({ error: `Erro Gemini: ${response.status}` }, { status: 500 })
+      return NextResponse.json({ error: `Erro Gemini: ${status}` }, { status: 500 })
     }
 
     const data = JSON.parse(responseText)
