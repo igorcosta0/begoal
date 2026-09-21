@@ -2,310 +2,465 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
-import { getObjetivos, createObjetivo, updateObjetivo, deleteObjetivo } from '@/lib/queries/okr'
 import { createClient } from '@/lib/supabase/client'
-import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
-import { Target, MoreHorizontal, Plus, ArchiveRestore } from 'lucide-react'
-import { mensagemErroExclusao } from '@/lib/utils'
+import { Heart, Edit2, Check, X, Plus, Trash2, MapPin, MessageCircle, Send, Sparkles } from 'lucide-react'
+
+function toRoman(num: number) {
+  const map: [number, string][] = [
+    [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'],
+    [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I'],
+  ]
+  let n = num, out = ''
+  for (const [v, s] of map) { while (n >= v) { out += s; n -= v } }
+  return out
+}
+
+function formatDataHora(iso: string) {
+  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+/** Lista de tags editável (chips) — usada para o posicionamento de mercado. */
+function ChipList({ campo, itens, placeholder, onSalvar }: { campo: string; itens: string[]; placeholder: string; onSalvar: (campo: string, itens: string[]) => Promise<void> }) {
+  const [editandoIdx, setEditandoIdx] = useState<number | null>(null)
+  const [textoEdicao, setTextoEdicao] = useState('')
+  const [adicionando, setAdicionando] = useState(false)
+  const [novoItem, setNovoItem] = useState('')
+
+  async function handleEditarSalvar(idx: number) {
+    if (!textoEdicao.trim()) return
+    const novos = [...itens]; novos[idx] = textoEdicao.trim()
+    await onSalvar(campo, novos); setEditandoIdx(null)
+  }
+
+  async function handleExcluir(idx: number) {
+    await onSalvar(campo, itens.filter((_, i) => i !== idx))
+  }
+
+  async function handleAdicionar(e: React.FormEvent) {
+    e.preventDefault()
+    if (!novoItem.trim()) return
+    await onSalvar(campo, [...itens, novoItem.trim()])
+    setNovoItem(''); setAdicionando(false)
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {itens.length === 0 && !adicionando && (
+        <p className="text-xs text-muted-foreground/60 italic">{placeholder}</p>
+      )}
+
+      {itens.map((item, idx) =>
+        editandoIdx === idx ? (
+          <div key={idx} className="flex items-center gap-1">
+            <input
+              type="text" value={textoEdicao} onChange={(e) => setTextoEdicao(e.target.value)} autoFocus
+              className="px-3 py-1.5 text-xs rounded-full border border-primary/40 bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+              onKeyDown={(e) => { if (e.key === 'Enter') handleEditarSalvar(idx); if (e.key === 'Escape') setEditandoIdx(null) }}
+            />
+            <button onClick={() => handleEditarSalvar(idx)} className="p-1 rounded-full bg-primary text-primary-foreground"><Check className="w-3 h-3" /></button>
+            <button onClick={() => setEditandoIdx(null)} className="p-1 rounded-full border border-border text-muted-foreground"><X className="w-3 h-3" /></button>
+          </div>
+        ) : (
+          <div key={idx} className="group/chip flex items-center gap-1 pl-3 pr-1.5 py-1.5 rounded-full text-xs font-semibold bg-primary/[0.07] text-primary border border-primary/[0.16] transition-colors hover:bg-primary/[0.12]">
+            <span>{item}</span>
+            <span className="flex items-center gap-0.5 opacity-0 group-hover/chip:opacity-100 transition-opacity">
+              <button onClick={() => { setEditandoIdx(idx); setTextoEdicao(item) }} className="p-0.5 rounded-full hover:bg-primary/10"><Edit2 className="w-2.5 h-2.5" /></button>
+              <button onClick={() => handleExcluir(idx)} className="p-0.5 rounded-full hover:bg-primary/10"><X className="w-2.5 h-2.5" /></button>
+            </span>
+          </div>
+        )
+      )}
+
+      {adicionando ? (
+        <form onSubmit={handleAdicionar} className="flex items-center gap-1">
+          <input type="text" value={novoItem} onChange={(e) => setNovoItem(e.target.value)} placeholder="Novo item..." autoFocus
+            className="px-3 py-1.5 text-xs rounded-full border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            onKeyDown={(e) => { if (e.key === 'Escape') setAdicionando(false) }} />
+          <button type="submit" disabled={!novoItem.trim()} className="p-1.5 rounded-full bg-primary text-primary-foreground disabled:opacity-50"><Check className="w-3 h-3" /></button>
+          <button type="button" onClick={() => setAdicionando(false)} className="p-1.5 rounded-full border border-border text-muted-foreground"><X className="w-3 h-3" /></button>
+        </form>
+      ) : (
+        <button onClick={() => setAdicionando(true)} className="flex items-center gap-1 pl-2.5 pr-3 py-1.5 rounded-full text-xs font-medium text-muted-foreground border border-dashed border-border hover:border-primary/40 hover:text-primary transition-colors">
+          <Plus className="w-3 h-3" /> Adicionar
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** Bloco de nota/comentários fixado — mostra o último registro e permite expandir a conversa. */
+function NotaFixada({ campo, clientId, userId, nomeUsuario }: { campo: string; clientId: string; userId: string; nomeUsuario: string }) {
+  const [comentarios, setComentarios] = useState<any[]>([])
+  const [novoComentario, setNovoComentario] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [expandido, setExpandido] = useState(false)
+
+  const fetchComentarios = useCallback(async () => {
+    const supabase = createClient()
+    const { data } = await supabase.from('empresa_identidade_comentarios').select('*').eq('client_id', clientId).eq('campo', campo).order('created_at', { ascending: true })
+    setComentarios(data ?? [])
+  }, [clientId, campo])
+
+  useEffect(() => { fetchComentarios() }, [fetchComentarios])
+
+  async function handleEnviar(e: React.FormEvent) {
+    e.preventDefault()
+    if (!novoComentario.trim()) return
+    setLoading(true)
+    const supabase = createClient()
+    await supabase.from('empresa_identidade_comentarios').insert({ client_id: clientId, campo, comentario: novoComentario.trim(), autor_nome: nomeUsuario || 'Usuário', user_id: userId })
+    setNovoComentario('')
+    await fetchComentarios()
+    setLoading(false)
+  }
+
+  async function handleExcluir(id: string) {
+    const supabase = createClient()
+    await supabase.from('empresa_identidade_comentarios').delete().eq('id', id)
+    await fetchComentarios()
+  }
+
+  const ultimo = comentarios[comentarios.length - 1]
+
+  return (
+    <div className="flex-1 flex flex-col">
+      {ultimo ? (
+        <div className="flex items-start gap-2.5">
+          <div className="w-6 h-6 rounded-full bg-violet-500/15 text-violet-600 text-[11px] font-extrabold flex items-center justify-center shrink-0 mt-px">
+            {(ultimo.autor_nome ?? 'U').charAt(0).toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold text-foreground">
+              {ultimo.autor_nome} <span className="font-normal text-muted-foreground">{formatDataHora(ultimo.created_at)}</span>
+            </p>
+            <p className="text-xs leading-snug mt-0.5 text-foreground/90">{ultimo.comentario}</p>
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground/60 italic">Nenhuma nota registrada ainda.</p>
+      )}
+
+      <button onClick={() => setExpandido(!expandido)} className="mt-2.5 self-start text-[11px] font-semibold text-primary hover:text-primary/80 transition-colors">
+        {expandido ? 'Ocultar conversa' : ultimo ? `Ver conversa${comentarios.length > 1 ? ` (${comentarios.length})` : ''} →` : '+ Adicionar nota'}
+      </button>
+
+      {expandido && (
+        <div className="mt-3 pt-3 border-t border-border space-y-2.5">
+          {comentarios.length > 1 && (
+            <div className="max-h-24 overflow-y-auto space-y-2 pr-1">
+              {comentarios.slice(0, -1).map((c) => (
+                <div key={c.id} className="group/comment flex items-start gap-1.5">
+                  <div className="w-5 h-5 rounded-full bg-violet-500/10 text-violet-600 flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-bold">{(c.autor_nome ?? 'U').charAt(0).toUpperCase()}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-semibold text-foreground">{c.autor_nome} <span className="text-muted-foreground font-normal">{formatDataHora(c.created_at)}</span></p>
+                    <p className="text-xs text-foreground">{c.comentario}</p>
+                  </div>
+                  {c.user_id === userId && (
+                    <button onClick={() => handleExcluir(c.id)} className="opacity-0 group-hover/comment:opacity-100 p-0.5 rounded shrink-0">
+                      <Trash2 className="w-2.5 h-2.5 text-muted-foreground" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <form onSubmit={handleEnviar} className="flex gap-1.5">
+            <input type="text" value={novoComentario} onChange={(e) => setNovoComentario(e.target.value)} placeholder="Escrever nota..." className="flex-1 px-2.5 py-1.5 text-xs rounded-full border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+            <button type="submit" disabled={loading || !novoComentario.trim()} className="p-1.5 rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"><Send className="w-3 h-3" /></button>
+          </form>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function ObjetivoPage() {
   const { empresa } = useEmpresaStore()
+  const [identidade, setIdentidade] = useState<any>(null)
+  const [formIdentidade, setFormIdentidade] = useState({ visao_futuro: '' })
+  const [mercadoItens, setMercadoItens] = useState<string[]>([])
+  const [editando, setEditando] = useState<string | null>(null)
 
-  const [objetivos, setObjetivos] = useState<any[]>([])
+  const [valores, setValores] = useState<any[]>([])
+  const [modalValor, setModalValor] = useState<{ open: boolean; valor: any | null }>({ open: false, valor: null })
+  const [textoValor, setTextoValor] = useState('')
+  const [salvandoValor, setSalvandoValor] = useState(false)
+
   const [loading, setLoading] = useState(true)
+  const [nomeUsuario, setNomeUsuario] = useState('')
+  const [userId, setUserId] = useState('')
 
-  const [modalCriar, setModalCriar] = useState(false)
-  const [modalEditar, setModalEditar] = useState<{ open: boolean; objetivo: any | null }>({ open: false, objetivo: null })
-  const [modalExcluir, setModalExcluir] = useState<{ open: boolean; objetivo: any | null; loading: boolean; erro: string | null }>({ open: false, objetivo: null, loading: false, erro: null })
-  const [menuOpen, setMenuOpen] = useState<string | null>(null)
-
-  const [formCriar, setFormCriar] = useState({ titulo: '', descricao: '' })
-  const [formEditar, setFormEditar] = useState({ titulo: '', descricao: '' })
+  const fetchValores = useCallback(async () => {
+    if (!empresa) return
+    const supabase = createClient()
+    const { data } = await supabase.from('empresa_valores').select('*').eq('client_id', empresa.id).order('ordem')
+    setValores(data ?? [])
+  }, [empresa])
 
   const fetchData = useCallback(async () => {
     if (!empresa) return
     setLoading(true)
-    const { data } = await getObjetivos(empresa.id)
-    setObjetivos(data ?? [])
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) setUserId(user.id)
+
+    const [{ data: identidadeData }, { data: funcData }] = await Promise.all([
+      supabase.from('empresa_identidade').select('*').eq('client_id', empresa.id).maybeSingle(),
+      supabase.from('funcionarios').select('full_name').eq('user_id', user?.id ?? '').maybeSingle(),
+    ])
+
+    setIdentidade(identidadeData)
+    if (identidadeData) {
+      setFormIdentidade({ visao_futuro: identidadeData.visao_futuro ?? '' })
+      const parseLista = (val: any): string[] => {
+        if (!val) return []
+        if (Array.isArray(val)) return val
+        try { return JSON.parse(val) } catch { return [String(val)] }
+      }
+      setMercadoItens(parseLista(identidadeData.mercado_posicionamento))
+    }
+    if (funcData) setNomeUsuario(funcData.full_name?.split(' ')[0] ?? '')
     setLoading(false)
   }, [empresa])
 
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
+  useEffect(() => { fetchData(); fetchValores() }, [fetchData, fetchValores])
 
-  useEffect(() => {
-    if (!modalEditar.objetivo) return
-    setFormEditar({
-      titulo: modalEditar.objetivo.titulo ?? '',
-      descricao: modalEditar.objetivo.descricao ?? '',
-    })
-  }, [modalEditar.objetivo])
+  const handleChange = useCallback((campo: string, valor: string) => { setFormIdentidade((prev) => ({ ...prev, [campo]: valor })) }, [])
+  const handleEdit = useCallback((campo: string) => { setEditando(campo) }, [])
+  const handleCancelar = useCallback(() => { setEditando(null) }, [])
 
-  async function handleCriar(e: React.FormEvent) {
-    e.preventDefault()
+  const handleSalvarTexto = useCallback(async (campo: string) => {
     if (!empresa) return
-    await createObjetivo({
-      titulo: formCriar.titulo,
-      client_id: empresa.id,
-    })
-    setFormCriar({ titulo: '', descricao: '' })
-    setModalCriar(false)
-    fetchData()
-  }
-
-  async function handleEditar(e: React.FormEvent) {
-    e.preventDefault()
-    if (!modalEditar.objetivo) return
-    await updateObjetivo(modalEditar.objetivo.id, {
-      titulo: formEditar.titulo,
-    })
-    setModalEditar({ open: false, objetivo: null })
-    fetchData()
-  }
-
-  async function handleExcluir() {
-    if (!modalExcluir.objetivo) return
-    setModalExcluir((prev) => ({ ...prev, loading: true, erro: null }))
-    const { error } = await deleteObjetivo(modalExcluir.objetivo.id)
-    if (error) {
-      setModalExcluir((prev) => ({ ...prev, loading: false, erro: mensagemErroExclusao(error, 'KRs ou táticas') }))
-      return
-    }
-    setModalExcluir({ open: false, objetivo: null, loading: false, erro: null })
-    fetchData()
-  }
-
-  // Objetivo marcado como concluído some da visão "ativa" da página de OKRs (só
-  // aparece lá em "Finalizados") — reativar aqui evita ter que ir até lá pra isso.
-  async function handleReativar(objetivo: any) {
     const supabase = createClient()
-    await supabase.from('objetivos').update({ concluido: false }).eq('id', objetivo.id)
+    const valor = (formIdentidade as any)[campo]
+    if (identidade) {
+      await supabase.from('empresa_identidade').update({ [campo]: valor, updated_at: new Date().toISOString() }).eq('client_id', empresa.id)
+    } else {
+      await supabase.from('empresa_identidade').insert({ client_id: empresa.id, [campo]: valor })
+    }
+    setEditando(null); fetchData()
+  }, [empresa, formIdentidade, identidade, fetchData])
+
+  const handleSalvarLista = useCallback(async (campo: string, novosItens: string[]) => {
+    if (!empresa) return
+    const supabase = createClient()
+    if (identidade) {
+      await supabase.from('empresa_identidade').update({ [campo]: novosItens, updated_at: new Date().toISOString() }).eq('client_id', empresa.id)
+    } else {
+      await supabase.from('empresa_identidade').insert({ client_id: empresa.id, [campo]: novosItens })
+    }
+    if (campo === 'mercado_posicionamento') setMercadoItens(novosItens)
     fetchData()
+  }, [empresa, identidade, fetchData])
+
+  async function handleSalvarValor(e: React.FormEvent) {
+    e.preventDefault()
+    if (!empresa || !textoValor.trim()) return
+    setSalvandoValor(true)
+    const supabase = createClient()
+    if (modalValor.valor) {
+      await supabase.from('empresa_valores').update({ texto: textoValor.trim(), updated_at: new Date().toISOString() }).eq('id', modalValor.valor.id)
+    } else {
+      await supabase.from('empresa_valores').insert({ client_id: empresa.id, texto: textoValor.trim(), ordem: valores.length })
+    }
+    setSalvandoValor(false)
+    setModalValor({ open: false, valor: null })
+    setTextoValor('')
+    fetchValores()
+  }
+
+  async function handleExcluirValor(id: string) {
+    const supabase = createClient()
+    await supabase.from('empresa_valores').delete().eq('id', id)
+    fetchValores()
+  }
+
+  function handleAbrirModalValor(valor?: any) {
+    setModalValor({ open: true, valor: valor ?? null })
+    setTextoValor(valor?.texto ?? '')
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-10 w-64 rounded-xl bg-secondary" />
+        <div className="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr] gap-4">
+          <div className="space-y-4">
+            <div className="h-40 rounded-2xl bg-secondary" />
+            <div className="h-28 rounded-2xl bg-secondary" />
+          </div>
+          <div className="h-96 rounded-2xl bg-secondary" />
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="space-y-6">
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-            <Target className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">Objetivos</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {empresa?.company_name} — Gerencie os objetivos estratégicos
-            </p>
-          </div>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+          <Heart className="w-5 h-5 text-primary" />
         </div>
-        <button
-          onClick={() => setModalCriar(true)}
-          className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
-        >
-          <Plus className="w-4 h-4" /> Novo Objetivo
-        </button>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Nosso jeito de ser</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {empresa?.company_name} — cultura, mercado e visão de futuro
+          </p>
+        </div>
       </div>
 
-      {/* Lista */}
-      {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 rounded-2xl bg-secondary animate-pulse" />
-          ))}
-        </div>
-      ) : objetivos.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center">
-          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
-            <Target className="w-6 h-6 text-muted-foreground/40" />
-          </div>
-          <p className="text-muted-foreground text-sm mb-3">
-            Nenhum objetivo cadastrado ainda.
-          </p>
-          <button
-            onClick={() => setModalCriar(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
-          >
-            <Plus className="w-4 h-4" /> Criar primeiro objetivo
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {objetivos.map((objetivo) => (
-            <div
-              key={objetivo.id}
-              className={`bg-card border border-border rounded-2xl p-4 flex items-start justify-between gap-3 hover:shadow-sm transition-shadow ${objetivo.concluido ? 'opacity-70' : ''}`}
-            >
-              <div className="flex items-start gap-3 flex-1 min-w-0">
-                <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <Target className="w-4 h-4 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className={`text-sm font-semibold text-foreground ${objetivo.concluido ? 'line-through' : ''}`}>
-                      {objetivo.titulo}
-                    </p>
-                    {objetivo.concluido && (
-                      <span className="text-[10px] px-2 py-0.5 bg-secondary text-muted-foreground rounded-full shrink-0">
-                        Finalizado — não aparece em OKRs
-                      </span>
-                    )}
-                  </div>
-                  {objetivo.descricao && (
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                      {objetivo.descricao}
-                    </p>
-                  )}
-                  {objetivo.start_date && objetivo.end_date && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(objetivo.start_date).toLocaleDateString('pt-BR')} →{' '}
-                      {new Date(objetivo.end_date).toLocaleDateString('pt-BR')}
-                    </p>
-                  )}
-                </div>
-              </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr] gap-4 items-start">
+        <div className="flex flex-col gap-4 min-w-0">
 
-              <div className="relative shrink-0">
-                <button
-                  onClick={() => setMenuOpen(menuOpen === objetivo.id ? null : objetivo.id)}
-                  className="p-1.5 rounded-md hover:bg-accent transition-colors text-muted-foreground"
-                >
-                  <MoreHorizontal className="w-4 h-4" />
-                </button>
-                {menuOpen === objetivo.id && (
-                  <div className="absolute right-0 top-8 bg-popover border border-border rounded-xl shadow-lg z-10 min-w-36 py-1">
-                    <button
-                      onClick={() => { setModalEditar({ open: true, objetivo }); setMenuOpen(null) }}
-                      className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors"
-                    >
-                      Editar
-                    </button>
-                    {objetivo.concluido && (
-                      <button
-                        onClick={() => { handleReativar(objetivo); setMenuOpen(null) }}
-                        className="w-full flex items-center gap-1.5 text-left px-3 py-2 text-xs text-primary hover:bg-accent transition-colors"
-                      >
-                        <ArchiveRestore className="w-3.5 h-3.5" /> Reativar
-                      </button>
-                    )}
-                    <button
-                      onClick={() => { setModalExcluir({ open: true, objetivo, loading: false, erro: null }); setMenuOpen(null) }}
-                      className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-destructive"
-                    >
-                      Excluir
+          {/* VISÃO DE FUTURO */}
+          <div data-tour="tour-visao-futuro" className="relative rounded-2xl overflow-hidden shrink-0 shadow-glass-lg"
+            style={{ background: 'radial-gradient(680px 280px at 88% -15%, rgba(99,132,245,0.35), transparent 60%), linear-gradient(150deg, #0d1330 0%, #1b2c6e 62%, #0d1330 100%)' }}>
+            <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+            <div className="relative z-10 p-5 md:p-6">
+              <div className="group relative">
+                {editando === 'visao_futuro' ? (
+                  <div className="space-y-2">
+                    <textarea value={formIdentidade.visao_futuro} onChange={(e) => handleChange('visao_futuro', e.target.value)} rows={2}
+                      placeholder="Qual é o norte de longo prazo da empresa?"
+                      className="w-full px-3 py-2 text-sm rounded-xl border border-white/20 bg-white/10 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/30 resize-none" autoFocus />
+                    <div className="flex gap-2">
+                      <button onClick={() => handleSalvarTexto('visao_futuro')} className="flex items-center gap-1 px-3 py-1.5 bg-white text-gray-900 rounded-lg text-xs font-semibold"><Check className="w-3 h-3" /> Salvar</button>
+                      <button onClick={handleCancelar} className="flex items-center gap-1 px-3 py-1.5 border border-white/20 rounded-lg text-xs text-white/60"><X className="w-3 h-3" /> Cancelar</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative flex items-center gap-3">
+                    <div className="w-0.5 self-stretch bg-blue-400/60 rounded-full shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-[9px] font-semibold text-blue-300/70 uppercase tracking-widest mb-0.5">Visão de Futuro</p>
+                      <p className={`text-sm font-light leading-relaxed ${formIdentidade.visao_futuro ? 'text-white/90' : 'text-white/25 italic'}`}>
+                        {formIdentidade.visao_futuro || 'Clique no lápis para adicionar a visão de futuro...'}
+                      </p>
+                    </div>
+                    <button onClick={() => handleEdit('visao_futuro')} className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-white/10 shrink-0">
+                      <Edit2 className="w-3.5 h-3.5 text-white/40" />
                     </button>
                   </div>
                 )}
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
 
-      {/* Modal Criar */}
-      {modalCriar && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setModalCriar(false)} />
-          <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
-            <h2 className="text-base font-semibold text-foreground mb-4">Novo Objetivo</h2>
-            <form onSubmit={handleCriar} className="space-y-3">
-              <div>
-                <label className="text-xs font-medium text-foreground">Título</label>
-                <input
-                  type="text"
-                  value={formCriar.titulo}
-                  onChange={(e) => setFormCriar({ ...formCriar, titulo: e.target.value })}
-                  required
-                  placeholder="Ex: Aumentar satisfação dos clientes"
-                  className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                />
+          {/* MERCADO + NOTA — banda única, lado a lado */}
+          <div data-tour="tour-mercado" className="glass-panel rounded-2xl overflow-hidden grid grid-cols-1 md:grid-cols-[1.3fr_1fr]">
+            <div className="p-4 md:p-5">
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="w-6 h-6 rounded-md bg-blue-50 flex items-center justify-center border border-blue-100 shrink-0">
+                  <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-foreground">Mercado</p>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Onde a empresa atua</p>
+                </div>
               </div>
+              <ChipList campo="mercado_posicionamento" itens={mercadoItens} placeholder="Adicione onde atuamos..." onSalvar={handleSalvarLista} />
+            </div>
+            <div className="p-4 md:p-5 border-t md:border-t-0 md:border-l border-border flex flex-col">
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="w-6 h-6 rounded-md bg-violet-50 flex items-center justify-center border border-violet-100 shrink-0">
+                  <MessageCircle className="w-3.5 h-3.5 text-violet-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-foreground">Nota fixada</p>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Recado da equipe</p>
+                </div>
+              </div>
+              {empresa && <NotaFixada campo="mercado_posicionamento" clientId={empresa.id} userId={userId} nomeUsuario={nomeUsuario} />}
+            </div>
+          </div>
+
+        </div>
+
+        {/* ═══ COLUNA DIREITA — VALORES DA EMPRESA ═══ */}
+        <div data-tour="tour-valores" className="glass-panel rounded-2xl overflow-hidden flex flex-col">
+          <div className="relative px-5 py-5 border-b border-border shrink-0 overflow-hidden"
+            style={{ background: 'linear-gradient(160deg, rgba(139,92,246,0.14), rgba(139,92,246,0.03) 70%)' }}>
+            <div className="absolute inset-0 opacity-[0.35] pointer-events-none"
+              style={{
+                backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(139,92,246,0.35) 1px, transparent 0)',
+                backgroundSize: '16px 16px',
+                maskImage: 'linear-gradient(180deg, black, transparent)',
+                WebkitMaskImage: 'linear-gradient(180deg, black, transparent)',
+              }} />
+            <div className="relative flex items-center gap-1.5 text-violet-600">
+              <Sparkles className="w-3 h-3" />
+              <p className="text-[9.5px] font-bold uppercase tracking-widest">Cultura</p>
+            </div>
+            <p className="relative font-display text-lg font-bold text-foreground mt-1 tracking-tight">Valores</p>
+            <p className="relative text-[11px] text-muted-foreground mt-1 leading-relaxed">
+              O que guia as decisões {empresa?.company_name ? `da ${empresa.company_name}` : 'da empresa'} no dia a dia.
+            </p>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-2">
+            {valores.length === 0 && (
+              <p className="text-xs text-muted-foreground/60 italic px-3 py-3">Nenhum valor cadastrado ainda.</p>
+            )}
+            {valores.map((valor, idx) => (
+              <div key={valor.id} className="group relative flex items-start gap-3 px-3 py-3 rounded-xl hover:bg-accent/60 transition-colors border-b border-border/60 last:border-b-0">
+                <span className="text-xs font-extrabold text-violet-600 w-5 shrink-0 tabular-nums">{toRoman(idx + 1)}</span>
+                <p className="flex-1 text-xs font-semibold text-foreground leading-snug pr-8">{valor.texto}</p>
+                <div className="absolute right-2 top-2.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => handleAbrirModalValor(valor)} className="p-1 rounded-md hover:bg-accent transition-colors">
+                    <Edit2 className="w-3 h-3 text-muted-foreground" />
+                  </button>
+                  <button onClick={() => handleExcluirValor(valor.id)} className="p-1 rounded-md hover:bg-accent transition-colors">
+                    <Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button onClick={() => handleAbrirModalValor()}
+            className="mx-3 mb-3 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed border-border text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors text-xs font-semibold shrink-0">
+            <Plus className="w-3.5 h-3.5" /> Adicionar valor
+          </button>
+        </div>
+
+      </div>
+
+      {/* Modal Cadastrar/Editar Valor */}
+      {modalValor.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => { setModalValor({ open: false, valor: null }); setTextoValor('') }} />
+          <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
+            <h2 className="text-sm font-semibold text-foreground mb-4">
+              {modalValor.valor ? 'Editar Valor' : 'Cadastrar Valor'}
+            </h2>
+            <form onSubmit={handleSalvarValor} className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-foreground">Descrição (opcional)</label>
+                <label className="text-xs font-medium text-foreground">Valor da empresa</label>
                 <textarea
-                  value={formCriar.descricao}
-                  onChange={(e) => setFormCriar({ ...formCriar, descricao: e.target.value })}
+                  value={textoValor}
+                  onChange={(e) => setTextoValor(e.target.value)}
                   rows={3}
-                  placeholder="Descreva o objetivo..."
+                  placeholder="Ex: Foco no cliente, Integridade, Inovação..."
+                  required autoFocus
                   className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                 />
               </div>
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setModalCriar(false)}
-                  className="flex-1 py-2 px-4 border border-border rounded-xl text-sm text-muted-foreground hover:bg-accent transition-colors"
-                >
+              <div className="flex gap-2 pt-1">
+                <button type="button" onClick={() => { setModalValor({ open: false, valor: null }); setTextoValor('') }}
+                  className="flex-1 py-2 px-4 border border-border rounded-xl text-sm text-muted-foreground hover:bg-accent transition-colors">
                   Cancelar
                 </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
-                >
-                  Criar
+                <button type="submit" disabled={salvandoValor || !textoValor.trim()}
+                  className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity">
+                  {salvandoValor ? 'Salvando...' : 'Salvar'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-
-      {/* Modal Editar */}
-      {modalEditar.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setModalEditar({ open: false, objetivo: null })} />
-          <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
-            <h2 className="text-base font-semibold text-foreground mb-4">Editar Objetivo</h2>
-            <form onSubmit={handleEditar} className="space-y-3">
-              <div>
-                <label className="text-xs font-medium text-foreground">Título</label>
-                <input
-                  type="text"
-                  value={formEditar.titulo}
-                  onChange={(e) => setFormEditar({ ...formEditar, titulo: e.target.value })}
-                  required
-                  className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-foreground">Descrição (opcional)</label>
-                <textarea
-                  value={formEditar.descricao}
-                  onChange={(e) => setFormEditar({ ...formEditar, descricao: e.target.value })}
-                  rows={3}
-                  className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-                />
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setModalEditar({ open: false, objetivo: null })}
-                  className="flex-1 py-2 px-4 border border-border rounded-xl text-sm text-muted-foreground hover:bg-accent transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
-                >
-                  Salvar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      <ModalConfirmarExclusao
-        open={modalExcluir.open}
-        titulo="Excluir Objetivo"
-        descricao="Todos os KRs e táticas vinculados também serão excluídos."
-        loading={modalExcluir.loading}
-        erro={modalExcluir.erro}
-        onConfirmar={handleExcluir}
-        onClose={() => setModalExcluir({ open: false, objetivo: null, loading: false, erro: null })}
-      />
     </div>
   )
 }

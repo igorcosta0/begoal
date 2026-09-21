@@ -7,22 +7,22 @@ import { PILARES_CULTURAIS, VERTICAIS_CTZ } from '@/components/avaliacao/ModalAv
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  Compass, Home, Target, Flag, Zap, Activity, Map, Users, ClipboardList, Library,
+  Compass, Home, Target, Heart, Zap, Activity, Map, Users, ClipboardList, Library,
   ArrowRight, LogIn, LayoutList, Sparkles, ChevronDown, MapPinned,
 } from 'lucide-react'
 
 const AREAS = [
   {
     href: '/inicio', icon: Home, titulo: 'Início',
-    descricao: 'Sua página de entrada: visão de futuro, mercado, valores da empresa e o andamento geral dos OKRs, tudo num só lugar.',
+    descricao: 'Sua página de entrada: um resumo rápido da empresa (KRs ativos, progresso geral) e a grade de módulos pra navegar pelo resto da plataforma.',
   },
   {
     href: '/okr', icon: Target, titulo: 'OKRs',
-    descricao: 'Onde os Objetivos e seus Key Results (KRs) vivem de fato: lançar resultados, acompanhar progresso, arquivar o que já foi concluído.',
+    descricao: 'Onde os Objetivos e seus Key Results (KRs) vivem de fato: criar objetivo, lançar resultados, acompanhar progresso, arquivar o que já foi concluído.',
   },
   {
-    href: '/objetivo', icon: Flag, titulo: 'Objetivos',
-    descricao: 'Lista enxuta só dos objetivos estratégicos — bom pra criar ou editar um objetivo sem entrar no detalhe dos KRs.',
+    href: '/objetivo', icon: Heart, titulo: 'Nosso jeito de ser',
+    descricao: 'Identidade da empresa: visão de futuro, mercado de atuação (com um mural de recados fixados) e os valores que guiam o dia a dia.',
   },
   {
     href: '/taticas', icon: Zap, titulo: 'Táticas',

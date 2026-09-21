@@ -28,6 +28,51 @@
 
 ## Log de Sessões
 
+### 2026-09-21
+- Dois pedidos independentes do Igor, sem AskUserQuestion prévio (auto mode, ambos claros o
+  suficiente pra decidir sozinho, mas registrando as escolhas feitas no meio do caminho):
+  1. **Página "Objetivos" (`/objetivo`) reformulada em "Nosso jeito de ser"** — parou de listar/
+     criar objetivos estratégicos (isso nunca foi a única forma de gerenciar objetivo: `/okr` já
+     tinha CRUD completo de objetivo embutido desde sempre — `ModalCriarObjetivo`/
+     `ModalEditarObjetivo` dentro de `okr/page.tsx` —, então a página antiga era redundante, não
+     uma funcionalidade única sendo removida). Rota mantida (`/objetivo`, só o nome mudou, pra não
+     quebrar link nenhum), agora mostra Visão de Futuro, Mercado (+ mural "Nota fixada") e Valores
+     da empresa — os 4 blocos que antes viviam na Início. `Sidebar`/`Topbar` e o tile da grade de
+     módulos em `inicio/page.tsx` atualizados (label "Nosso jeito de ser", ícone trocado de `Flag`
+     pra `Heart`); `guia/page.tsx` também.
+  2. **Movidos de verdade** — `ChipList`/`NotaFixada` (componentes) e todo o estado/handlers de
+     `empresa_identidade`/`empresa_valores` saíram de `inicio/page.tsx` e foram pra
+     `objetivo/page.tsx` (não duplicados). Início ficou mais enxuta: hero (saudação + KPIs +
+     campanha, sem mais o bloco de Visão de Futuro dentro dele) + grade de módulos + o gráfico de
+     desempenho de OKRs — que virou o único conteúdo do "corpo" da página, então o grid de duas
+     colunas (`lg:grid-cols-[1.7fr_1fr]`) virou uma coluna só.
+  3. `useTourStore.ts` reordenado pra não ficar pulando entre `/inicio` e `/objetivo` no meio do
+     tour: hero e OKRs (ambos em `/inicio`) ficam juntos, depois um passo novo de introdução
+     ("Nosso jeito de ser") e os dois passos de mercado/valores, todos os 3 já em `/objetivo`, só
+     depois seguindo pro resto do tour. Texto do passo do hero perdeu a menção a "visão de futuro"
+     (não mora mais lá).
+  4. **Avaliação — detalhamento de maior/menor nota por vertical** (aba "Gráficos" do ciclo, pedido
+     de mostrar isso "baseado nas perguntas das avaliações"): os gráficos existentes (`Concluídas ×
+     Em aberto`, `Média Cultural × Performance`) só tinham a média JÁ PRONTA por avaliação (colunas
+     `media_cultural_gestor`/`calibragem` etc. em `avaliacoes`), sem granularidade de pergunta —
+     precisou de uma RPC nova, `get_detalhamento_perguntas_ciclo` (migration
+     `PENDENTE_20260921000000_avaliacao_detalhamento_perguntas.sql`, **ainda não rodada no
+     Supabase, avisar o Igor antes do próximo push**), que devolve uma linha por
+     (avaliação, pilar cultural) ou (avaliação, critério técnico) com a MESMA cascata "nota final
+     conhecida até agora" (`nota_calibragem ?? nota_gestor`) e a MESMA máscara de coluna que
+     `get_avaliacoes_por_ciclo` já usa (`pode_ver_lado_gestor`/`pode_ver_lado_calibragem`) — sem
+     isso a granularidade nova vazaria nota pra quem a tela hoje já esconde. Front-end
+     (`GraficosAvaliacao.tsx`) agrega por (vertical, pergunta) e acha a maior/menor média — cultural
+     (4 pilares, compartilhados entre TODAS as verticais) e técnica (critérios exclusivos de cada
+     vertical, `VERTICAIS_CTZ`) tratados separado, senão a comparação "melhor pergunta" misturaria
+     coisas incomparáveis. Aparece como card novo (`md:col-span-2`) dentro do grid dos 2 gráficos
+     existentes, um mini-card por vertical, respeitando o mesmo filtro de vertical que os outros 2
+     já tinham (pedido de 11/09). Só front-end + a migration nova — nenhuma tabela/RLS existente foi
+     tocada, `get_calibragem_ciclo_cultural/tecnica` (usadas no Painel de Calibragem) não mudaram.
+  5. `npm run type-check` limpo em cada etapa. **Nada commitado/enviado ainda nesta sessão** —
+     pendente decisão do Igor sobre quando dar push (a migration do item 4 precisa rodar no
+     Supabase antes, mesma regra de sempre).
+
 ### 2026-09-16
 - Continuação direta do redesenho de 15/09 (que ainda estava só local, sem push, aguardando
   aprovação visual). Pedido do Igor: esquecer o caminho do token-swap glassmorphism e seguir, como

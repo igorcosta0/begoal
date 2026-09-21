@@ -1279,7 +1279,7 @@ export default function AvaliacaoPage() {
                     </button>
                   </div>
 
-                  {abaCiclo === 'graficos' && <GraficosAvaliacao avaliacoes={avaliacoes} />}
+                  {abaCiclo === 'graficos' && <GraficosAvaliacao avaliacoes={avaliacoes} cicloId={ciclo.id} />}
 
                   {/* Avaliações existentes */}
                   {abaCiclo === 'avaliacoes' && avaliacoes.length > 0 && (

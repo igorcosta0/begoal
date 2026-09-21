@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   BarChart,
   Bar,
@@ -13,7 +13,9 @@ import {
   LabelList,
 } from 'recharts'
 import { cn } from '@/lib/utils'
-import { VERTICAIS_CTZ } from '@/components/avaliacao/ModalAvaliacao'
+import { PILARES_CULTURAIS, VERTICAIS_CTZ } from '@/components/avaliacao/ModalAvaliacao'
+import { getDetalhamentoPerguntasCiclo, type DetalhamentoPergunta } from '@/lib/queries/avaliacao'
+import { ArrowDown, ArrowUp } from 'lucide-react'
 
 // Só os campos que os dois gráficos precisam — qualquer avaliação do ciclo
 // (padrao ou pares) serve, é o mesmo array já exibido na lista "Avaliações".
@@ -34,6 +36,26 @@ interface AvaliacaoParaGrafico {
 
 interface Props {
   avaliacoes: AvaliacaoParaGrafico[]
+  cicloId: string
+}
+
+interface PerguntaAgregada {
+  chave: string
+  label: string
+  media: number
+  n: number
+}
+
+function PerguntaLinha({ icon: Icon, cor, item }: { icon: typeof ArrowUp; cor: string; item: PerguntaAgregada }) {
+  return (
+    <div className="flex items-start gap-1.5 mb-1 last:mb-0">
+      <Icon className={cn('w-3 h-3 mt-0.5 shrink-0', cor)} />
+      <p className="text-[11px] text-foreground leading-snug flex-1">
+        {item.label} <span className="font-mono font-semibold">{item.media.toFixed(2)}</span>
+        <span className="text-muted-foreground"> · {item.n} nota(s)</span>
+      </p>
+    </div>
+  )
 }
 
 // Azul/âmbar (concluída/aberta) e índigo/ciano (cultural/performance) —
@@ -58,12 +80,28 @@ const tooltipStyle = {
   fontSize: '12px',
 }
 
-export default function GraficosAvaliacao({ avaliacoes }: Props) {
+export default function GraficosAvaliacao({ avaliacoes, cicloId }: Props) {
   // Pedido (11/09/2026): filtrar os dois gráficos por vertical — null =
   // "Todas". Lista de opções vem das verticais que de fato aparecem neste
   // ciclo (não de VERTICAIS_CTZ inteiro), pra não oferecer filtro pra
   // vertical que não tem nenhuma avaliação aqui.
   const [verticalAtiva, setVerticalAtiva] = useState<string | null>(null)
+
+  // Pedido (21/09/2026): detalhamento de maior/menor nota por vertical,
+  // baseado nas perguntas (pilares culturais + critérios técnicos) das
+  // avaliações — carregado à parte porque vem de uma RPC própria
+  // (get_detalhamento_perguntas_ciclo), granular por pergunta, diferente do
+  // array `avaliacoes` (que só tem as médias já prontas por avaliação).
+  const [detalhamento, setDetalhamento] = useState<DetalhamentoPergunta[]>([])
+
+  useEffect(() => {
+    let cancelado = false
+    if (!cicloId) return
+    getDetalhamentoPerguntasCiclo(cicloId).then(({ data }) => {
+      if (!cancelado) setDetalhamento(data)
+    })
+    return () => { cancelado = true }
+  }, [cicloId])
 
   const verticaisPresentes = useMemo(() => {
     const set = new Set(avaliacoes.map((a) => a.vertical).filter((v): v is string => !!v))
@@ -114,6 +152,58 @@ export default function GraficosAvaliacao({ avaliacoes }: Props) {
       totalTecnica: tecnicas.length,
     }
   }, [avaliacoesFiltradas])
+
+  // Detalhamento por vertical: agrupa as notas por (vertical, pergunta) e acha
+  // a pergunta de maior e a de menor média em cada grupo — cultural (pilares,
+  // compartilhados entre verticais) e técnica (critérios, exclusivos de cada
+  // vertical) são tratados separado, senão a comparação não faria sentido.
+  const detalhamentoPorVertical = useMemo(() => {
+    const porVertical = new Map<string, { cultural: Map<string, number[]>; tecnica: Map<string, number[]> }>()
+
+    for (const row of detalhamento) {
+      if (verticalAtiva && row.vertical !== verticalAtiva) continue
+      if (row.nota === null) continue
+      if (!porVertical.has(row.vertical)) porVertical.set(row.vertical, { cultural: new Map(), tecnica: new Map() })
+      const grupo = porVertical.get(row.vertical)!
+      if (row.tipo === 'cultural' && row.pilar !== null) {
+        const chave = String(row.pilar)
+        if (!grupo.cultural.has(chave)) grupo.cultural.set(chave, [])
+        grupo.cultural.get(chave)!.push(row.nota)
+      } else if (row.tipo === 'tecnica' && row.criterio_key) {
+        if (!grupo.tecnica.has(row.criterio_key)) grupo.tecnica.set(row.criterio_key, [])
+        grupo.tecnica.get(row.criterio_key)!.push(row.nota)
+      }
+    }
+
+    function melhorPior(mapa: Map<string, number[]>, labelFn: (chave: string) => string) {
+      const agregados: PerguntaAgregada[] = Array.from(mapa.entries()).map(([chave, notas]) => ({
+        chave,
+        label: labelFn(chave),
+        media: media(notas) ?? 0,
+        n: notas.length,
+      }))
+      if (agregados.length === 0) return null
+      const ordenado = [...agregados].sort((a, b) => b.media - a.media)
+      return { melhor: ordenado[0], pior: ordenado[ordenado.length - 1] }
+    }
+
+    const labelCultural = (chave: string) => {
+      const pilar = PILARES_CULTURAIS.find((p) => p.numero === Number(chave))
+      return pilar ? `Pilar ${pilar.numero} — ${pilar.titulo}` : `Pilar ${chave}`
+    }
+
+    const resultado = Array.from(porVertical.entries()).map(([vertical, grupo]) => {
+      const labelTecnica = (chave: string) => VERTICAIS_CTZ[vertical]?.criterios.find((c) => c.key === chave)?.label ?? chave
+      return {
+        vertical,
+        label: VERTICAIS_CTZ[vertical]?.label ?? vertical,
+        cultural: melhorPior(grupo.cultural, labelCultural),
+        tecnica: melhorPior(grupo.tecnica, labelTecnica),
+      }
+    })
+
+    return resultado.sort((a, b) => a.label.localeCompare(b.label))
+  }, [detalhamento, verticalAtiva])
 
   if (avaliacoes.length === 0) {
     return (
@@ -224,6 +314,40 @@ export default function GraficosAvaliacao({ avaliacoes }: Props) {
               Cultural: {totalCultural} nota(s) · Performance: {totalTecnica} nota(s)
             </p>
           </div>
+
+          {detalhamentoPorVertical.length > 0 && (
+            <div className="rounded-2xl border border-border bg-card p-4 md:col-span-2">
+              <p className="text-sm font-semibold text-foreground">Maior e menor nota por vertical</p>
+              <p className="text-xs text-muted-foreground mt-0.5 mb-3">
+                Pergunta (pilar cultural ou critério técnico) com a média mais alta e mais baixa em cada vertical · nota final calibrada quando já existe, senão a do avaliador
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                {detalhamentoPorVertical.map((v) => (
+                  <div key={v.vertical} className="rounded-xl border border-border/70 bg-background p-3">
+                    <p className="text-xs font-semibold text-foreground mb-2">{v.label}</p>
+                    {v.cultural && (
+                      <div className="mb-2.5">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide mb-1" style={{ color: COR_CULTURAL }}>Cultural</p>
+                        <PerguntaLinha icon={ArrowUp} cor="text-emerald-600" item={v.cultural.melhor} />
+                        {v.cultural.pior.chave !== v.cultural.melhor.chave && (
+                          <PerguntaLinha icon={ArrowDown} cor="text-red-600" item={v.cultural.pior} />
+                        )}
+                      </div>
+                    )}
+                    {v.tecnica && (
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide mb-1" style={{ color: COR_TECNICA }}>Performance técnica</p>
+                        <PerguntaLinha icon={ArrowUp} cor="text-emerald-600" item={v.tecnica.melhor} />
+                        {v.tecnica.pior.chave !== v.tecnica.melhor.chave && (
+                          <PerguntaLinha icon={ArrowDown} cor="text-red-600" item={v.tecnica.pior} />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

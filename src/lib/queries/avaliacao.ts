@@ -332,6 +332,26 @@ export async function getCalibragemCicloTecnica(cicloId: string) {
   return supabase.rpc('get_calibragem_ciclo_tecnica', { p_ciclo_id: cicloId })
 }
 
+// Detalhamento de maior/menor nota por vertical (pedido 21/09/2026, aba
+// "Gráficos"): uma linha por (avaliação, pilar cultural) ou (avaliação,
+// critério técnico) — a agregação por vertical/pergunta fica no front-end
+// (GraficosAvaliacao). Mesma máscara de coluna de get_avaliacoes_por_ciclo
+// (migration PENDENTE_20260921000000): quem não tem pode_ver_lado_gestor/
+// calibragem recebe nota null, não a linha inteira escondida.
+export interface DetalhamentoPergunta {
+  vertical: string
+  tipo: 'cultural' | 'tecnica'
+  pilar: number | null
+  criterio_key: string | null
+  nota: number | null
+}
+
+export async function getDetalhamentoPerguntasCiclo(cicloId: string) {
+  const supabase = createClient()
+  const { data, error } = await supabase.rpc('get_detalhamento_perguntas_ciclo', { p_ciclo_id: cicloId })
+  return { data: (data ?? []) as DetalhamentoPergunta[], error }
+}
+
 // Vertical da avaliação COMUM (tipo='padrao') de um funcionário no ciclo —
 // usada só pra Avaliação de Pares travar a vertical do par na vertical de
 // quem ele avalia (ver ModalAvaliacao.tsx). security definer no banco:

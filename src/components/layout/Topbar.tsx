@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { cn, isEmpresaCTZ, souPilotoAutoconhecimento } from '@/lib/utils'
 import {
-  Target, Flag, Zap, Activity, Users, Settings,
+  Target, Heart, Zap, Activity, Users, Settings,
   User, LogOut, Building2, Home, ArrowLeftRight, Upload, Map, ClipboardList,
   Library, Compass, Sparkles, Briefcase, ChevronDown,
 } from 'lucide-react'
@@ -56,7 +56,7 @@ export default function Topbar({ permissionLevel, userEmail }: TopbarProps) {
     {
       key: 'estrategia', label: 'Estratégia', icon: Map,
       links: [
-        { href: '/objetivo', label: 'Objetivos', icon: Flag },
+        { href: '/objetivo', label: 'Nosso jeito de ser', icon: Heart },
         { href: '/okr', label: 'OKRs', icon: Target },
         { href: '/taticas', label: 'Táticas', icon: Zap },
         { href: '/estrategia', label: 'Estratégia', icon: Map },
