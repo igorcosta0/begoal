@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
-import { getMeuPerfilPublico, upsertMeuPerfilPublico } from '@/lib/queries/perfilPublico'
-import { User, Globe } from 'lucide-react'
+import { getMeuPerfilPublico, upsertMeuPerfilPublico, uploadMinhaFotoPerfil } from '@/lib/queries/perfilPublico'
+import Avatar from '@/components/Avatar'
+import { User, Globe, Camera } from 'lucide-react'
 
 const LIMITE_CAMPO_PUBLICO = 1000
 
@@ -35,6 +36,13 @@ export default function PerfilPage() {
   })
   const [salvandoPublico, setSalvandoPublico] = useState(false)
 
+  // Foto de perfil (pedido 21/09/2026) — separada do form de texto acima:
+  // salva na hora que o arquivo é escolhido, sem precisar de um botão
+  // "Salvar" à parte.
+  const [fotoUrl, setFotoUrl] = useState<string | null>(null)
+  const [enviandoFoto, setEnviandoFoto] = useState(false)
+  const inputFotoRef = useRef<HTMLInputElement>(null)
+
   useEffect(() => {
     async function fetchPerfil() {
       const supabase = createClient()
@@ -60,11 +68,36 @@ export default function PerfilPage() {
           habilidades: perfil.habilidades ?? '',
           sonhos: perfil.sonhos ?? '',
         })
+        setFotoUrl(perfil.foto_url ?? null)
       }
       setLoading(false)
     }
     fetchPerfil()
   }, [])
+
+  async function handleEscolherFoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const arquivo = e.target.files?.[0]
+    e.target.value = ''
+    if (!arquivo) return
+    if (!arquivo.type.startsWith('image/')) {
+      setMensagem({ tipo: 'erro', texto: 'Escolha um arquivo de imagem (JPG, PNG...).' })
+      return
+    }
+    if (arquivo.size > 5 * 1024 * 1024) {
+      setMensagem({ tipo: 'erro', texto: 'A imagem precisa ter até 5MB.' })
+      return
+    }
+    setEnviandoFoto(true)
+    setMensagem(null)
+    const { url, error } = await uploadMinhaFotoPerfil(arquivo)
+    if (error) {
+      setMensagem({ tipo: 'erro', texto: `Erro ao enviar a foto: ${error}` })
+    } else {
+      setFotoUrl(url)
+      setMensagem({ tipo: 'sucesso', texto: 'Foto atualizada!' })
+    }
+    setEnviandoFoto(false)
+  }
 
   async function handleSalvarPerfilPublico(e: React.FormEvent) {
     e.preventDefault()
@@ -157,6 +190,35 @@ export default function PerfilPage() {
       {/* Dados pessoais */}
       <div className="bg-card border border-border rounded-2xl p-6">
         <h2 className="text-sm font-semibold text-foreground mb-4">Dados pessoais</h2>
+
+        <div className="flex items-center gap-4 mb-5">
+          <div className="relative shrink-0">
+            <Avatar nome={form.full_name || form.email} fotoUrl={fotoUrl} sizeClassName="w-16 h-16 text-xl" />
+            <button
+              type="button"
+              onClick={() => inputFotoRef.current?.click()}
+              disabled={enviandoFoto}
+              className="absolute -right-1 -bottom-1 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-sm hover:opacity-90 disabled:opacity-50 transition-opacity"
+              title="Alterar foto"
+            >
+              <Camera className="w-3 h-3" />
+            </button>
+            <input
+              ref={inputFotoRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleEscolherFoto}
+            />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Foto de perfil</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {enviandoFoto ? 'Enviando...' : 'Aparece onde quer que seu nome apareça pra outros colegas.'}
+            </p>
+          </div>
+        </div>
+
         <form onSubmit={handleSalvarPerfil} className="space-y-4">
           <div>
             <label className="text-xs font-medium text-foreground">Nome completo</label>

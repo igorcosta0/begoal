@@ -1,11 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
-import { cn, isEmpresaCTZ, souPilotoAutoconhecimento } from '@/lib/utils'
-import { getCargosPerfil, type CargoPerfilCompleto } from '@/lib/queries/cargosPerfil'
-import { Briefcase, ChevronDown, Search, Target, Clock, GraduationCap, CheckCircle2, Layers } from 'lucide-react'
+import { cn, isEmpresaCTZ, souPilotoAutoconhecimento, mensagemErroExclusao } from '@/lib/utils'
+import { getCargosPerfil, deleteCargoPerfil, type CargoPerfilCompleto } from '@/lib/queries/cargosPerfil'
+import ModalCargoPerfil from '@/components/cargos/ModalCargoPerfil'
+import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
+import { Briefcase, ChevronDown, Search, Target, Clock, GraduationCap, CheckCircle2, Layers, Plus, Pencil, Trash2 } from 'lucide-react'
 
 // Aba "Cargos" (pedido 09/09/2026) — catálogo de perfis de cargo importado da
 // planilha "Cargos Concretize.xlsx" (mesma fonte usada em 01/09/2026 pro
@@ -111,39 +113,53 @@ export default function CargosPage() {
   const [expandido, setExpandido] = useState<string | null>(null)
   const [nivelPorCargo, setNivelPorCargo] = useState<Record<string, string>>({})
 
-  useEffect(() => {
+  const [modalCargo, setModalCargo] = useState<{ open: boolean; cargo: CargoPerfilCompleto | null }>({ open: false, cargo: null })
+  const [modalExcluir, setModalExcluir] = useState<{ open: boolean; cargo: CargoPerfilCompleto | null; loading: boolean; erro: string | null }>({ open: false, cargo: null, loading: false, erro: null })
+
+  const carregar = useCallback(async () => {
     if (!ctz) {
       setLoading(false)
       return
     }
-    async function carregar() {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user || !empresa) {
-        setLoading(false)
-        return
-      }
-      const { data: role } = await supabase
-        .from('user_company_roles')
-        .select('permission_level')
-        .eq('user_id', user.id)
-        .eq('client_id', empresa.id)
-        .maybeSingle()
-
-      const liberado = role?.permission_level === 'administrador' || souPilotoAutoconhecimento(user.email)
-      setAcessoLiberado(liberado)
-      if (!liberado) {
-        setLoading(false)
-        return
-      }
-
-      const { data, error } = await getCargosPerfil(empresa.id)
-      if (error) setErro(error)
-      setCargos(data)
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user || !empresa) {
       setLoading(false)
+      return
     }
+    const { data: role } = await supabase
+      .from('user_company_roles')
+      .select('permission_level')
+      .eq('user_id', user.id)
+      .eq('client_id', empresa.id)
+      .maybeSingle()
+
+    const liberado = role?.permission_level === 'administrador' || souPilotoAutoconhecimento(user.email)
+    setAcessoLiberado(liberado)
+    if (!liberado) {
+      setLoading(false)
+      return
+    }
+
+    const { data, error } = await getCargosPerfil(empresa.id)
+    if (error) setErro(error)
+    setCargos(data)
+    setLoading(false)
+  }, [ctz, empresa])
+
+  useEffect(() => { carregar() }, [carregar])
+
+  async function handleExcluirCargo() {
+    if (!modalExcluir.cargo) return
+    setModalExcluir((prev) => ({ ...prev, loading: true, erro: null }))
+    const { error } = await deleteCargoPerfil(modalExcluir.cargo.id)
+    if (error) {
+      setModalExcluir((prev) => ({ ...prev, loading: false, erro: mensagemErroExclusao(error, 'funcionários vinculados a este cargo') }))
+      return
+    }
+    setModalExcluir({ open: false, cargo: null, loading: false, erro: null })
     carregar()
-  }, [ctz, empresa?.id])
+  }
 
   const areas = useMemo(() => Array.from(new Set(cargos.map((c) => c.area))), [cargos])
 
@@ -202,12 +218,20 @@ export default function CargosPage() {
             </p>
           </div>
         </div>
-        {cargos.length > 0 && (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 border border-border/60 text-xs font-medium text-muted-foreground shrink-0">
-            <Layers className="w-3.5 h-3.5" />
-            {new Set(cargos.map((c) => `${c.area}::${c.cargo_base}`)).size} cargos · {areas.length} áreas
-          </div>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {cargos.length > 0 && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 border border-border/60 text-xs font-medium text-muted-foreground">
+              <Layers className="w-3.5 h-3.5" />
+              {new Set(cargos.map((c) => `${c.area}::${c.cargo_base}`)).size} cargos · {areas.length} áreas
+            </div>
+          )}
+          <button
+            onClick={() => setModalCargo({ open: true, cargo: null })}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
+          >
+            <Plus className="w-4 h-4" /> Adicionar Cargo
+          </button>
+        </div>
       </div>
 
       {erro && (
@@ -353,6 +377,21 @@ export default function CargosPage() {
                             )}
                           </div>
                         </div>
+
+                        <div className="flex items-center gap-2 pt-3 border-t border-border/60">
+                          <button
+                            onClick={() => setModalCargo({ open: true, cargo: cargoAtivo })}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-accent transition-colors"
+                          >
+                            <Pencil className="w-3.5 h-3.5" /> Editar{g.niveis.length > 1 ? ` (${nivelAtivo})` : ''}
+                          </button>
+                          <button
+                            onClick={() => setModalExcluir({ open: true, cargo: cargoAtivo, loading: false, erro: null })}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Excluir{g.niveis.length > 1 ? ` (${nivelAtivo})` : ''}
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -362,6 +401,25 @@ export default function CargosPage() {
           )}
         </>
       )}
+
+      <ModalCargoPerfil
+        open={modalCargo.open}
+        clientId={empresa?.id ?? ''}
+        cargo={modalCargo.cargo}
+        areasExistentes={areas}
+        onClose={() => setModalCargo({ open: false, cargo: null })}
+        onSuccess={() => { setModalCargo({ open: false, cargo: null }); carregar() }}
+      />
+
+      <ModalConfirmarExclusao
+        open={modalExcluir.open}
+        titulo="Excluir Cargo"
+        descricao="Essa ação não pode ser desfeita."
+        loading={modalExcluir.loading}
+        erro={modalExcluir.erro}
+        onConfirmar={handleExcluirCargo}
+        onClose={() => setModalExcluir({ open: false, cargo: null, loading: false, erro: null })}
+      />
     </div>
   )
 }

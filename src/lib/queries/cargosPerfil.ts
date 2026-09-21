@@ -52,6 +52,40 @@ export async function getCargosPerfil(clientId: string): Promise<{ data: CargoPe
   return { data: (data ?? []) as CargoPerfilCompleto[], error: null }
 }
 
+// CRUD (pedido 21/09/2026) — RLS de escrita (migration
+// PENDENTE_20260921030000_cargos_perfil_escrita) usa o MESMO grupo de acesso
+// da leitura (administrador real da empresa OU piloto do Autoconhecimento);
+// aqui só monta a chamada, quem barra de verdade é o banco.
+export async function createCargoPerfil(
+  clientId: string,
+  campos: CargoPerfil
+): Promise<{ error: string | null }> {
+  const supabase = createClient()
+  const { error } = await supabase.from('cargos_perfil').insert({ client_id: clientId, ...campos })
+  if (error) return { error: error.message }
+  return { error: null }
+}
+
+export async function updateCargoPerfil(
+  id: string,
+  campos: CargoPerfil
+): Promise<{ error: string | null }> {
+  const supabase = createClient()
+  const { error } = await supabase.from('cargos_perfil').update(campos).eq('id', id)
+  if (error) return { error: error.message }
+  return { error: null }
+}
+
+// Sem .select()/delete em cascata: cargo_perfil_id em funcionarios_cargo_perfil
+// referencia esta tabela sem "on delete cascade" — excluir um cargo com gente
+// vinculada devolve erro 23503 (FK), tratado pelo chamador via
+// mensagemErroExclusao, não apaga o vínculo por baixo.
+export async function deleteCargoPerfil(id: string): Promise<{ error: { code?: string; message?: string } | null }> {
+  const supabase = createClient()
+  const { error } = await supabase.from('cargos_perfil').delete().eq('id', id)
+  return { error }
+}
+
 // Mapa 1 (pedido 14/09/2026): a análise que o admin piloto gera em "Perfis
 // da equipe" (dicas_texto) também aparece pra CADA pessoa no próprio Mapa 1
 // — não precisa de RLS nova, a policy funcionarios_cargo_perfil_select_proprio

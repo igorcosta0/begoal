@@ -17,6 +17,7 @@ import {
   type AutoavaliacaoPadraoTecnica,
 } from '@/lib/queries/avaliacao'
 import { Trash2, Plus, ChevronDown } from 'lucide-react'
+import Avatar from '@/components/Avatar'
 
 // ── Constantes CTZ ─────────────────────────────────────────────────────────
 
@@ -157,6 +158,15 @@ export const VERTICAIS_CTZ: Record<
       },
     ],
   },
+  // Pedido (21/09/2026): "Secretária Executiva" deixou de ser vertical
+  // própria — a pessoa que estava lá é organizacionalmente parte do
+  // CSC/Financeiro, então os 3 critérios de apoio administrativo (antes em
+  // `secretaria_executiva`) foram unidos aqui, preservando as notas técnicas
+  // já preenchidas com essas chaves (sec_agenda/sec_eventos/sec_viagens
+  // continuam batendo com avaliacoes_tecnica.criterio_key de quem já tinha
+  // sido avaliado). Avaliação(ões) existentes com vertical =
+  // 'secretaria_executiva' foram reapontadas pra 'csc_financeiro' na
+  // migration PENDENTE_20260921010000_avaliacao_merge_secretaria_lideres.sql.
   csc_financeiro: {
     label: 'CSC / Financeiro',
     criterios: [
@@ -175,14 +185,6 @@ export const VERTICAIS_CTZ: Record<
         label: 'Relatório de Suporte de Decisões',
         descricao: 'Fornecimento tempestivo dos demonstrativos de resultados para a diretoria.',
       },
-    ],
-  },
-  // Cargo distinto de csc_financeiro — critérios de apoio administrativo à
-  // liderança, não financeiros. Baseado na trilha Júnior/Pleno/Senior da
-  // planilha "Adm e Finanças" (referências/Pasta1.xlsx).
-  secretaria_executiva: {
-    label: 'Secretária Executiva',
-    criterios: [
       {
         key: 'sec_agenda',
         label: 'Gestão de Agenda, Documentos e Prazos',
@@ -197,6 +199,30 @@ export const VERTICAIS_CTZ: Record<
         key: 'sec_viagens',
         label: 'Logística de Viagens',
         descricao: 'Cotação, reserva e gestão de roteiros, custos e fornecedores para viagens da equipe e da liderança.',
+      },
+    ],
+  },
+  // Vertical nova (pedido 21/09/2026), no lugar de "Secretária Executiva" —
+  // critérios em rascunho genérico (o usuário pediu uma sugestão inicial em
+  // vez de ditar a régua oficial), ajustar depois se a régua real da empresa
+  // for diferente.
+  lideres: {
+    label: 'Líderes',
+    criterios: [
+      {
+        key: 'lid_equipe',
+        label: 'Gestão e Desenvolvimento de Equipe',
+        descricao: 'Formação, acompanhamento e evolução dos liderados, com feedback constante e plano de desenvolvimento ativo.',
+      },
+      {
+        key: 'lid_decisao',
+        label: 'Tomada de Decisão e Delegação',
+        descricao: 'Clareza e agilidade nas decisões da vertical, com delegação eficaz e autonomia bem calibrada pra cada liderado.',
+      },
+      {
+        key: 'lid_resultados',
+        label: 'Resultados da Vertical Liderada',
+        descricao: 'Entrega das metas da área sob sua liderança, com previsibilidade e gestão de riscos.',
       },
     ],
   },
@@ -394,13 +420,16 @@ interface Props {
   // exclusivas de souGestorDaCalibragem. RLS (e_calibrador_restrito, migration
   // PENDENTE_20260902000000) trava por trás mesmo que o front-end erre.
   souCalibradorRestrito?: boolean
+  // Foto de perfil do colaborador avaliado (pedido 21/09/2026) — resolvida
+  // pelo chamador via fotosPorFuncionarioId, não buscada aqui dentro.
+  fotoUrl?: string | null
   onClose: () => void
   onSave: () => void
 }
 
 // ── Componente principal ─────────────────────────────────────────────────────
 
-export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, souAdministrador, souGestorDaCalibragem, souCalibradorRestrito, onClose, onSave }: Props) {
+export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, souAdministrador, souGestorDaCalibragem, souCalibradorRestrito, fotoUrl, onClose, onSave }: Props) {
   const podeCalibrar = souGestorDaCalibragem || souCalibradorRestrito || souAdministrador
   const [activeTab, setActiveTab] = useState<'cultural' | 'tecnica' | 'pdi'>('cultural')
   const [vertical, setVertical] = useState('')
@@ -971,9 +1000,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
 
         {/* Detalhamento do colaborador */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-border shrink-0">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary font-semibold text-sm">
-            {(avaliacao.funcionario?.full_name ?? '?').charAt(0).toUpperCase()}
-          </div>
+          <Avatar nome={avaliacao.funcionario?.full_name ?? '?'} fotoUrl={fotoUrl} sizeClassName="w-10 h-10 text-sm" />
           <div>
             <p className="text-sm font-semibold text-foreground">
               {avaliacao.funcionario?.full_name ?? 'Colaborador'}

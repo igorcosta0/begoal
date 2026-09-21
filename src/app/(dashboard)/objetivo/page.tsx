@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
 import { Heart, Edit2, Check, X, Plus, Trash2, MapPin, MessageCircle, Send, Sparkles, Quote, Compass } from 'lucide-react'
+import { getFotosPerfilPorEmpresa } from '@/lib/queries/perfilPublico'
+import Avatar from '@/components/Avatar'
 
 type Tom = { grad: string; dot: string; texto: string }
 
@@ -124,7 +126,7 @@ function ChipList({ campo, itens, placeholder, onSalvar }: { campo: string; iten
 }
 
 /** Bloco de nota/comentários fixado — mostra o último registro e permite expandir a conversa. */
-function NotaFixada({ campo, clientId, userId, nomeUsuario }: { campo: string; clientId: string; userId: string; nomeUsuario: string }) {
+function NotaFixada({ campo, clientId, userId, nomeUsuario, fotosPorUserId }: { campo: string; clientId: string; userId: string; nomeUsuario: string; fotosPorUserId: Record<string, string> }) {
   const [comentarios, setComentarios] = useState<any[]>([])
   const [novoComentario, setNovoComentario] = useState('')
   const [loading, setLoading] = useState(false)
@@ -161,9 +163,12 @@ function NotaFixada({ campo, clientId, userId, nomeUsuario }: { campo: string; c
     <div className="flex-1 flex flex-col">
       {ultimo ? (
         <div className="flex items-start gap-2.5">
-          <div className="w-6 h-6 rounded-full bg-violet-500/15 text-violet-600 text-[11px] font-extrabold flex items-center justify-center shrink-0 mt-px">
-            {(ultimo.autor_nome ?? 'U').charAt(0).toUpperCase()}
-          </div>
+          <Avatar
+            nome={ultimo.autor_nome ?? 'U'}
+            fotoUrl={fotosPorUserId[ultimo.user_id]}
+            sizeClassName="w-6 h-6 text-[11px] font-extrabold mt-px"
+            corClassName="bg-violet-500/15 text-violet-600"
+          />
           <div className="min-w-0">
             <p className="text-[11px] font-bold text-foreground">
               {ultimo.autor_nome} <span className="font-normal text-muted-foreground">{formatDataHora(ultimo.created_at)}</span>
@@ -185,7 +190,12 @@ function NotaFixada({ campo, clientId, userId, nomeUsuario }: { campo: string; c
             <div className="max-h-24 overflow-y-auto space-y-2 pr-1">
               {comentarios.slice(0, -1).map((c) => (
                 <div key={c.id} className="group/comment flex items-start gap-1.5">
-                  <div className="w-5 h-5 rounded-full bg-violet-500/10 text-violet-600 flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-bold">{(c.autor_nome ?? 'U').charAt(0).toUpperCase()}</div>
+                  <Avatar
+                    nome={c.autor_nome ?? 'U'}
+                    fotoUrl={fotosPorUserId[c.user_id]}
+                    sizeClassName="w-5 h-5 text-[10px] font-bold mt-0.5"
+                    corClassName="bg-violet-500/10 text-violet-600"
+                  />
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-semibold text-foreground">{c.autor_nome} <span className="text-muted-foreground font-normal">{formatDataHora(c.created_at)}</span></p>
                     <p className="text-xs text-foreground">{c.comentario}</p>
@@ -224,12 +234,19 @@ export default function ObjetivoPage() {
   const [loading, setLoading] = useState(true)
   const [nomeUsuario, setNomeUsuario] = useState('')
   const [userId, setUserId] = useState('')
+  const [fotosPorUserId, setFotosPorUserId] = useState<Record<string, string>>({})
 
   const fetchValores = useCallback(async () => {
     if (!empresa) return
     const supabase = createClient()
     const { data } = await supabase.from('empresa_valores').select('*').eq('client_id', empresa.id).order('ordem')
     setValores(data ?? [])
+  }, [empresa])
+
+  const fetchFotos = useCallback(async () => {
+    if (!empresa) return
+    const { porUserId } = await getFotosPerfilPorEmpresa(empresa.id)
+    setFotosPorUserId(porUserId)
   }, [empresa])
 
   const fetchData = useCallback(async () => {
@@ -258,7 +275,7 @@ export default function ObjetivoPage() {
     setLoading(false)
   }, [empresa])
 
-  useEffect(() => { fetchData(); fetchValores() }, [fetchData, fetchValores])
+  useEffect(() => { fetchData(); fetchValores(); fetchFotos() }, [fetchData, fetchValores, fetchFotos])
 
   const handleChange = useCallback((campo: string, valor: string) => { setFormIdentidade((prev) => ({ ...prev, [campo]: valor })) }, [])
   const handleEdit = useCallback((campo: string) => { setEditando(campo) }, [])
@@ -396,9 +413,9 @@ export default function ObjetivoPage() {
 
         {/* NOTA FIXADA */}
         <div className="glass-panel rounded-2xl overflow-hidden flex flex-col">
-          <CabecalhoSecao icon={MessageCircle} eyebrow="Mural" titulo="Nota fixada" descricao="Recado da equipe, sempre à vista." tom={TOM_AMBAR} />
+          <CabecalhoSecao icon={MessageCircle} eyebrow="Mural" titulo="Missão" descricao="Recado da equipe, sempre à vista." tom={TOM_AMBAR} />
           <div className="p-4 md:p-5 flex-1 flex flex-col">
-            {empresa && <NotaFixada campo="mercado_posicionamento" clientId={empresa.id} userId={userId} nomeUsuario={nomeUsuario} />}
+            {empresa && <NotaFixada campo="mercado_posicionamento" clientId={empresa.id} userId={userId} nomeUsuario={nomeUsuario} fotosPorUserId={fotosPorUserId} />}
           </div>
         </div>
 

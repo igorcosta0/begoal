@@ -108,6 +108,56 @@
     `simular-liderar-liderado`, `gerar-dica-cargo-eneagrama`, `sugerir-icp`) trocaram o `fetch` cru
     por esse helper — só a chamada de rede mudou, prompt/body/regras de cada rota continuam
     intocados. `npm run type-check` limpo.
+- Quatro pedidos novos, mesma sessão:
+  1. **"Nota fixada" → "Missão"** em Nosso Jeito de Ser — só o rótulo do `CabecalhoSecao` daquele
+     card mudou (`objetivo/page.tsx`), mecânica do mural de comentários intocada.
+  2. **Foto de perfil**, pedida pra aparecer "sempre onde houver mostrando aquele funcionário" —
+     infraestrutura nova, não coluna em `funcionarios` (mesmo motivo de sempre: a policy de escrita
+     de `funcionarios` exige `permission_level='administrador'`, um funcionário comum não
+     conseguiria trocar a própria foto ali). `foto_url` foi pra `funcionarios_perfil_publico`
+     (mesma tabela do "Sobre mim/Habilidades/Sonhos", RLS de "só a própria linha" já pronta) +
+     bucket novo do Storage (`avatars`, público, escrita restrita à própria pasta
+     `<user_id>/...`) — migration `PENDENTE_20260921020000_foto_perfil.sql`, **ainda não rodada no
+     Supabase, avisar o Igor**. Componente novo `src/components/Avatar.tsx` (foto quando existe,
+     senão inicial do nome, mesmo visual de sempre) substituiu TODOS os círculos de inicial
+     `charAt(0)` de funcionário do app: Topbar (própria foto, resolvida em `layout.tsx` no
+     servidor), Funcionários (lista principal), Nosso Jeito de Ser (mural "Missão"), comentários de
+     Táticas, e em Avaliação — as duas listas (`Devo Avaliar`/`funcionários sem avaliação`),
+     `ModalAvaliacao` (cabeçalho do colaborador) e `ModalGerenciarLideres`. Ficaram de fora de
+     propósito os 2 avatares de EMPRESA (não de funcionário) em `selecao-empresa` e `admin`. Query
+     nova `getFotosPerfilPorEmpresa` (`src/lib/queries/perfilPublico.ts`) devolve dois mapas numa
+     chamada só (por `funcionario_id` e por `user_id`, já que uns lugares só têm um ID à mão, outros
+     só o outro) e `uploadMinhaFotoPerfil` sobe o arquivo (path fixo `<user_id>/foto.<ext>` com
+     upsert — reenviar substitui, sem acumular órfão — + cache-busting `?v=timestamp` na URL salva,
+     senão o navegador continuaria servindo a foto antiga do mesmo path).
+  3. **Cargos ganhou CRUD** (Adicionar/Editar/Excluir) — a aba nasceu somente-leitura em 09/09.
+     Migration `PENDENTE_20260921030000_cargos_perfil_escrita.sql` (**ainda não rodada, avisar o
+     Igor**) soma INSERT/UPDATE/DELETE em `cargos_perfil` pro MESMO grupo que já lê (administrador
+     real da empresa OU piloto do Autoconhecimento) — não abre escrita pra ninguém que não visse a
+     tela toda. Modal novo `src/components/cargos/ModalCargoPerfil.tsx` (criar e editar no mesmo
+     componente) + botão "Adicionar Cargo" no cabeçalho e "Editar"/"Excluir" dentro do card
+     expandido, operando sobre o nível ativo (cada nível é uma LINHA própria na tabela, não um
+     sub-registro). Excluir usa `ModalConfirmarExclusao` (padrão já usado no resto do app) —
+     `cargo_perfil_id` em `funcionarios_cargo_perfil` referencia sem `on delete cascade`, então
+     excluir um cargo com gente vinculada devolve erro 23503, tratado com a mesma
+     `mensagemErroExclusao` de sempre, não apaga vínculo silenciosamente.
+  4. **Avaliação — "Secretária Executiva" deixou de ser vertical própria**: o Igor apontou que essa
+     pessoa é organizacionalmente parte do CSC/Financeiro, não um departamento isolado. Confirmado
+     via `AskUserQuestion` (2 perguntas, já que isso mexe em régua oficial de avaliação real): (a)
+     os 3 critérios técnicos de secretária (Agenda/Eventos/Viagens) foram UNIDOS aos 3 já existentes
+     de CSC/Financeiro (6 no total, em vez de trocar — preserva notas técnicas já preenchidas com
+     essas chaves, que continuam batendo com `avaliacoes_tecnica.criterio_key`); (b) o vertical novo
+     que entra no lugar, "Líderes", ficou com critérios em RASCUNHO genérico (Gestão e
+     Desenvolvimento de Equipe / Tomada de Decisão e Delegação / Resultados da Vertical Liderada) —
+     o Igor optou pela sugestão pronta em vez de ditar a régua oficial, então isso é ponto de
+     partida, não uma régua validada pela empresa. Tudo em `VERTICAIS_CTZ`
+     (`ModalAvaliacao.tsx`). Migration `PENDENTE_20260921010000_avaliacao_merge_secretaria_lideres.sql`
+     (**ainda não rodada, avisar o Igor**) só reaponta `avaliacoes.vertical` de
+     `'secretaria_executiva'` pra `'csc_financeiro'` pra quem já estava lá — não mexe em
+     `avaliacoes_tecnica` (não precisa, as chaves de critério não mudaram).
+  5. `npm run type-check` limpo em cada etapa. **3 migrations pendentes** desta rodada (foto de
+     perfil, cargos escrita, merge secretária/líderes) — nenhuma rodada ainda, avisar antes do
+     próximo push.
 
 ### 2026-09-16
 - Continuação direta do redesenho de 15/09 (que ainda estava só local, sem push, aguardando

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Crown, Check } from 'lucide-react'
+import Avatar from '@/components/Avatar'
 
 export interface FuncionarioParaLideranca {
   id: string
@@ -13,13 +14,14 @@ export interface FuncionarioParaLideranca {
 interface Props {
   open: boolean
   funcionarios: FuncionarioParaLideranca[]
+  fotosPorFuncionarioId?: Record<string, string>
   salvando?: boolean
   erro?: string | null
   onClose: () => void
   onSalvar: (selecionados: Record<string, boolean>) => void
 }
 
-export default function ModalGerenciarLideres({ open, funcionarios, salvando, erro, onClose, onSalvar }: Props) {
+export default function ModalGerenciarLideres({ open, funcionarios, fotosPorFuncionarioId, salvando, erro, onClose, onSalvar }: Props) {
   const [selecionados, setSelecionados] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
@@ -72,9 +74,12 @@ export default function ModalGerenciarLideres({ open, funcionarios, salvando, er
                   onChange={() => alternar(f.id)}
                   className="w-4 h-4 rounded border-input accent-amber-600 shrink-0"
                 />
-                <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0 text-foreground font-semibold text-xs">
-                  {f.full_name.charAt(0).toUpperCase()}
-                </div>
+                <Avatar
+                  nome={f.full_name}
+                  fotoUrl={fotosPorFuncionarioId?.[f.id]}
+                  sizeClassName="w-8 h-8 text-xs"
+                  corClassName="bg-secondary text-foreground"
+                />
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-foreground truncate">{f.full_name}</p>
                   {f.cargo && <p className="text-[10px] text-muted-foreground truncate">{f.cargo}</p>}

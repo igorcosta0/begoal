@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getSetoresByEmpresa } from '@/lib/queries/okr'
 import { getTodosCargosPerfil, type FuncionarioCargoPerfil } from '@/lib/queries/cargosPerfil'
 import { getPerfisPublicosPorEmpresa, type PerfilPublico } from '@/lib/queries/perfilPublico'
+import Avatar from '@/components/Avatar'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
 import { User, Building2, Briefcase, MoreHorizontal, Users, Plus, ChevronDown, UserCircle2 } from 'lucide-react'
 import { mensagemErroExclusao } from '@/lib/utils'
@@ -406,9 +407,7 @@ export default function FuncionariosPage() {
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary font-semibold text-sm">
-                    {f.full_name.charAt(0).toUpperCase()}
-                  </div>
+                  <Avatar nome={f.full_name} fotoUrl={perfisPublicosMap[f.id]?.foto_url} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground">{f.full_name}</p>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs text-muted-foreground">

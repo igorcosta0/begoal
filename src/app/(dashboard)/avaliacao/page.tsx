@@ -18,6 +18,8 @@ import {
   getCalibragemPendente,
 } from '@/lib/queries/avaliacao'
 import { getFuncionariosByEmpresa } from '@/lib/queries/okr'
+import { getFotosPerfilPorEmpresa } from '@/lib/queries/perfilPublico'
+import Avatar from '@/components/Avatar'
 import ModalCriarCiclo from '@/components/avaliacao/ModalCriarCiclo'
 import ModalAvaliacao from '@/components/avaliacao/ModalAvaliacao'
 import ModalNineBox from '@/components/avaliacao/ModalNineBox'
@@ -240,6 +242,7 @@ export default function AvaliacaoPage() {
   const [avaliacoesParaAvaliar, setAvaliacoesParaAvaliar] = useState<AvaliacaoParaAvaliar[]>([])
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([])
   const [opcoesAvaliador, setOpcoesAvaliador] = useState<OpcaoAvaliador[]>([])
+  const [fotosPorFuncionarioId, setFotosPorFuncionarioId] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
   // Trava "Finalizar Calibragem" até TODA avaliação em calibragem ter nota
@@ -423,6 +426,8 @@ export default function AvaliacaoPage() {
         const { data: todos } = await getFuncionariosByEmpresa(empresa!.id)
         setOpcoesAvaliador((todos ?? []) as OpcaoAvaliador[])
       }
+      const { porFuncionarioId } = await getFotosPerfilPorEmpresa(empresa!.id)
+      setFotosPorFuncionarioId(porFuncionarioId)
       setLoading(false)
     }
     init()
@@ -1012,6 +1017,7 @@ export default function AvaliacaoPage() {
           souAdministrador={souAdministrador}
           souGestorDaCalibragem={souGestorDaCalibragem}
           souCalibradorRestrito={souCalibradorRestritoDestaAvaliacao}
+          fotoUrl={(() => { const fid = (modalAvaliacao.avaliacao as Avaliacao | null)?.funcionario?.id; return fid ? fotosPorFuncionarioId[fid] : undefined })()}
           onClose={() => setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '', papelAvaliador: false })}
           onSave={() => { fetchMinhasAvaliacoes(); fetchAvaliacoesParaAvaliar(); setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '', papelAvaliador: false }) }}
         />
@@ -1291,9 +1297,11 @@ export default function AvaliacaoPage() {
                           className="flex items-center justify-between gap-3 p-3 rounded-md border border-border bg-background hover:shadow-sm transition-shadow"
                         >
                           <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary font-semibold text-xs">
-                              {(av.funcionario?.full_name ?? '?').charAt(0).toUpperCase()}
-                            </div>
+                            <Avatar
+                              nome={av.funcionario?.full_name ?? '?'}
+                              fotoUrl={av.funcionario?.id ? fotosPorFuncionarioId[av.funcionario.id] : undefined}
+                              sizeClassName="w-8 h-8 text-xs"
+                            />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5">
                                 <p className="text-sm font-medium text-foreground truncate">
@@ -1379,9 +1387,12 @@ export default function AvaliacaoPage() {
                           key={f.id}
                           className="flex items-center gap-3 p-3 rounded-md border border-dashed border-border bg-background"
                         >
-                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 text-muted-foreground font-semibold text-xs">
-                            {f.full_name.charAt(0).toUpperCase()}
-                          </div>
+                          <Avatar
+                            nome={f.full_name}
+                            fotoUrl={fotosPorFuncionarioId[f.id]}
+                            sizeClassName="w-8 h-8 text-xs"
+                            corClassName="bg-muted text-muted-foreground"
+                          />
                           <div>
                             <p className="text-sm text-foreground">{f.full_name}</p>
                             {f.cargo && <p className="text-xs text-muted-foreground">{f.cargo}</p>}
@@ -1414,6 +1425,7 @@ export default function AvaliacaoPage() {
         souAdministrador={souAdministrador}
         souGestorDaCalibragem={souGestorDaCalibragem}
         souCalibradorRestrito={souCalibradorRestritoDestaAvaliacao}
+        fotoUrl={(() => { const fid = (modalAvaliacao.avaliacao as Avaliacao | null)?.funcionario?.id; return fid ? fotosPorFuncionarioId[fid] : undefined })()}
         onClose={() => setModalAvaliacao({ open: false, avaliacao: null, cicloNome: '', papelAvaliador: false })}
         onSave={() => {
           fetchAvaliacoes()
@@ -1459,6 +1471,7 @@ export default function AvaliacaoPage() {
       <ModalGerenciarLideres
         open={modalLideres.open}
         funcionarios={modalLideres.funcionarios}
+        fotosPorFuncionarioId={fotosPorFuncionarioId}
         salvando={modalLideres.salvando}
         erro={modalLideres.erro}
         onClose={() => setModalLideres({ open: false, abrindo: false, funcionarios: [], salvando: false, erro: null })}

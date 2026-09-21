@@ -5,6 +5,8 @@ import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { createClient } from '@/lib/supabase/client'
 import { getObjetivos, getSetoresByEmpresa, getFuncionariosByEmpresa } from '@/lib/queries/okr'
+import { getFotosPerfilPorEmpresa } from '@/lib/queries/perfilPublico'
+import Avatar from '@/components/Avatar'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
 import { User, Building2, Calendar, CheckCircle2, Circle, MessageSquare, Send, Trash2, ChevronDown, ChevronUp, Zap, Plus, X, GripVertical } from 'lucide-react'
 import { cn, formatDate, mensagemErroExclusao } from '@/lib/utils'
@@ -37,7 +39,7 @@ const FORM_INICIAL: FormTatica = {
   Status: 'Não Iniciado',
 }
 
-function ComentariosTatica({ taticaId, userId, nomeUsuario }: { taticaId: string; userId: string; nomeUsuario: string }) {
+function ComentariosTatica({ taticaId, userId, nomeUsuario, fotosPorUserId }: { taticaId: string; userId: string; nomeUsuario: string; fotosPorUserId: Record<string, string> }) {
   const [comentarios, setComentarios] = useState<any[]>([])
   const [novoComentario, setNovoComentario] = useState('')
   const [loading, setLoading] = useState(false)
@@ -95,9 +97,11 @@ function ComentariosTatica({ taticaId, userId, nomeUsuario }: { taticaId: string
           )}
           {comentarios.map((c) => (
             <div key={c.id} className="flex items-start gap-2 group/comment">
-              <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-bold text-primary">
-                {(c.autor_nome ?? 'U').charAt(0).toUpperCase()}
-              </div>
+              <Avatar
+                nome={c.autor_nome ?? 'U'}
+                fotoUrl={fotosPorUserId[c.user_id]}
+                sizeClassName="w-5 h-5 text-[10px] font-bold mt-0.5"
+              />
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-semibold text-foreground">
                   {c.autor_nome}{' '}
@@ -244,6 +248,7 @@ export default function TaticasPage() {
   const [filtroSetor, setFiltroSetor] = useState('')
   const [nomeUsuario, setNomeUsuario] = useState('')
   const [userId, setUserId] = useState('')
+  const [fotosPorUserId, setFotosPorUserId] = useState<Record<string, string>>({})
   const [arrastandoId, setArrastandoId] = useState<string | null>(null)
   const [colunaSobre, setColunaSobre] = useState<string | null>(null)
 
@@ -288,6 +293,7 @@ export default function TaticasPage() {
     getFuncionariosByEmpresa(empresa.id).then(({ data }) => setFuncionarios(data ?? []))
     supabase.from('krs').select('id, titulo, objetivo_id').eq('client_id', empresa.id)
       .then(({ data }: { data: any }) => setKrs(data ?? []))
+    getFotosPerfilPorEmpresa(empresa.id).then(({ porUserId }) => setFotosPorUserId(porUserId))
   }, [empresa])
 
   async function handleCriar(e: React.FormEvent) {
@@ -540,6 +546,7 @@ export default function TaticasPage() {
                           taticaId={tatica.id}
                           userId={userId}
                           nomeUsuario={nomeUsuario}
+                          fotosPorUserId={fotosPorUserId}
                         />
                       </div>
 

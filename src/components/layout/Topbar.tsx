@@ -6,6 +6,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { createClient } from '@/lib/supabase/client'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { cn, isEmpresaCTZ, souPilotoAutoconhecimento } from '@/lib/utils'
+import Avatar from '@/components/Avatar'
 import {
   Target, Heart, Zap, Activity, Users, Settings,
   User, LogOut, Building2, Home, ArrowLeftRight, Upload, Map, ClipboardList,
@@ -29,9 +30,10 @@ interface NavGroup {
 interface TopbarProps {
   permissionLevel?: string
   userEmail?: string | null
+  fotoUrl?: string | null
 }
 
-export default function Topbar({ permissionLevel, userEmail }: TopbarProps) {
+export default function Topbar({ permissionLevel, userEmail, fotoUrl }: TopbarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { empresa, clear: clearEmpresa } = useEmpresaStore()
@@ -174,8 +176,13 @@ export default function Topbar({ permissionLevel, userEmail }: TopbarProps) {
 
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
-              <button className="w-9 h-9 rounded-full bg-chrome text-chrome-foreground flex items-center justify-center font-display font-bold text-xs shrink-0 outline-none hover:opacity-90 transition-opacity">
-                {(userEmail ?? 'U').charAt(0).toUpperCase()}
+              <button className="rounded-full outline-none hover:opacity-90 transition-opacity shrink-0">
+                <Avatar
+                  nome={userEmail ?? 'U'}
+                  fotoUrl={fotoUrl}
+                  sizeClassName="w-9 h-9 text-xs font-display"
+                  corClassName="bg-chrome text-chrome-foreground"
+                />
               </button>
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
