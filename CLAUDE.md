@@ -235,6 +235,21 @@
   passo seria um modelo de fallback (e.g. tentar outro Gemini se `gemini-3.6-flash` continuar
   saturado), mas isso exige confirmar antes qual modelo alternativo está disponível pra esta chave
   de API. `npm run type-check` limpo.
+- **"Erro ao consultar o assistente." genérico**, ainda no mesmo dia — mensagem diferente da
+  anterior ("Erro Gemini: 503"), sintoma de outra coisa: esse texto só aparece no front-end
+  (`autoconhecimento/page.tsx`) quando o `fetch` responde algo que NÃO é JSON válido (`res.json()`
+  falha e cai no fallback), o que só acontece se a função da API travar de um jeito que nem chega a
+  devolver o `NextResponse.json({ error: ... })` do próprio `catch` — ou seja, o processo morreu no
+  meio, não é mais um erro "normal" tratado pelo código. Causa mais provável: `fetch` não tem
+  timeout nenhum por padrão — se o Gemini ficar lento/travado (em vez de devolver um 503 rápido, o
+  caso que o retry já cobria), a PRIMEIRA tentativa sozinha podia ficar pendurada até o
+  `maxDuration` matar a função no meio, sem nunca chegar a tentar de novo. Corrigido em duas partes
+  em `src/lib/gemini.ts`: (1) cada tentativa individual ganhou um timeout de 10s via
+  `AbortController` — se estourar, é tratado como transitório igual 503/429 (retry normal, não
+  quebra a função); (2) `maxDuration` das 6 rotas subiu de 30 pra 60 (teto do plano Hobby da Vercel
+  sem Fluid Compute — pesquisado antes de mudar, não é um chute), porque o pior caso agora é
+  ~45s (4 tentativas de até 10s + ~5s de espera entre elas) — 30 não seria suficiente com o timeout
+  novo. `npm run type-check` limpo.
 
 ### 2026-09-16
 - Continuação direta do redesenho de 15/09 (que ainda estava só local, sem push, aguardando

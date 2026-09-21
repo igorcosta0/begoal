@@ -3,9 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 import { TIPOS_ENEAGRAMA } from '@/lib/eneagrama/tipos'
 import { chamarGemini } from '@/lib/gemini'
 
-// Espaço extra pro retry de chamarGemini (até ~7s de espera entre tentativas,
-// mais o tempo de cada chamada em si) não bater no timeout padrão da função.
-export const maxDuration = 30
+// Espaço extra pro retry de chamarGemini (pior caso ~45s: 4 tentativas de até
+// 10s cada + ~5s de espera entre elas) não bater no timeout padrão da função
+// — 60 é o teto do plano Hobby da Vercel sem Fluid Compute.
+export const maxDuration = 60
 
 // Simulação de administrador pro Mapa 2 (pedido 14/09/2026, mesma ideia já
 // usada em "Perfis da equipe"/simulação do Mapa 1: Igor/Priscila não

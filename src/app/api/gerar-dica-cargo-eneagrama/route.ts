@@ -4,9 +4,10 @@ import { souPilotoAutoconhecimento } from '@/lib/utils'
 import { TIPOS_ENEAGRAMA } from '@/lib/eneagrama/tipos'
 import { chamarGemini } from '@/lib/gemini'
 
-// Espaço extra pro retry de chamarGemini (até ~7s de espera entre tentativas,
-// mais o tempo de cada chamada em si) não bater no timeout padrão da função.
-export const maxDuration = 30
+// Espaço extra pro retry de chamarGemini (pior caso ~45s: 4 tentativas de até
+// 10s cada + ~5s de espera entre elas) não bater no timeout padrão da função
+// — 60 é o teto do plano Hobby da Vercel sem Fluid Compute.
+export const maxDuration = 60
 
 // Gera (ou regenera) as "dicas e sugestões" de uma pessoa específica no
 // cruzamento cargo x Eneagrama (pedido do Igor, 01/09/2026 — ver comentário
