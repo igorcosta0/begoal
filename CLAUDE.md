@@ -5,32 +5,12 @@
 > sempre que fizermos algo relevante, acrescento uma entrada no "Log de
 > Sessões" no final do arquivo, sem apagar as anteriores.
 
-## ⚠️ PRÓXIMOS PASSOS PENDENTES (retomar por aqui — criado em 23/09/2026)
+## Próximos passos (pente fino de 23/09/2026)
 
-**Ao abrir a sessão, antes de qualquer outra coisa, perguntar ao Igor em que etapa ele está.**
-Os commits `95a8373` (segurança: críticos C1/C2/C4/C5 do pente fino) e `6c85997` (novo visual do
-login) estão **só locais, sem push**. O front novo de Avaliação só funciona DEPOIS da migration;
-se o push for antes, o Salvar da avaliação quebra em produção.
-
-1. [ ] Igor roda no SQL Editor do Supabase:
-       `supabase/migrations/PENDENTE_20260923000000_avaliacao_fecha_notas_api.sql`
-       O script roda inteiro numa transação: se der erro, nada fica aplicado. Pedir o texto do erro.
-2. [ ] Rodar as consultas de verificação (a) e (b) do fim desse arquivo. (a): as 8 funções `get_*`
-       com `security_definer = true` e dono `avaliacao_leitor`. (b): precisa voltar **vazia**; se
-       voltar alguma linha, essa função vai quebrar e precisa ser tratada antes do push.
-3. [ ] Testar no app **local** (`npm run dev`), porque produção ainda tem o front antigo, que grava
-       direto na tabela e vai falhar depois da migration. Usar uma conta NÃO administradora:
-       autoavaliação própria (salvar e concluir) e, como gestor, a avaliação de um liderado.
-       Também um calibrador: Painel de Calibragem.
-       ⚠️ Entre o passo 1 e o passo 4, quem salvar avaliação em produção vai receber erro. Fazer
-       1→4 em sequência rápida, num horário sem uso.
-4. [ ] `git push` para `master`. Depois da formatação, a credencial do GitHub deve precisar ser
-       refeita: o **primeiro push o Igor roda numa janela de terminal dele** (`cd C:\dev\begoal` e
-       depois `git push`).
-5. [ ] Depois do deploy: marcar esta seção como concluída no Log de Sessões e remover daqui.
-
-Relatório completo do pente fino (o que falta depois disso: C6, bugs A1–A18, M1–M11) em
-`Adições futuras/Pente Fino - begoal - 2026-09-23.md`.
+Críticos C1/C4/C5 já estão no ar (ver Log de Sessões, 23/09). Falta, do relatório
+`Adições futuras/Pente Fino - begoal - 2026-09-23.md`: C2 (RLS de `clients` + conceito de
+superadmin), C3 (Letícia/Eduardo admin em todas as empresas — decidir), C4 (Igor conferir o plano
+da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e itens M1–M11.
 
 ## Fatos operacionais importantes
 
@@ -39,7 +19,7 @@ Relatório completo do pente fino (o que falta depois disso: C6, bugs A1–A18, 
 - **Existe uma cópia antiga e quebrada do projeto em `C:\Users\igorc\OneDrive\Documents\begoal-master-20260825T123459Z-1-001\begoal-master`** — não é a pasta de trabalho, é um backup/export incompleto (faltam quase todos os arquivos de `src/`, `node_modules` parcial, sem histórico de git). Se uma sessão abrir lá por engano, os arquivos de `src/app`/`src/components` vão aparecer vazios — não é bug do Claude, é a cópia mesmo. Ignorar essa pasta, trabalhar sempre em `C:\dev\begoal`.
 - **Migrations do Supabase são aplicadas manualmente** — os arquivos em `supabase/migrations/*.sql` não rodam sozinhos, é preciso colar cada um no SQL Editor do Supabase e rodar. Ao criar uma migration nova, sempre avisar o usuário pra rodar antes do `git push` correspondente.
 - **A máquina foi formatada em set/2026. O Igor pede para ser avisado ANTES de qualquer instalação** (e para baixar só o necessário). Git (2.55) e Node (24.19 LTS) foram reinstalados em 23/09/2026, com o ok dele, via `winget install --id Git.Git` e `winget install --id OpenJS.NodeJS.LTS`. Esse `winget install` foi barrado pelo auto mode classifier até o Igor trocar para Accept Edits. Depois de instalar, é preciso adicionar ao PATH da sessão atual manualmente (`$env:PATH = "C:\Program Files\Git\cmd;" + $env:PATH`, idem pra `C:\Program Files\nodejs`), porque uma sessão já aberta não pega o PATH atualizado sozinha.
-- **Depois da formatação de set/2026, a credencial do GitHub provavelmente precisa ser refeita**: o primeiro push deve ser rodado pelo Igor numa janela de terminal dele, igual à primeira vez descrita a seguir. **`git push` já funcionava direto por aqui** — a primeira vez precisou que o usuário rodasse o push manualmente numa janela de terminal aberta por ele (pra completar o login do Git Credential Manager pelo navegador, algo que não funciona rodando por dentro do Claude Code). Depois disso a credencial ficou salva no Windows Credential Manager (`cmdkey /list` mostra `git:https://github.com`) e ficou visível pra esta sessão também — não precisa repetir esse processo.
+- **Credencial do GitHub continuou funcionando depois da formatação de set/2026** (push de 23/09 rodou direto pelo Claude Code). **`git push` já funcionava direto por aqui** — a primeira vez precisou que o usuário rodasse o push manualmente numa janela de terminal aberta por ele (pra completar o login do Git Credential Manager pelo navegador, algo que não funciona rodando por dentro do Claude Code). Depois disso a credencial ficou salva no Windows Credential Manager (`cmdkey /list` mostra `git:https://github.com`) e ficou visível pra esta sessão também — não precisa repetir esse processo.
 - **`npm run type-check`** (`tsc --noEmit`) é o jeito de validar mudança de código sem precisar rodar o app inteiro (não temos as env vars do Supabase aqui pra um `next build` completo). Rodar sempre antes de dar push em mudança de `.tsx`/`.ts`.
 - **`git push` pode ser bloqueado pelo "auto mode classifier" do Claude Code**, mesmo com o usuário confirmando no chat (aconteceu em 31/08) — a mensagem de erro é explícita: só o usuário pode liberar, de fora da sessão. Não adianta tentar de novo pela mesma via nem tentar editar `settings.json` (também cai no mesmo bloqueio). Solução: pedir pro usuário trocar o modo de permissão da sessão pra **Accept Edits** (`Shift+Tab` no terminal) — resolveu de primeira. Se não resolver, o próximo a tentar é **Bypass Permissions** (mais permissivo).
 
@@ -1094,3 +1074,12 @@ Relatório completo do pente fino (o que falta depois disso: C6, bugs A1–A18, 
   6. `src/app/(auth)/login/page.tsx` aparecia modificado desde antes desta sessão (redesenho do login
      + mensagem de erro diferenciada, nunca commitado). Ficou de fora do commit até o Igor decidir.
   - **C6** (tirar e-mails fixos) é refatoração maior, ainda não iniciada.
+- **Concluído (mesmo dia, sessão seguinte)**: Igor rodou `PENDENTE_20260923000000_avaliacao_fecha_notas_api.sql`
+  sem erro. Verificação (a): as 8 funções com dono `avaliacao_leitor` (as 2 `get_autoavaliacao_padrao_*`
+  também aparecem na consulta, mas com dono `postgres`: já eram SECURITY DEFINER desde 09/09 e checam
+  `pode_ver_lado_auto` sozinhas, não quebram). Verificação (b): vazia. Teste local feito só com conta
+  de administrador (Igor não tinha conta não-admin à mão): as travas específicas de não-admin ficaram
+  sem teste manual — se alguém relatar erro ao salvar avaliação, o bloco "DESFAZER" no fim da migration
+  reverte o banco e o front novo continua funcionando. Push dos 3 commits (`95a8373`, `6c85997`,
+  `71ab8ef`) para `master` funcionou direto pelo Claude Code, **sem precisar refazer a credencial do
+  GitHub** depois da formatação.
