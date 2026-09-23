@@ -62,7 +62,7 @@ export default function InicioPage() {
       supabase.from('empresa_identidade').select('*').eq('client_id', empresa.id).maybeSingle(),
       getObjetivos(empresa.id), getKrsByEmpresa(empresa.id),
       supabase.from('funcionarios').select('full_name').eq('user_id', user?.id ?? '').maybeSingle(),
-      supabase.from('user_company_roles').select('permission_level').eq('user_id', user?.id ?? '').limit(1).single(),
+      supabase.from('user_company_roles').select('permission_level').eq('user_id', user?.id ?? '').eq('client_id', empresa.id).maybeSingle(),
       supabase.from('taticas').select('id', { count: 'exact', head: true }).eq('Client_Id', empresa.id).eq('concluida', false),
       supabase.from('funcionarios').select('id', { count: 'exact', head: true }).eq('client_id', empresa.id),
       supabase.from('sinais_vitais').select('valor_inicial, valor_atual, meta').eq('client_id', empresa.id),

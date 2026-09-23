@@ -78,24 +78,19 @@ export async function updateCiclo(
 // não está em calibragem/finalizada, mesmo quem está em pendente ou só
 // auto_concluida. Quem calibra decide se preenche a nota de quem ainda não
 // terminou o próprio processo; o app não trava mais essa escolha.
+//
+// Pente fino (23/09/2026): as duas ações em lote viraram RPC (migration
+// PENDENTE_20260923000000_avaliacao_fecha_notas_api) — o UPDATE direto na
+// tabela saiu do alcance do navegador, e o banco confere
+// pode_ver_lado_calibragem (e, no "Finalizar", se ainda falta calibragem).
 export async function iniciarCalibragemCiclo(cicloId: string) {
   const supabase = createClient()
-  return supabase
-    .from('avaliacoes')
-    .update({ status: 'calibragem' })
-    .eq('ciclo_id', cicloId)
-    .eq('tipo', 'padrao')
-    .in('status', ['pendente', 'auto_concluida', 'gestor_concluida'])
+  return supabase.rpc('iniciar_calibragem_ciclo', { p_ciclo_id: cicloId })
 }
 
 export async function finalizarCalibragemCiclo(cicloId: string) {
   const supabase = createClient()
-  return supabase
-    .from('avaliacoes')
-    .update({ status: 'finalizada' })
-    .eq('ciclo_id', cicloId)
-    .eq('tipo', 'padrao')
-    .eq('status', 'calibragem')
+  return supabase.rpc('finalizar_calibragem_ciclo', { p_ciclo_id: cicloId })
 }
 
 // "Finalizar Calibragem" trava avaliação pra sempre (status calibragem →
@@ -251,13 +246,13 @@ export async function updateAvaliacao(
   }
 ) {
   const supabase = createClient()
-  // Sem .select() de propósito, igual createAvaliacao acima: a resposta crua
-  // devolveria a linha inteira sem o mascaramento de get_minhas_avaliacoes/
-  // get_avaliacoes_por_ciclo (migration 20260821_avaliacao_mascara_notas), o
-  // que vazaria pela aba de rede do navegador a nota que ainda não devia
-  // aparecer pro lado errado — e quem chama isso (ModalAvaliacao) só olha
-  // `.error` mesmo.
-  return supabase.from('avaliacoes').update(payload).eq('id', id)
+  // Pente fino (23/09/2026): virou RPC (atualizar_avaliacao, migration
+  // PENDENTE_20260923000000). O banco decide qual lado cada pessoa pode
+  // gravar (auto/gestor/calibragem), só aceita as transições de status do
+  // fluxo normal e trava avaliação finalizada/ciclo encerrado pra quem não é
+  // administrador. Campo de um lado que a pessoa não pode gravar é ignorado.
+  // Quem chama só olha `.error`, igual antes.
+  return supabase.rpc('atualizar_avaliacao', { p_avaliacao_id: id, p_campos: payload })
 }
 
 export async function deleteAvaliacao(id: string) {
@@ -288,9 +283,16 @@ export async function upsertAvaliacaoCultural(
   }
 ) {
   const supabase = createClient()
-  return supabase
-    .from('avaliacoes_cultural')
-    .upsert({ avaliacao_id: avaliacaoId, pilar, ...campos }, { onConflict: 'avaliacao_id,pilar' })
+  // Pente fino (23/09/2026): gravação via RPC salvar_nota_avaliacao — o
+  // navegador não tem mais acesso direto a avaliacoes_cultural/tecnica
+  // (antes o próprio avaliado conseguia ler e gravar nota_gestor/
+  // nota_calibragem da própria avaliação pela API).
+  return supabase.rpc('salvar_nota_avaliacao', {
+    p_avaliacao_id: avaliacaoId,
+    p_tipo: 'cultural',
+    p_chave: String(pilar),
+    p_campos: campos,
+  })
 }
 
 export async function getAvaliacaoTecnica(avaliacaoId: string) {
@@ -311,9 +313,12 @@ export async function upsertAvaliacaoTecnica(
   }
 ) {
   const supabase = createClient()
-  return supabase
-    .from('avaliacoes_tecnica')
-    .upsert({ avaliacao_id: avaliacaoId, criterio_key: criterioKey, ...campos }, { onConflict: 'avaliacao_id,criterio_key' })
+  return supabase.rpc('salvar_nota_avaliacao', {
+    p_avaliacao_id: avaliacaoId,
+    p_tipo: 'tecnica',
+    p_chave: criterioKey,
+    p_campos: campos,
+  })
 }
 
 // ── Painel de Calibragem (ciclo inteiro numa tabela só) ─────────────────────

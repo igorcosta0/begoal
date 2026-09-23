@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
+import { useAcessoAdministrador } from '@/lib/hooks/useAcessoAdministrador'
 import { createObjetivo, createKr } from '@/lib/queries/okr'
 import { createSinalVital, createSvLancamento } from '@/lib/queries/sinais-vitais'
 import {
@@ -271,6 +272,21 @@ function formatValor(v: number, unidade: string | null): string {
 // ─────────────────────────────────────────────────────────────
 
 export default function ImportarLancamentosPage() {
+  const acesso = useAcessoAdministrador()
+  if (acesso === 'carregando') {
+    return <div className="h-32 rounded-2xl bg-secondary animate-pulse" />
+  }
+  if (acesso === 'negado') {
+    return (
+      <div className="rounded-2xl border border-dashed border-border bg-card/50 p-16 text-center">
+        <p className="text-muted-foreground text-sm">Você não tem acesso a esta página.</p>
+      </div>
+    )
+  }
+  return <ImportarConteudo />
+}
+
+function ImportarConteudo() {
   const { empresa } = useEmpresaStore()
 
   type Etapa = 'upload' | 'preview' | 'importando' | 'concluido'

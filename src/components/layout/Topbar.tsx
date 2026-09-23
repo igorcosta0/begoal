@@ -28,17 +28,22 @@ interface NavGroup {
 }
 
 interface TopbarProps {
-  permissionLevel?: string
+  /** client_id → permission_level de cada empresa em que o usuário tem papel */
+  papeisPorEmpresa: Record<string, string>
   userEmail?: string | null
   fotoUrl?: string | null
 }
 
-export default function Topbar({ permissionLevel, userEmail, fotoUrl }: TopbarProps) {
+export default function Topbar({ papeisPorEmpresa, userEmail, fotoUrl }: TopbarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { empresa, clear: clearEmpresa } = useEmpresaStore()
 
+  const permissionLevel = empresa ? papeisPorEmpresa[empresa.id] : undefined
   const isAdmin = permissionLevel === 'administrador'
+  // "Mudar Empresa" depende de ter mais de uma empresa, não de ser admin na
+  // empresa atual (antes um admin de outra empresa via o botão por acaso).
+  const temVariasEmpresas = Object.keys(papeisPorEmpresa).length > 1
   const ctz = isEmpresaCTZ(empresa?.company_name)
   const podeVerCargos = ctz && (isAdmin || souPilotoAutoconhecimento(userEmail))
 
@@ -191,7 +196,7 @@ export default function Topbar({ permissionLevel, userEmail, fotoUrl }: TopbarPr
                 sideOffset={10}
                 className="z-50 min-w-[200px] bg-card border border-border shadow-glass-lg rounded-2xl p-1.5 outline-none"
               >
-                {isAdmin && (
+                {temVariasEmpresas && (
                   <DropdownMenu.Item
                     onSelect={handleMudarEmpresa}
                     className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium text-foreground hover:bg-secondary transition-colors cursor-pointer outline-none"

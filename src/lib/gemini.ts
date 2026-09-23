@@ -30,7 +30,9 @@ async function tentarUmModelo(
   modelo: string,
   body: unknown
 ): Promise<{ ok: boolean; status: number; text: string }> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`
+  // Chave no cabeçalho, não na URL (pente fino 23/09/2026): URL costuma ir
+  // parar em log de proxy/CDN e em mensagem de erro de rede.
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_POR_TENTATIVA_MS)
   const inicio = Date.now()
@@ -40,7 +42,7 @@ async function tentarUmModelo(
   try {
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify(body),
       signal: controller.signal,
     })

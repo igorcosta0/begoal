@@ -11,8 +11,8 @@
 - **Branch que importa é `master`, não `main`.** `main` está praticamente vazia (só 3 commits, versão v1 do módulo de avaliação, sem calibragem/pares/nota 1-5). Todo o trabalho real está em `master`, que o Vercel usa pra deploy automático — **todo `git push` pra `master` dispara deploy em produção**, confirmar antes de enviar mudança que não deveria ir pro ar ainda.
 - **Existe uma cópia antiga e quebrada do projeto em `C:\Users\igorc\OneDrive\Documents\begoal-master-20260825T123459Z-1-001\begoal-master`** — não é a pasta de trabalho, é um backup/export incompleto (faltam quase todos os arquivos de `src/`, `node_modules` parcial, sem histórico de git). Se uma sessão abrir lá por engano, os arquivos de `src/app`/`src/components` vão aparecer vazios — não é bug do Claude, é a cópia mesmo. Ignorar essa pasta, trabalhar sempre em `C:\dev\begoal`.
 - **Migrations do Supabase são aplicadas manualmente** — os arquivos em `supabase/migrations/*.sql` não rodam sozinhos, é preciso colar cada um no SQL Editor do Supabase e rodar. Ao criar uma migration nova, sempre avisar o usuário pra rodar antes do `git push` correspondente.
-- **Git e Node não vinham instalados** nesta máquina (Windows) — foram instalados via `winget install --id Git.Git` e `winget install --id OpenJS.NodeJS.LTS`. Depois de instalar, é preciso adicionar ao PATH da sessão atual manualmente (`$env:PATH = "C:\Program Files\Git\cmd;" + $env:PATH`, idem pra `C:\Program Files\nodejs`), porque uma sessão já aberta não pega o PATH atualizado sozinha.
-- **`git push` já funciona direto por aqui** — a primeira vez precisou que o usuário rodasse o push manualmente numa janela de terminal aberta por ele (pra completar o login do Git Credential Manager pelo navegador, algo que não funciona rodando por dentro do Claude Code). Depois disso a credencial ficou salva no Windows Credential Manager (`cmdkey /list` mostra `git:https://github.com`) e ficou visível pra esta sessão também — não precisa repetir esse processo.
+- **A máquina foi formatada em set/2026. O Igor pede para ser avisado ANTES de qualquer instalação** (e para baixar só o necessário). Git (2.55) e Node (24.19 LTS) foram reinstalados em 23/09/2026, com o ok dele, via `winget install --id Git.Git` e `winget install --id OpenJS.NodeJS.LTS`. Esse `winget install` foi barrado pelo auto mode classifier até o Igor trocar para Accept Edits. Depois de instalar, é preciso adicionar ao PATH da sessão atual manualmente (`$env:PATH = "C:\Program Files\Git\cmd;" + $env:PATH`, idem pra `C:\Program Files\nodejs`), porque uma sessão já aberta não pega o PATH atualizado sozinha.
+- **Depois da formatação de set/2026, a credencial do GitHub provavelmente precisa ser refeita**: o primeiro push deve ser rodado pelo Igor numa janela de terminal dele, igual à primeira vez descrita a seguir. **`git push` já funcionava direto por aqui** — a primeira vez precisou que o usuário rodasse o push manualmente numa janela de terminal aberta por ele (pra completar o login do Git Credential Manager pelo navegador, algo que não funciona rodando por dentro do Claude Code). Depois disso a credencial ficou salva no Windows Credential Manager (`cmdkey /list` mostra `git:https://github.com`) e ficou visível pra esta sessão também — não precisa repetir esse processo.
 - **`npm run type-check`** (`tsc --noEmit`) é o jeito de validar mudança de código sem precisar rodar o app inteiro (não temos as env vars do Supabase aqui pra um `next build` completo). Rodar sempre antes de dar push em mudança de `.tsx`/`.ts`.
 - **`git push` pode ser bloqueado pelo "auto mode classifier" do Claude Code**, mesmo com o usuário confirmando no chat (aconteceu em 31/08) — a mensagem de erro é explícita: só o usuário pode liberar, de fora da sessão. Não adianta tentar de novo pela mesma via nem tentar editar `settings.json` (também cai no mesmo bloqueio). Solução: pedir pro usuário trocar o modo de permissão da sessão pra **Accept Edits** (`Shift+Tab` no terminal) — resolveu de primeira. Se não resolver, o próximo a tentar é **Bypass Permissions** (mais permissivo).
 
@@ -949,3 +949,121 @@
 - Especificado e implementado o **Painel de Calibragem**: tela dedicada (`ModalCalibragem.tsx`) que lista todos os participantes do ciclo de uma vez — Cultural: Auto/Avaliador/Média de Pares (nova, calculada na leitura)/Calibragem editável; Técnico: Auto/Avaliador/Calibragem. Autosave por clique. Migration `20260826000000_calibragem_painel.sql` (`get_calibragem_ciclo_cultural`/`get_calibragem_ciclo_tecnica`, mesma máscara admin-only de sempre, sem role novo). Aplicado no Supabase e enviado pro GitHub (`master`, commit `ea68c80`) — Vercel deve ter feito deploy automático.
 - Resolvido também: Git/Node instalados nesta máquina; autenticação de push configurada (ver "Fatos operacionais" acima).
 - Unificados os botões "Salvar"/"Concluir [etapa]" do `ModalAvaliacao.tsx` num único botão (commit `3559d2d`, local, ainda não enviado ao GitHub por pedido do usuário — "vamos manter local por enquanto"). Seguro porque `validarCampos()` já bloqueava "Salvar" com campo faltando, então salvar com sucesso já implicava "está tudo completo"; o botão único conclui a etapa quando aplicável ao papel de quem salva, senão só salva, sem mudar o gate de calibragem em lote (`page.tsx`).
+
+### 2026-09-22
+- Pedido do Igor: "verificação do sistema" antes de planejar migrar o banco Supabase. Checagem feita
+  (git, `npm run type-check`, MCP do Supabase só-leitura):
+  - Git limpo, sincronizado com `origin/master`, type-check limpo.
+  - **A tabela de histórico de migrations do Supabase está vazia** (`list_migrations` retornou `[]`) —
+    confirma que nada aqui passa pela CLI, tudo é colado manualmente no SQL Editor, então não existe
+    changelog oficial dentro do banco. O prefixo `PENDENTE_` no nome do arquivo **não é confiável**
+    como indicador do estado atual (nunca é removido depois que a migration roda) — spot-check no
+    código-fonte de `pode_ver_lado_calibragem`/`pode_ver_todos_eneagrama_ctz` confirmou que as
+    migrations de Letícia Leite e Eduardo Rigotto (16-17/09, não documentadas neste log na hora) já
+    estão aplicadas de verdade. Nenhuma migration pendente de verdade encontrada nesta checagem.
+  - Achados de segurança (advisor do Supabase): RLS ainda desabilitado em `page_access_log` e
+    `Propagandas` (crítico, conhecido desde 31/08, nunca tratado); Postgres atual com patch de
+    segurança disponível; proteção contra senha vazada desabilitada no Auth; 27 funções com
+    `search_path` mutável; 41 funções `SECURITY DEFINER` expostas a `anon`/`authenticated` (esperado,
+    é a base do controle de acesso do app).
+  - Performance: 110 tabelas com múltiplas policies RLS permissivas empilhadas (efeito do padrão
+    "soma mais um OR" usado várias vezes pra calibragem restrita), 81 policies sem `auth.uid()` num
+    subselect, 44 foreign keys sem índice.
+  - **Extensões realmente habilitadas** (`installed_version` não-nulo, não só disponível na imagem):
+    só `pg_stat_statements`, `uuid-ossp`, `pgcrypto`, `supabase_vault`, `plpgsql`. Nada de
+    postgis/pgvector/pg_cron/pg_net/pgsodium em uso de verdade, apesar de aparecerem na lista de
+    extensões disponíveis — achado só confirmado depois, ao reler o campo certo (`installed_version`),
+    corrigindo uma leitura errada que passei pro Igor no meio da conversa.
+  - Storage: 6 buckets (`avatars`, `biblioteca` conhecidos; `company_logos`, `Logos Genericas`,
+    `Outdoor`, `Profile_` — criados entre ago e nov/2025, não documentados em nenhuma sessão revisada,
+    precisam de confirmação de uso antes de qualquer migração). Nenhuma Edge Function no projeto.
+- Perguntado ao Igor (`AskUserQuestion`) o que "migrar pra SQL" significava de fato — ambíguo o
+  suficiente pra mudar todo o escopo (Postgres auto-hospedado vs. outro motor de SQL vs. só um dump
+  portável). Confirmado: **Postgres auto-hospedado**, especificamente self-host do stack Supabase
+  inteiro (Docker Compose oficial: Postgres + Auth/GoTrue + Storage + PostgREST + Realtime) — não
+  troca de motor. Mantém RLS/funções/`supabase-js` quase intactos, o trabalho é de infra, não de
+  reescrita de app.
+- Pedido de acompanhamento: montar e salvar um plano passo a passo pra quando a migração acontecer de
+  verdade. Salvo em `Adições futuras/Plano de Migração - Supabase Self-Hosted.md` (fora do Git, mesma
+  convenção da pasta) — 6 fases (infra → schema → dados → validação isolada → cutover → operação
+  contínua) + rollback, com os achados desta checagem (buckets não documentados, RLS desabilitado,
+  extensões reais, ausência de changelog de migrations) incorporados como pré-requisitos explícitos.
+  Nenhuma etapa do plano foi executada — é só o documento, pra próxima sessão não precisar refazer o
+  levantamento.
+- Depois da auditoria acima (8 achados, PDF salvo em `Adições futuras/Auditoria de Arquitetura -
+  begoal - 2026-09-22.pdf`), o Igor cogitou seriamente reescrever o sistema do zero como "v2" — motivo
+  real: o plano é vender este produto pra outras empresas depois, e hoje dois módulos inteiros
+  (Avaliação de Desempenho, Autoconhecimento/Eneagrama) são travados e construídos especificamente pro
+  rubric da CTZ (`isEmpresaCTZ()`, pilares/verticais fixos, calibradores por e-mail), não genéricos.
+  Cheguei a montar `C:\dev\begoal-v2` (Next.js 16 + Tailwind v4 + shadcn/ui + ESLint flat config +
+  git próprio, projeto Supabase isolado ainda não criado) e uma tela de login funcional (só visual,
+  sem auth de verdade). **Decisão final do Igor, mesma sessão: abandonar a v2 por enquanto** — "vamos
+  fazer um pente fino e focar no sistema principal mesmo, se um dia eu decidir fazer de novo essa v2
+  eu retorno com essa ideia". `C:\dev\begoal-v2` foi deletado por completo (pasta local, nunca teve
+  remote/push, nada compartilhado — zero perda de dado real).
+  - **Se o Igor voltar a cogitar isso no futuro**: o raciocínio todo (por que reescrever, o que
+    reconsiderar de stack, o roteiro fase a fase) está registrado nesta conversa — não existe mais
+    como arquivo, só como decisão já tomada e revertida. Os pontos que valem lembrar sem reabrir tudo:
+    (1) a motivação de negócio (produto vendável) é o que justificaria uma v2, não dívida técnica
+    sozinha; (2) os achados #1 (permissões hardcoded) e a falta de rubric configurável em
+    Avaliação/Autoconhecimento são o que mais pesaria numa reconstrução; (3) a auditoria de 22/09
+    encontrada acima já serve de ponto de partida se isso for retomado.
+  - **A partir daqui, a sessão volta a focar em endurecer a v1** (`C:\dev\begoal`) usando os 8 achados
+    da auditoria, começando pelo achado #1 (controle de acesso) — retomando de onde a conversa parou
+    antes do desvio pra v2.
+
+### 2026-09-23
+- **Pasta de trabalho mudou**: a sessão abriu em `C:\Users\igorc\OneDrive\Documents\Dev\Begoal`
+  (repositório Git válido, com `CLAUDE.md`, `src/` completo e as 57 migrations). `C:\dev\begoal` não
+  existe mais nesta máquina, e Git e Node também não estão instalados (nem no caminho padrão).
+  Por isso não deu para rodar `npm run type-check` nem ver `git log` nesta sessão. O item "Repositório
+  de verdade" em "Fatos operacionais" ainda aponta a pasta antiga: confirmar com o Igor e atualizar.
+- Pedido do Igor: "pente fino minucioso em absolutamente tudo" antes de comercializar. Foram lidos
+  todos os arquivos de `src/`, a configuração do projeto e as migrations (sem MCP do Supabase nesta
+  sessão, então nada foi conferido direto no banco). Nenhum código foi alterado, foi só diagnóstico.
+  Relatório completo em `Adições futuras/Pente Fino - begoal - 2026-09-23.md` (fora do Git).
+- Achado mais grave, **a confirmar no banco antes de qualquer outra coisa**: as policies
+  `avaliacoes_cultural_all`/`avaliacoes_tecnica_all` (`FOR ALL`, migration 20260720) e
+  `avaliacoes_update` (20260827010000) incluem `e_avaliado`, e não existe `REVOKE` de coluna em lugar
+  nenhum do repo. O próprio avaliado conseguiria ler e gravar `nota_gestor`/`nota_calibragem`/`media_*`
+  e `status` da própria avaliação direto pela API, sem passar pelas funções `get_*` mascaradas.
+  A migration `20260828030000_avaliacao_fecha_leitura_direta_notas`, que fecharia isso, é a que se
+  perdeu em 31/08 e nunca foi reconstruída.
+- Outros críticos: não existe superadmin (a `/admin` só some do menu e cria/exclui empresas conforme
+  a RLS de `clients`, que não está no repo); `permission_level` vem de `limit(1)` sem filtrar
+  empresa; Letícia e Eduardo são admin em todas as 11 empresas existentes (`cross join clients`,
+  roda uma vez só — empresa nova NÃO herda isso, ao contrário do que o comentário da migration
+  dizia e do que o relatório afirmou na primeira versão); perfil de Eneagrama vai para o Gemini, que talvez esteja no plano gratuito;
+  Next 14.2.3 e xlsx 0.18.5 têm CVEs publicadas; 89 e-mails/UUIDs fixos no código e no banco.
+  Mais 18 bugs de dado/tela (datas com um dia de diferença, `|| undefined` que não deixa apagar
+  gestor/setor, esqueleto infinito sem empresa selecionada etc.). Detalhes e ordem sugerida no relatório.
+- **A máquina do Igor foi formatada** (por isso não tem Git/Node). Pedido explícito dele: **avisar
+  antes de instalar qualquer coisa**. Nada foi instalado nesta sessão.
+- Correção dos críticos, mesma sessão (nada commitado — sem Git aqui; nada foi para produção):
+  1. **C1**: migration `PENDENTE_20260923000000_avaliacao_fecha_notas_api.sql` (**ainda não rodada,
+     rodar ANTES de qualquer deploy com o front novo**, senão Salvar avaliação quebra por falta das
+     RPCs). Tira o acesso direto do `authenticated` às colunas de nota; as 8 funções `get_*` de
+     leitura viram SECURITY DEFINER com dono `avaliacao_leitor` (papel novo, sem login, que não é
+     dono das tabelas — a RLS continua filtrando linhas igual, sem reescrever o corpo das funções).
+     Escrita passa por 4 RPCs (`salvar_nota_avaliacao`, `atualizar_avaliacao`,
+     `iniciar_calibragem_ciclo`, `finalizar_calibragem_ciclo`) que checam o lado de cada pessoa,
+     só aceitam as transições de status do fluxo e travam avaliação finalizada/ciclo encerrado pra
+     quem não é admin. Front: só `src/lib/queries/avaliacao.ts` mudou (mesmas assinaturas).
+     A migration tem seção de verificação e de desfazer no fim.
+  2. **C2 (parte front-end)**: `layout.tsx` manda o papel de todas as empresas e a `Topbar` usa o
+     da empresa selecionada; "Mudar Empresa" aparece pra quem tem mais de uma empresa (antes: só
+     admin); `/admin` e `/importar-lancamentos` ganharam trava na própria página
+     (`src/lib/hooks/useAcessoAdministrador.ts`). **Falta**: conferir a RLS de `clients` no banco e
+     decidir o conceito de superadmin.
+  3. **C4**: chave do Gemini saiu da URL e foi pro cabeçalho `x-goog-api-key` (`src/lib/gemini.ts`).
+     Falta o Igor conferir o plano da chave no AI Studio.
+  4. **C5**: Next 14.2.3 → **14.2.35** (última da linha 14.2) e `eslint-config-next` junto, com
+     versão fixa (sem `^`). xlsx 0.18.5 → **0.20.3**, instalado pela URL do CDN da SheetJS
+     (`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`): as versões corrigidas não existem mais
+     no npm. Para atualizar o xlsx no futuro, trocar a URL no `package.json`.
+  5. Projeto copiado para `C:\dev\begoal` (a pasta do OneDrive ficou intacta; o Igor apaga quando
+     quiser). `npm run type-check` limpo com tudo isso. Commit local feito, **sem push**: ordem =
+     rodar a migration C1 → verificar → testar com conta não-admin → push.
+  6. `src/app/(auth)/login/page.tsx` aparecia modificado desde antes desta sessão (redesenho do login
+     + mensagem de erro diferenciada, nunca commitado). Ficou de fora do commit até o Igor decidir.
+  - **C6** (tirar e-mails fixos) é refatoração maior, ainda não iniciada.
