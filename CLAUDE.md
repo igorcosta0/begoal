@@ -5,6 +5,33 @@
 > sempre que fizermos algo relevante, acrescento uma entrada no "Log de
 > Sessões" no final do arquivo, sem apagar as anteriores.
 
+## ⚠️ PRÓXIMOS PASSOS PENDENTES (retomar por aqui — criado em 23/09/2026)
+
+**Ao abrir a sessão, antes de qualquer outra coisa, perguntar ao Igor em que etapa ele está.**
+Os commits `95a8373` (segurança: críticos C1/C2/C4/C5 do pente fino) e `6c85997` (novo visual do
+login) estão **só locais, sem push**. O front novo de Avaliação só funciona DEPOIS da migration;
+se o push for antes, o Salvar da avaliação quebra em produção.
+
+1. [ ] Igor roda no SQL Editor do Supabase:
+       `supabase/migrations/PENDENTE_20260923000000_avaliacao_fecha_notas_api.sql`
+       O script roda inteiro numa transação: se der erro, nada fica aplicado. Pedir o texto do erro.
+2. [ ] Rodar as consultas de verificação (a) e (b) do fim desse arquivo. (a): as 8 funções `get_*`
+       com `security_definer = true` e dono `avaliacao_leitor`. (b): precisa voltar **vazia**; se
+       voltar alguma linha, essa função vai quebrar e precisa ser tratada antes do push.
+3. [ ] Testar no app **local** (`npm run dev`), porque produção ainda tem o front antigo, que grava
+       direto na tabela e vai falhar depois da migration. Usar uma conta NÃO administradora:
+       autoavaliação própria (salvar e concluir) e, como gestor, a avaliação de um liderado.
+       Também um calibrador: Painel de Calibragem.
+       ⚠️ Entre o passo 1 e o passo 4, quem salvar avaliação em produção vai receber erro. Fazer
+       1→4 em sequência rápida, num horário sem uso.
+4. [ ] `git push` para `master`. Depois da formatação, a credencial do GitHub deve precisar ser
+       refeita: o **primeiro push o Igor roda numa janela de terminal dele** (`cd C:\dev\begoal` e
+       depois `git push`).
+5. [ ] Depois do deploy: marcar esta seção como concluída no Log de Sessões e remover daqui.
+
+Relatório completo do pente fino (o que falta depois disso: C6, bugs A1–A18, M1–M11) em
+`Adições futuras/Pente Fino - begoal - 2026-09-23.md`.
+
 ## Fatos operacionais importantes
 
 - **Repositório de verdade**: `https://github.com/igorcosta0/begoal.git`, pasta local `C:\dev\begoal`.
