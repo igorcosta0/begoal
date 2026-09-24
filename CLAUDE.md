@@ -1094,3 +1094,15 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   Legalização/Agrimensura (Agrimensura sem dados ainda), falhas graves (meta 0, cliente no
   comentário). Conferido via SQL. Os 2 KRs percentuais da Graciela (% execução da Avaliação,
   % rituais) estavam com meta 100 (aparecia 10.000%): corrigido pra 1 via SQL pelo Igor.
+- **OKRs — direção e apuração do KR** (pedido "melhorar a visualização dos OKRs"): gráfico de
+  lançamentos (`KrChart.tsx`) passou a usar linha reta, eixo X proporcional ao tempo e valores
+  formatados por tipo (commit `c1d85ac`). Depois, migration
+  `PENDENTE_20260924000000_krs_direcao_apuracao.sql` (rodada pelo Igor): `krs.direcao`
+  ('maior'|'menor') e `krs.apuracao` ('ultimo'|'soma'|'media'), default mantém o cálculo antigo.
+  Falhas graves → 'menor'; Faturamento → 'soma' com meta anual R$ 4.050.000. Cálculo único em
+  `src/lib/okrProgresso.ts` (OKRs e Início usavam fórmulas copiadas): meta = inicial vira
+  "Dentro/Fora da meta" (antes sempre 0%), KR sem lançamento mostra "Sem lançamentos" e sai da
+  média do objetivo, KR finalizado sai da média do objetivo ativo. Card do KR ganhou mini-gráfico e
+  variação vs lançamento anterior; `getKrsByEmpresa` agora traz todos os lançamentos de cada KR.
+  Testado local pelo Igor antes do push. Pendente (segunda etapa, não feita): meta por mês e linha
+  de previsão, como na planilha — exige tabela nova.
