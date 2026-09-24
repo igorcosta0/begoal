@@ -1083,3 +1083,14 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   reverte o banco e o front novo continua funcionando. Push dos 3 commits (`95a8373`, `6c85997`,
   `71ab8ef`) para `master` funcionou direto pelo Claude Code, **sem precisar refazer a credencial do
   GitHub** depois da formatação.
+
+### 2026-09-24
+- Carga dos OKRs da Concretize (imagem `Adições futuras/OKR Concretize.jpeg`, lida de baixo para
+  cima: a faixa "OKR - ..." fecha os KRs acima dela) na CTZ, via script SQL rodado pelo Igor
+  (`Adições futuras/OKR Concretize - carga.sql`, fora do Git). "SER UMA EMPRESA MAIS EFICIENTE PRA
+  DENTRO E PRA FORA." já existia (3 KRs da Graciela, intocados); "SER ECONOMICAMENTE SUSTENTÁVEL."
+  foi criado. 5 KRs novos com lançamentos mensais de 2026 (dia 01): Faturamento (linha "REAL",
+  meta R$ 350.000 = meta mensal), projetos sem retrabalho, aprovações sem retrabalho
+  Legalização/Agrimensura (Agrimensura sem dados ainda), falhas graves (meta 0, cliente no
+  comentário). Conferido via SQL. Pendente: 2 KRs percentuais da Graciela estão com meta 100
+  (aparece 10.000%) — o certo é 1; não corrigido.
