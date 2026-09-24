@@ -1092,5 +1092,5 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   foi criado. 5 KRs novos com lançamentos mensais de 2026 (dia 01): Faturamento (linha "REAL",
   meta R$ 350.000 = meta mensal), projetos sem retrabalho, aprovações sem retrabalho
   Legalização/Agrimensura (Agrimensura sem dados ainda), falhas graves (meta 0, cliente no
-  comentário). Conferido via SQL. Pendente: 2 KRs percentuais da Graciela estão com meta 100
-  (aparece 10.000%) — o certo é 1; não corrigido.
+  comentário). Conferido via SQL. Os 2 KRs percentuais da Graciela (% execução da Avaliação,
+  % rituais) estavam com meta 100 (aparecia 10.000%): corrigido pra 1 via SQL pelo Igor.
