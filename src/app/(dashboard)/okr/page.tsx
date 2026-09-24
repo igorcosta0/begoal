@@ -26,6 +26,7 @@ import ModalTaticasKr from '@/components/okr/ModalTaticasKr'
 import ModalEditarLancamentos from '@/components/okr/ModalEditarLancamentos'
 import { Archive, ArchiveRestore, Target, ChevronDown, ChevronUp, Plus } from 'lucide-react'
 import { formatPercent, cn, mensagemErroExclusao } from '@/lib/utils'
+import { calcularKr, progressoObjetivo } from '@/lib/okrProgresso'
 
 export default function OkrPage() {
   const { empresa } = useEmpresaStore()
@@ -71,22 +72,18 @@ export default function OkrPage() {
     getFuncionariosByEmpresa(empresa.id).then(({ data }) => setFuncionarios(data ?? []))
   }, [empresa])
 
-  function calcularProgresso(kr: any) {
-    const atual = kr.valor_atual ?? kr.valor_inicial ?? 0
-    const inicial = kr.valor_inicial ?? 0
-    const meta = kr.meta ?? 0
-    if (meta === inicial) return 0
-    if (meta < inicial) return Math.min(100, Math.max(0, ((inicial - atual) / (inicial - meta)) * 100))
-    return Math.min(100, Math.max(0, ((atual - inicial) / (meta - inicial)) * 100))
-  }
-
   function mapearKr(kr: any) {
+    const resultado = calcularKr(kr, kr.lancamentos)
     return {
       ...kr,
       responsavel: kr.funcionarios,
       setor: setores.find((s: any) => s.id === kr.setor_id) ? { nome: setores.find((s: any) => s.id === kr.setor_id).name } : null,
       objetivo: kr.objetivos,
-      progresso: calcularProgresso(kr),
+      progresso: resultado.progresso,
+      valor_apurado: resultado.valorApurado,
+      binario: resultado.binario,
+      direcao_efetiva: resultado.direcao,
+      serie: resultado.serie,
     }
   }
 
@@ -111,9 +108,7 @@ export default function OkrPage() {
     })
     .map((obj) => ({
       ...obj,
-      progresso: obj.krs.length > 0
-        ? obj.krs.reduce((acc: number, kr: any) => acc + (kr.progresso ?? 0), 0) / obj.krs.length
-        : 0,
+      progresso: progressoObjetivo(obj.krs, true),
     }))
 
   // Objetivos FINALIZADOS
@@ -125,9 +120,7 @@ export default function OkrPage() {
     }))
     .map((obj) => ({
       ...obj,
-      progresso: obj.krs.length > 0
-        ? obj.krs.reduce((acc: number, kr: any) => acc + (kr.progresso ?? 0), 0) / obj.krs.length
-        : 0,
+      progresso: progressoObjetivo(obj.krs, false),
     }))
 
   // KRs finalizados dentro de objetivos ativos
@@ -336,7 +329,7 @@ export default function OkrPage() {
                                 <span className="text-[10px] px-2 py-0.5 bg-secondary text-muted-foreground rounded-full shrink-0">Finalizado</span>
                               </div>
                               <p className="text-xs text-muted-foreground mt-0.5">
-                                {obj.krs.length} KR{obj.krs.length !== 1 ? 's' : ''} · {formatPercent(obj.progresso)}
+                                {obj.krs.length} KR{obj.krs.length !== 1 ? 's' : ''} · {obj.progresso === null ? 'sem lançamentos' : formatPercent(obj.progresso)}
                               </p>
                             </div>
                           </div>
@@ -366,7 +359,7 @@ export default function OkrPage() {
                               <div key={kr.id} className="bg-secondary/40 rounded-lg p-3">
                                 <p className="text-xs font-medium text-muted-foreground line-through mb-1">{kr.titulo}</p>
                                 <div className="flex items-center justify-between">
-                                  <span className="text-xs text-muted-foreground">{formatPercent(kr.progresso)}</span>
+                                  <span className="text-xs text-muted-foreground">{kr.progresso === null ? 'Sem lançamentos' : formatPercent(kr.progresso)}</span>
                                   <button onClick={() => handleReativarKr(kr)} className="text-[10px] text-primary hover:underline">
                                     Reativar KR
                                   </button>
@@ -399,7 +392,7 @@ export default function OkrPage() {
                             <div key={kr.id} className="bg-secondary/40 rounded-lg p-3 opacity-80">
                               <p className="text-xs font-medium text-muted-foreground line-through mb-1">{kr.titulo}</p>
                               <div className="flex items-center justify-between">
-                                <span className="text-xs text-muted-foreground">{formatPercent(kr.progresso)}</span>
+                                <span className="text-xs text-muted-foreground">{kr.progresso === null ? 'Sem lançamentos' : formatPercent(kr.progresso)}</span>
                                 <button onClick={() => handleReativarKr(kr)} className="text-[10px] text-primary hover:underline">
                                   Reativar
                                 </button>

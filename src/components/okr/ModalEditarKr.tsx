@@ -30,6 +30,8 @@ export default function ModalEditarKr({
     valor_inicial: '0',
     meta: '',
     tipo_valor: '',
+    direcao: 'maior',
+    apuracao: 'ultimo',
   })
 
   useEffect(() => {
@@ -47,6 +49,8 @@ export default function ModalEditarKr({
       valor_inicial: String(kr.valor_inicial ?? 0),
       meta: String(kr.meta ?? ''),
       tipo_valor: kr.tipo_valor ?? '',
+      direcao: kr.direcao ?? 'maior',
+      apuracao: kr.apuracao ?? 'ultimo',
     })
   }, [kr])
 
@@ -63,6 +67,8 @@ export default function ModalEditarKr({
       valor_inicial: parseFloat(form.valor_inicial) || 0,
       meta: parseFloat(form.meta) || 0,
       tipo_valor: form.tipo_valor || undefined,
+      direcao: form.direcao,
+      apuracao: form.apuracao,
     })
 
     if (error) {
@@ -162,6 +168,35 @@ export default function ModalEditarKr({
               </select>
             </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-foreground">Direção</label>
+              <select
+                value={form.direcao}
+                onChange={(e) => setForm({ ...form, direcao: e.target.value })}
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="maior">Quanto maior, melhor</option>
+                <option value="menor">Quanto menor, melhor</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-foreground">Apuração</label>
+              <select
+                value={form.apuracao}
+                onChange={(e) => setForm({ ...form, apuracao: e.target.value })}
+                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="ultimo">Último lançamento</option>
+                <option value="soma">Soma dos lançamentos</option>
+                <option value="media">Média dos lançamentos</option>
+              </select>
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground -mt-1">
+            Soma: a meta é o total do período (ex.: faturamento do ano). Último: cada lançamento é comparado à meta.
+          </p>
 
           {error && <p className="text-xs text-destructive">{error}</p>}
 

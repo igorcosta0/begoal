@@ -9,7 +9,7 @@ interface ObjetivoCardProps {
   objetivo: {
     id: string
     titulo: string
-    progresso?: number
+    progresso?: number | null // null = nenhum KR com lançamento ainda
     krs?: any[]
   }
   onCriarKr?: (objetivo: any) => void
@@ -44,9 +44,11 @@ export default function ObjetivoCard({
   const [expanded, setExpanded] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
+  const semDados = objetivo.progresso === null || objetivo.progresso === undefined
   const progresso = objetivo.progresso ?? 0
   const krs = objetivo.krs ?? []
-  const barColor = getProgressColor(progresso)
+  const barColor = semDados ? 'bg-muted' : getProgressColor(progresso)
+  const krsSemDados = krs.filter((kr) => kr.progresso === null && !kr.concluido).length
 
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden">
@@ -62,6 +64,7 @@ export default function ObjetivoCard({
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {krs.length} Key Result{krs.length !== 1 ? 's' : ''}
+                {krsSemDados > 0 && ` · ${krsSemDados} sem lançamentos (fora da média)`}
               </p>
             </div>
           </div>
@@ -121,7 +124,7 @@ export default function ObjetivoCard({
         <div className="mt-3 space-y-1">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Progresso geral</span>
-            <span className="font-medium text-foreground">{formatPercent(progresso)}</span>
+            <span className="font-medium text-foreground">{semDados ? 'Sem lançamentos' : formatPercent(progresso)}</span>
           </div>
           <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
             <div

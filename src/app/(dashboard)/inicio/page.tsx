@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
 import { getObjetivos, getKrsByEmpresa } from '@/lib/queries/okr'
+import { calcularKr, progressoObjetivo } from '@/lib/okrProgresso'
 import { getCiclosAvaliacao } from '@/lib/queries/avaliacao'
 import { formatPercent, isEmpresaCTZ, souPilotoAutoconhecimento } from '@/lib/utils'
 import {
@@ -122,21 +123,16 @@ export default function InicioPage() {
     ...obj,
     krs: krs.filter((kr) => kr.objetivo_id === obj.id).map((kr) => ({
       ...kr,
-      progresso: (() => {
-        const atual = kr.valor_atual ?? kr.valor_inicial ?? 0
-        const inicial = kr.valor_inicial ?? 0
-        const meta = kr.meta ?? 0
-        if (meta === inicial) return 0
-        if (meta < inicial) return Math.min(100, Math.max(0, ((inicial - atual) / (inicial - meta)) * 100))
-        return Math.min(100, Math.max(0, ((atual - inicial) / (meta - inicial)) * 100))
-      })(),
+      progresso: calcularKr(kr, kr.lancamentos).progresso,
     })),
   })).map((obj) => ({
     ...obj,
-    progresso: obj.krs.length > 0 ? obj.krs.reduce((a: number, kr: any) => a + (kr.progresso ?? 0), 0) / obj.krs.length : 0,
-  }))
+    // Mesmo cálculo da página de OKRs: KR sem lançamento e KR finalizado ficam fora.
+    progressoOuNulo: progressoObjetivo(obj.krs, true),
+  })).map((obj) => ({ ...obj, progresso: obj.progressoOuNulo ?? 0 }))
 
-  const progressoGeral = objetivosComKrs.length > 0 ? objetivosComKrs.reduce((a, obj) => a + obj.progresso, 0) / objetivosComKrs.length : 0
+  const objetivosComDados = objetivosComKrs.filter((obj) => obj.progressoOuNulo !== null)
+  const progressoGeral = objetivosComDados.length > 0 ? objetivosComDados.reduce((a, obj) => a + obj.progresso, 0) / objetivosComDados.length : 0
   const krsAtivos = krs.filter((kr: any) => !kr.concluido).length
   const temCampanha = !!(formIdentidade.campanha_titulo || formIdentidade.campanha_descricao)
 

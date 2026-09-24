@@ -5,6 +5,7 @@ import { getKrChartData } from '@/lib/queries/okr'
 import KrChart from './KrChart'
 import { formatPercent, getProgressColor, getProgressStatus, cn, formatValor } from '@/lib/utils'
 import { X, User, Building2, Target, BarChart2, List } from 'lucide-react'
+import { ROTULO_APURACAO, type ApuracaoKr } from '@/lib/okrProgresso'
 
 interface ModalDetalhesKrProps {
   open: boolean
@@ -34,9 +35,11 @@ export default function ModalDetalhesKr({
 
   if (!open || !kr) return null
 
+  const semDados = kr.progresso === null || kr.progresso === undefined
   const progresso = kr.progresso ?? 0
-  const status = kr.concluido ? 'Finalizado' : getProgressStatus(progresso)
-  const barColor = kr.concluido ? 'bg-gray-400' : getProgressColor(progresso)
+  const apuracao: ApuracaoKr = kr.apuracao === 'soma' || kr.apuracao === 'media' ? kr.apuracao : 'ultimo'
+  const status = kr.concluido ? 'Finalizado' : semDados ? 'Sem lançamentos' : getProgressStatus(progresso)
+  const barColor = kr.concluido ? 'bg-gray-400' : semDados ? 'bg-muted' : getProgressColor(progresso)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -69,7 +72,7 @@ export default function ModalDetalhesKr({
           <div className="flex items-center justify-between text-sm">
             <span className={cn(
               'text-xs px-2 py-0.5 rounded-full font-medium',
-              kr.concluido ? 'bg-gray-100 text-gray-600'
+              kr.concluido || semDados ? 'bg-gray-100 text-gray-600'
                 : progresso >= 70 ? 'bg-green-100 text-green-700'
                 : progresso >= 40 ? 'bg-yellow-100 text-yellow-700'
                 : 'bg-red-100 text-red-700'
@@ -77,7 +80,7 @@ export default function ModalDetalhesKr({
               {status}
             </span>
             <span className="text-sm font-semibold text-foreground">
-              {formatPercent(progresso)}
+              {semDados ? '—' : kr.binario ? (progresso >= 100 ? 'Dentro da meta' : 'Fora da meta') : formatPercent(progresso)}
             </span>
           </div>
           <div className="h-2 bg-secondary rounded-full overflow-hidden">
@@ -87,7 +90,7 @@ export default function ModalDetalhesKr({
             />
           </div>
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Atual: <span className="font-medium text-foreground">{formatValor(kr.valor_atual ?? kr.valor_inicial ?? 0, kr.tipo_valor)}</span></span>
+            <span>{ROTULO_APURACAO[apuracao]}: <span className="font-medium text-foreground">{semDados ? '—' : formatValor(kr.valor_apurado ?? 0, kr.tipo_valor)}</span></span>
             <span>Meta: <span className="font-medium text-foreground">{formatValor(kr.meta ?? 0, kr.tipo_valor)}</span></span>
           </div>
         </div>
@@ -153,6 +156,7 @@ export default function ModalDetalhesKr({
               data={chartData}
               valorMeta={kr.meta}
               unidade={kr.tipo_valor}
+              acumular={apuracao === 'soma'}
             />
           ) : (
             <div className="space-y-1 max-h-64 overflow-y-auto pr-1">

@@ -63,6 +63,7 @@ export async function getKrsByEmpresa(clientId: string) {
     .from('krs')
     .select(`
       id, titulo, valor_inicial, valor_atual, meta, tipo_valor,
+      direcao, apuracao,
       concluido, objetivo_id, responsavel_id, setor_id, client_id,
       funcionarios!responsavel_id(full_name),
 
@@ -73,25 +74,29 @@ export async function getKrsByEmpresa(clientId: string) {
 
   if (error || !data) return { data: [], error }
 
+  // Todos os lançamentos (não só a data do último): o progresso depende da
+  // forma de apuração (último/soma/média) e o card mostra a série.
   const krIds = data.map((kr: any) => kr.id)
   const { data: lancamentos } = await supabase
     .from('kr_lancamentos')
-    .select('kr_id, data_lancamento')
+    .select('kr_id, valor, data_lancamento, is_final_result')
     .in('kr_id', krIds)
-    .order('data_lancamento', { ascending: false })
+    .order('data_lancamento', { ascending: true })
 
-  const ultimoLancamento: Record<string, string> = {}
+  const porKr: Record<string, any[]> = {}
   lancamentos?.forEach((l: any) => {
-    if (!ultimoLancamento[l.kr_id]) {
-      ultimoLancamento[l.kr_id] = l.data_lancamento
-    }
+    ;(porKr[l.kr_id] ??= []).push(l)
   })
 
   return {
-    data: data.map((kr: any) => ({
-      ...kr,
-      data_ultimo_lancamento: ultimoLancamento[kr.id] ?? null,
-    })),
+    data: data.map((kr: any) => {
+      const lista = porKr[kr.id] ?? []
+      return {
+        ...kr,
+        lancamentos: lista,
+        data_ultimo_lancamento: lista.length > 0 ? lista[lista.length - 1].data_lancamento : null,
+      }
+    }),
     error: null,
   }
 }
@@ -105,6 +110,8 @@ export async function createKr(payload: {
   valor_inicial?: number
   meta?: number
   tipo_valor?: string
+  direcao?: string
+  apuracao?: string
 }) {
   const supabase = createClient()
   return supabase.from('krs').insert(payload).select().single()
@@ -119,6 +126,8 @@ export async function updateKr(
     valor_inicial?: number
     meta?: number
     tipo_valor?: string
+    direcao?: string
+    apuracao?: string
   }
 ) {
   const supabase = createClient()

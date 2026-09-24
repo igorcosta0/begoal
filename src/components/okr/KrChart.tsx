@@ -21,6 +21,8 @@ interface KrChartProps {
   }[]
   valorMeta?: number
   unidade?: string // tipo_valor do KR/SV: 'Moeda' | 'Percentual' | 'Numero'
+  // KR apurado por soma: plota o acumulado, que é o que se compara com a meta.
+  acumular?: boolean
 }
 
 // "2026-09-01" ou "2026-09-01T..." → timestamp da data local (sem o deslocamento
@@ -45,7 +47,7 @@ function formatarEixo(valor: number, unidade?: string): string {
   return new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 2 }).format(valor)
 }
 
-export default function KrChart({ data, valorMeta, unidade }: KrChartProps) {
+export default function KrChart({ data, valorMeta, unidade, acumular }: KrChartProps) {
   if (!data || data.length === 0) {
     return (
       <div className="h-48 flex items-center justify-center">
@@ -69,10 +71,15 @@ export default function KrChart({ data, valorMeta, unidade }: KrChartProps) {
   // cronológica. Sem data (só texto_exibicao), cai no eixo por categoria.
   const eixoTemporal = pontos.every((p) => p.ts !== null)
   const ordenados = eixoTemporal ? [...pontos].sort((a, b) => a.ts! - b.ts!) : pontos
-  const formatted = ordenados.map((p) => ({
-    ...p,
-    rotulo: p.texto_exibicao || (p.ts !== null ? formatarData(p.ts) : ''),
-  }))
+  let acumulado = 0
+  const formatted = ordenados.map((p) => {
+    acumulado += p.valor
+    return {
+      ...p,
+      valor: acumular ? acumulado : p.valor,
+      rotulo: p.texto_exibicao || (p.ts !== null ? formatarData(p.ts) : ''),
+    }
+  })
 
   const temMeta = typeof valorMeta === 'number' && !Number.isNaN(valorMeta)
 
@@ -120,7 +127,7 @@ export default function KrChart({ data, valorMeta, unidade }: KrChartProps) {
               fontSize: '12px',
             }}
             labelFormatter={(_label: unknown, payload: any[]) => payload?.[0]?.payload?.rotulo ?? ''}
-            formatter={(value) => [formatValor(Number(value), unidade), 'Valor']}
+            formatter={(value) => [formatValor(Number(value), unidade), acumular ? 'Acumulado' : 'Valor']}
           />
           {temMeta && (
             <ReferenceLine

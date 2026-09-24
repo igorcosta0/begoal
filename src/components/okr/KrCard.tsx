@@ -2,7 +2,31 @@
 
 import { useState } from 'react'
 import { cn, formatPercent, formatNumber, formatValor, getProgressColor, getProgressStatus } from '@/lib/utils'
-import { MoreHorizontal, TrendingUp, User, Building2, Calendar, Zap, ClipboardList, CheckCircle2 } from 'lucide-react'
+import { MoreHorizontal, TrendingUp, User, Building2, Calendar, Zap, ClipboardList, CheckCircle2, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react'
+import { ROTULO_APURACAO, tendenciaKr, type ApuracaoKr, type DirecaoKr, type PontoSerie } from '@/lib/okrProgresso'
+
+// Mini-gráfico da série de lançamentos (linhas retas, sem suavização).
+// Linha tracejada = meta, quando ela é comparável a cada lançamento (não na soma).
+function Sparkline({ serie, meta }: { serie: PontoSerie[]; meta?: number }) {
+  if (serie.length < 2) return null
+  const largura = 100
+  const altura = 28
+  const valores = serie.map((p) => p.valor).concat(meta !== undefined ? [meta] : [])
+  const min = Math.min(...valores)
+  const max = Math.max(...valores)
+  const faixa = max - min || 1
+  const y = (v: number) => altura - 2 - ((v - min) / faixa) * (altura - 4)
+  const x = (i: number) => (i / (serie.length - 1)) * largura
+  const pontos = serie.map((p, i) => `${x(i)},${y(p.valor)}`).join(' ')
+  return (
+    <svg viewBox={`0 0 ${largura} ${altura}`} preserveAspectRatio="none" className="w-full h-7 overflow-visible" aria-hidden>
+      {meta !== undefined && (
+        <line x1={0} x2={largura} y1={y(meta)} y2={y(meta)} stroke="hsl(var(--primary))" strokeOpacity={0.35} strokeDasharray="3 3" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+      )}
+      <polyline points={pontos} fill="none" stroke="hsl(var(--primary))" strokeWidth={1.5} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  )
+}
 
 interface KrCardProps {
   kr: {
@@ -11,7 +35,12 @@ interface KrCardProps {
     valor_atual?: number
     meta?: number
     valor_inicial?: number
-    progresso?: number
+    progresso?: number | null // null = sem lançamentos
+    valor_apurado?: number | null
+    binario?: boolean
+    apuracao?: string
+    direcao_efetiva?: DirecaoKr
+    serie?: PontoSerie[]
     tipo_valor?: string
     end_date?: string
     data_ultimo_lancamento?: string | null
@@ -43,9 +72,15 @@ export default function KrCard({
 }: KrCardProps) {
   const [menuOpen, setMenuOpen] = useState(false)
 
+  const semDados = kr.progresso === null || kr.progresso === undefined
   const progresso = kr.progresso ?? 0
+  const apuracao: ApuracaoKr = kr.apuracao === 'soma' || kr.apuracao === 'media' ? kr.apuracao : 'ultimo'
+  const serie = kr.serie ?? []
+  const tendencia = tendenciaKr(serie, kr.direcao_efetiva ?? 'maior', kr.tipo_valor)
   const barColor = kr.concluido
     ? 'bg-gray-400'
+    : semDados
+    ? 'bg-muted'
     : progresso >= 70
     ? 'bg-green-500'
     : progresso >= 40
@@ -133,8 +168,17 @@ export default function KrCard({
       {/* Barra de progresso */}
       <div className="space-y-1">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">Progresso</span>
-          <span className="font-semibold text-foreground">{formatPercent(progresso)}</span>
+          <span className="text-muted-foreground">
+            Progresso
+            {kr.direcao_efetiva === 'menor' && <span className="ml-1 text-[10px]">(quanto menor, melhor)</span>}
+          </span>
+          <span className="font-semibold text-foreground">
+            {semDados
+              ? 'Sem lançamentos'
+              : kr.binario
+              ? progresso >= 100 ? 'Dentro da meta' : 'Fora da meta'
+              : formatPercent(progresso)}
+          </span>
         </div>
         <div className="h-2 bg-secondary rounded-full overflow-hidden">
           <div
@@ -153,9 +197,9 @@ export default function KrCard({
           </p>
         </div>
         <div className="bg-secondary/60 rounded-lg px-3 py-2 text-center">
-          <p className="text-xs text-muted-foreground mb-0.5">Conquistado</p>
+          <p className="text-xs text-muted-foreground mb-0.5">{ROTULO_APURACAO[apuracao]}</p>
           <p className="text-sm font-semibold text-foreground">
-            {formatValor(kr.valor_atual ?? kr.valor_inicial ?? 0, kr.tipo_valor)}
+            {semDados ? '—' : formatValor(kr.valor_apurado ?? 0, kr.tipo_valor)}
           </p>
           {dataUltimoLancamento && (
             <p className="text-[10px] text-muted-foreground mt-0.5">
@@ -170,6 +214,38 @@ export default function KrCard({
           </p>
         </div>
       </div>
+
+      {/* Série de lançamentos + variação em relação ao lançamento anterior */}
+      {serie.length >= 2 && (
+        <div className="flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <Sparkline serie={serie} meta={apuracao === 'soma' ? undefined : kr.meta} />
+          </div>
+          {tendencia && (
+            <span
+              className={cn(
+                'shrink-0 flex items-center gap-0.5 text-[11px] font-semibold tabular-nums',
+                tendencia.melhorou === null
+                  ? 'text-muted-foreground'
+                  : tendencia.melhorou
+                  ? 'text-emerald-600'
+                  : 'text-red-600'
+              )}
+              title={`Variação do último lançamento em relação ao de ${tendencia.referencia}`}
+            >
+              {tendencia.delta > 0 ? (
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              ) : tendencia.delta < 0 ? (
+                <ArrowDownRight className="w-3.5 h-3.5" />
+              ) : (
+                <Minus className="w-3.5 h-3.5" />
+              )}
+              {tendencia.delta === 0 ? 'estável' : `${tendencia.delta > 0 ? '+' : '−'}${tendencia.texto}`}
+              <span className="font-normal text-muted-foreground ml-0.5">vs {tendencia.referencia}</span>
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Responsável, Setor e Data */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
