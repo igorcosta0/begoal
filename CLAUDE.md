@@ -1106,3 +1106,17 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   variação vs lançamento anterior; `getKrsByEmpresa` agora traz todos os lançamentos de cada KR.
   Testado local pelo Igor antes do push. Pendente (segunda etapa, não feita): meta por mês e linha
   de previsão, como na planilha — exige tabela nova.
+
+### 2026-09-25
+- Pedido do Igor: verificação completa antes de vender por assinatura. Conferido o pente fino de
+  23/09 contra o código atual e acrescentados os pontos de produto/infra. Nenhum código alterado.
+  Relatório: `Adições futuras/Verificacao para venda - begoal - 2026-09-25.md` (fora do Git).
+  - Continuam abertos: C2 (parcial), C3, C4 (parcial), C6, A1–A13, A15–A18, A14 (parcial) e M1–M11.
+    O código dos OKRs de 24/09 está correto.
+  - Novos: Next 14.2.35 ainda tem falhas críticas no `npm audit` (correção só no Next 15/16); Vercel
+    Hobby proíbe uso comercial; SMTP padrão do Supabase não entrega "Esqueci minha senha" para quem
+    não é da equipe do projeto; sem staging; sem termos/política de privacidade (LGPD); sem camada de
+    assinatura; sem cabeçalhos de segurança.
+  - 18 das 28 tabelas usadas pelo app têm as policies só no banco: sem MCP do Supabase nesta sessão,
+    o isolamento entre empresas não foi verificado. Script só de leitura para o Igor rodar:
+    `Adições futuras/Verificacao isolamento entre empresas - 2026-09-25.sql`.
