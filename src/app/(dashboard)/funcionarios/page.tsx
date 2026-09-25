@@ -9,7 +9,7 @@ import { getPerfisPublicosPorEmpresa, type PerfilPublico } from '@/lib/queries/p
 import Avatar from '@/components/Avatar'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
 import { User, Building2, Briefcase, MoreHorizontal, Users, Plus, ChevronDown, UserCircle2 } from 'lucide-react'
-import { mensagemErroExclusao } from '@/lib/utils'
+import { mensagemErroExclusao, mensagemErroGravacao } from '@/lib/utils'
 
 const STATUS_OPTIONS = ['Ativo', 'Férias', 'Afastado', 'Desligado']
 const PROFILE_OPTIONS = [
@@ -41,6 +41,8 @@ interface ModalFuncionarioProps {
   funcionarios: any[]
   onSubmit: (e: React.FormEvent) => void
   onCancel: () => void
+  erro?: string | null
+  salvando?: boolean
 }
 
 function ModalFuncionario({
@@ -52,6 +54,8 @@ function ModalFuncionario({
   funcionarios,
   onSubmit,
   onCancel,
+  erro,
+  salvando,
 }: ModalFuncionarioProps) {
   if (!open) return null
 
@@ -159,6 +163,10 @@ function ModalFuncionario({
             </select>
           </div>
 
+          {erro && (
+            <p className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-xl px-3 py-2">{erro}</p>
+          )}
+
           <div className="flex gap-2 pt-2">
             <button
               type="button"
@@ -169,9 +177,10 @@ function ModalFuncionario({
             </button>
             <button
               type="submit"
-              className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
+              disabled={salvando}
+              className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
             >
-              Salvar
+              {salvando ? 'Salvando...' : 'Salvar'}
             </button>
           </div>
         </form>
@@ -215,6 +224,8 @@ export default function FuncionariosPage() {
   const [modalEditar, setModalEditar] = useState<{ open: boolean; funcionario: any | null }>({ open: false, funcionario: null })
   const [modalExcluir, setModalExcluir] = useState<{ open: boolean; funcionario: any | null; loading: boolean; erro: string | null }>({ open: false, funcionario: null, loading: false, erro: null })
   const [form, setForm] = useState<FormFuncionario>(FORM_INICIAL)
+  const [erroForm, setErroForm] = useState<string | null>(null)
+  const [salvandoForm, setSalvandoForm] = useState(false)
 
   const fetchData = useCallback(async () => {
     if (!empresa) return
@@ -267,17 +278,22 @@ export default function FuncionariosPage() {
   async function handleCriar(e: React.FormEvent) {
     e.preventDefault()
     if (!empresa) return
+    setSalvandoForm(true)
+    setErroForm(null)
     const supabase = createClient()
-    await supabase.from('funcionarios').insert({
+    const { error } = await supabase.from('funcionarios').insert({
       ...form,
-      email: form.email || undefined,
-      cargo: form.cargo || undefined,
-      setor_id: form.setor_id || undefined,
-      gestor_id: form.gestor_id || undefined,
-      data_admissao: form.data_admissao || undefined,
+      email: form.email || null,
+      cargo: form.cargo || null,
+      setor_id: form.setor_id || null,
+      gestor_id: form.gestor_id || null,
+      data_admissao: form.data_admissao || null,
       client_id: empresa.id,
       is_current: true,
     })
+    setSalvandoForm(false)
+    const erro = mensagemErroGravacao(error)
+    if (erro) { setErroForm(erro); return }
     setForm(FORM_INICIAL)
     setModalCriar(false)
     fetchData()
@@ -286,15 +302,22 @@ export default function FuncionariosPage() {
   async function handleEditar(e: React.FormEvent) {
     e.preventDefault()
     if (!modalEditar.funcionario) return
+    setSalvandoForm(true)
+    setErroForm(null)
     const supabase = createClient()
-    await supabase.from('funcionarios').update({
+    // Pente fino (A8): null apaga de verdade — com undefined, tirar o gestor
+    // de alguém nunca era salvo (e o organograma alimenta a avaliação).
+    const { data, error } = await supabase.from('funcionarios').update({
       ...form,
-      email: form.email || undefined,
-      cargo: form.cargo || undefined,
-      setor_id: form.setor_id || undefined,
-      gestor_id: form.gestor_id || undefined,
-      data_admissao: form.data_admissao || undefined,
-    }).eq('id', modalEditar.funcionario.id)
+      email: form.email || null,
+      cargo: form.cargo || null,
+      setor_id: form.setor_id || null,
+      gestor_id: form.gestor_id || null,
+      data_admissao: form.data_admissao || null,
+    }).eq('id', modalEditar.funcionario.id).select('id')
+    setSalvandoForm(false)
+    const erro = mensagemErroGravacao(error, data?.length)
+    if (erro) { setErroForm(erro); return }
     setModalEditar({ open: false, funcionario: null })
     fetchData()
   }
@@ -454,8 +477,9 @@ export default function FuncionariosPage() {
                     >
                       <MoreHorizontal className="w-4 h-4" />
                     </button>
+                    {menuOpen === f.id && <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(null)} />}
                     {menuOpen === f.id && (
-                      <div className="absolute right-0 top-8 bg-popover border border-border rounded-xl shadow-lg z-10 min-w-36 py-1">
+                      <div className="absolute right-0 top-8 bg-popover border border-border rounded-xl shadow-lg z-20 min-w-36 py-1">
                         <button
                           onClick={() => { setModalEditar({ open: true, funcionario: f }); setMenuOpen(null) }}
                           className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors"
@@ -517,7 +541,9 @@ export default function FuncionariosPage() {
         setores={setores}
         funcionarios={funcionarios}
         onSubmit={handleCriar}
-        onCancel={() => setModalCriar(false)}
+        onCancel={() => { setModalCriar(false); setErroForm(null) }}
+        erro={erroForm}
+        salvando={salvandoForm}
       />
 
       <ModalFuncionario
@@ -528,13 +554,14 @@ export default function FuncionariosPage() {
         setores={setores}
         funcionarios={funcionarios}
         onSubmit={handleEditar}
-        onCancel={() => setModalEditar({ open: false, funcionario: null })}
+        onCancel={() => { setModalEditar({ open: false, funcionario: null }); setErroForm(null) }}
+        erro={erroForm}
+        salvando={salvandoForm}
       />
 
       <ModalConfirmarExclusao
         open={modalExcluir.open}
         titulo="Excluir Funcionário"
-        descricao="Esta ação não pode ser desfeita."
         loading={modalExcluir.loading}
         erro={modalExcluir.erro}
         onConfirmar={handleExcluir}

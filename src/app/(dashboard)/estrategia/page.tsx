@@ -1,5 +1,6 @@
 'use client'
 
+import BotaoExcluirConfirmando from '@/components/BotaoExcluirConfirmando'
 import { useEffect, useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import {
@@ -296,7 +297,7 @@ function MelhoresClientes({ clientId }: { clientId: string }) {
               <div className="flex items-center gap-3 shrink-0">
                 <span className="text-sm font-semibold text-primary">{c.faturamento_pct}%</span>
                 <button onClick={() => abrirModal(c)} className="text-xs text-muted-foreground hover:text-foreground">Editar</button>
-                <button onClick={() => excluir(c.id)} className="text-xs text-red-500 hover:text-red-400">Excluir</button>
+                <BotaoExcluirConfirmando onConfirmar={() => excluir(c.id)} iconClassName="w-3 h-3" />
               </div>
             </div>
           ))}
@@ -544,7 +545,7 @@ function MapeamentoMercados({ clientId }: { clientId: string }) {
                   </button>
                 )}
                 <button onClick={() => abrirModal(m)} className="text-xs text-muted-foreground hover:text-foreground">Editar</button>
-                <button onClick={() => excluir(m.id)} className="text-xs text-red-500 hover:text-red-400">Excluir</button>
+                <BotaoExcluirConfirmando onConfirmar={() => excluir(m.id)} iconClassName="w-3 h-3" />
               </div>
             </div>
           ))}
@@ -717,7 +718,7 @@ export default function EstrategiaPage() {
   const clientId = empresa.id
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
           <Map className="w-5 h-5 text-primary" />

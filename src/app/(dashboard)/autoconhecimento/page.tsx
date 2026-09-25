@@ -319,6 +319,7 @@ function ChatMapa1Unificado({
             type="text"
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
+            maxLength={2000}
             placeholder={alvoId ? 'Descreva a situação...' : 'Escreva sua pergunta...'}
             disabled={enviando}
             className="flex-1 px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
@@ -468,6 +469,7 @@ function ChatSobreOutraPessoa({
               type="text"
               value={situacao}
               onChange={(e) => setSituacao(e.target.value)}
+              maxLength={2000}
               placeholder="Descreva a situação..."
               disabled={enviando}
               className="flex-1 px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"

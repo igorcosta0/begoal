@@ -4,8 +4,9 @@ import { useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
 import { useAcessoAdministrador } from '@/lib/hooks/useAcessoAdministrador'
+import { isEmpresaCTZ } from '@/lib/utils'
 import { createObjetivo, createKr } from '@/lib/queries/okr'
-import { createSinalVital, createSvLancamento } from '@/lib/queries/sinais-vitais'
+import { createSinalVital, createSvLancamento, recalcularValorAtualSv } from '@/lib/queries/sinais-vitais'
 import {
   Upload, CheckCircle2, AlertCircle, FileSpreadsheet,
   ArrowRight, Info, Tag, Activity
@@ -271,8 +272,15 @@ function formatValor(v: number, unidade: string | null): string {
 // Componente principal
 // ─────────────────────────────────────────────────────────────
 
+// Pente fino (A15): o `ilike` tratava % e _ do título como curinga e casava
+// KR/objetivo errado. Escapa os curingas para comparar o texto literal.
+function escaparLike(texto: string) {
+  return texto.replace(/[\\%_]/g, (c) => `\\${c}`)
+}
+
 export default function ImportarLancamentosPage() {
   const acesso = useAcessoAdministrador()
+  const { empresa } = useEmpresaStore()
   if (acesso === 'carregando') {
     return <div className="h-32 rounded-2xl bg-secondary animate-pulse" />
   }
@@ -280,6 +288,14 @@ export default function ImportarLancamentosPage() {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-card/50 p-16 text-center">
         <p className="text-muted-foreground text-sm">Você não tem acesso a esta página.</p>
+      </div>
+    )
+  }
+  // A15: o leitor entende só o layout da planilha da CTZ (aba "OKR - OPERAÇÃO").
+  if (!isEmpresaCTZ(empresa?.company_name)) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border bg-card/50 p-16 text-center">
+        <p className="text-muted-foreground text-sm">A importação por planilha ainda não está disponível para esta empresa.</p>
       </div>
     )
   }
@@ -352,13 +368,14 @@ function ImportarConteudo() {
 
     const supabase = createClient()
 
-    // Buscar primeiro funcionário da empresa para usar como responsável padrão
-    const { data: funcs } = await supabase
-      .from('funcionarios')
-      .select('id')
-      .eq('client_id', empresa.id)
-      .limit(1)
-    const responsavelPadraoId = funcs?.[0]?.id ?? null
+    // Responsável padrão dos KRs criados: quem está importando (antes era
+    // "o primeiro funcionário" qualquer). Sem cadastro, cai no primeiro.
+    const { data: { user } } = await supabase.auth.getUser()
+    const [{ data: eu }, { data: funcs }] = await Promise.all([
+      supabase.from('funcionarios').select('id').eq('client_id', empresa.id).eq('user_id', user?.id ?? '').maybeSingle(),
+      supabase.from('funcionarios').select('id').eq('client_id', empresa.id).order('full_name').limit(1),
+    ])
+    const responsavelPadraoId = eu?.id ?? funcs?.[0]?.id ?? null
 
     if (!responsavelPadraoId) {
       setItens(prev => prev.map(it => ({ ...it, status: 'erro', erro: 'Nenhum funcionário cadastrado na empresa' })))
@@ -388,7 +405,7 @@ function ImportarConteudo() {
             .from('objetivos')
             .select('id')
             .eq('client_id', empresa.id)
-            .ilike('titulo', item.okrTitulo.trim())
+            .ilike('titulo', escaparLike(item.okrTitulo.trim()))
             .limit(1)
 
           if (existentes && existentes.length > 0) {
@@ -414,12 +431,12 @@ function ImportarConteudo() {
             .select('id')
             .eq('client_id', empresa.id)
             .eq('objetivo_id', objetivoId)
-            .ilike('titulo', item.titulo.trim())
+            .ilike('titulo', escaparLike(item.titulo.trim()))
             .limit(1)
 
           let krId: string
-
-          if (krExist && krExist.length > 0) {
+          const jaExistia = !!(krExist && krExist.length > 0)
+          if (jaExistia && krExist) {
             krId = krExist[0].id
             atualizar(idx, { status: 'ja_existe', id_criado: krId, objetivo_id: objetivoId })
           } else {
@@ -476,7 +493,8 @@ function ImportarConteudo() {
             await supabase.from('krs').update({ valor_atual: ultimoLanc.valor }).eq('id', krId)
           }
 
-          atualizar(idx, { status: 'ok' })
+          // Não sobrescreve "já existia" (antes a contagem de já existentes dava sempre 0).
+          atualizar(idx, { status: jaExistia ? 'ja_existe' : 'ok' })
 
         } else {
           // ── SV: criar na seção de Sinais Vitais ──────────────
@@ -484,12 +502,13 @@ function ImportarConteudo() {
             .from('sinais_vitais')
             .select('id')
             .eq('client_id', empresa.id)
-            .ilike('titulo', item.titulo.trim())
+            .ilike('titulo', escaparLike(item.titulo.trim()))
             .limit(1)
 
           let svId: string
 
-          if (svExist && svExist.length > 0) {
+          const jaExistia = !!(svExist && svExist.length > 0)
+          if (jaExistia && svExist) {
             svId = svExist[0].id
             atualizar(idx, { status: 'ja_existe', id_criado: svId, objetivo_id: objetivoId })
           } else {
@@ -531,8 +550,11 @@ function ImportarConteudo() {
               })
             }
           }
+          // Um lançamento atualizado (e não criado) não recalculava o valor atual.
+          await recalcularValorAtualSv(svId)
 
-          atualizar(idx, { status: 'ok' })
+          // Não sobrescreve "já existia" (antes a contagem de já existentes dava sempre 0).
+          atualizar(idx, { status: jaExistia ? 'ja_existe' : 'ok' })
         }
 
       } catch (e: any) {
@@ -823,6 +845,16 @@ function ImportarConteudo() {
               )}
             </div>
           </div>
+
+          {/* Pente fino (A15): KR criado pela importação entra com meta 0 (a planilha não traz a meta). */}
+          {itens.some((it) => it.tipo === 'KR' && it.status === 'ok') && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+              <p className="text-xs text-amber-800">
+                Os KRs novos entram com valor inicial e meta zerados, porque a planilha não traz a meta.
+                Abra cada um em OKRs e defina a meta, senão o progresso não reflete a realidade.
+              </p>
+            </div>
+          )}
 
           {/* Lista de erros, se houver */}
           {erroCount > 0 && (

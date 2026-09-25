@@ -33,9 +33,9 @@ export async function updateSinalVital(
   id: string,
   payload: {
     titulo?: string
-    objetivo_id?: string
-    responsavel_id?: string
-    setor_id?: string
+    objetivo_id?: string | null
+    responsavel_id?: string | null
+    setor_id?: string | null
     valor_inicial?: number
     meta?: number
     tipo_valor?: string
@@ -66,10 +66,7 @@ export async function createSvLancamento(payload: {
 
   if (error) return { data: null, error }
 
-  await supabase
-    .from('sinais_vitais')
-    .update({ valor_atual: payload.valor })
-    .eq('id', payload.sinal_vital_id)
+  await recalcularValorAtualSv(payload.sinal_vital_id)
 
   return { data, error: null }
 }
@@ -83,7 +80,31 @@ export async function getSvLancamentos(sinalVitalId: string) {
     .order('data_lancamento', { ascending: true })
 }
 
-export async function deleteSvLancamento(id: string) {
+export async function deleteSvLancamento(id: string, sinalVitalId: string) {
   const supabase = createClient()
-  return supabase.from('sinais_vitais_lancamentos').delete().eq('id', id)
+  const res = await supabase.from('sinais_vitais_lancamentos').delete().eq('id', id)
+  if (!res.error) await recalcularValorAtualSv(sinalVitalId)
+  return res
+}
+
+// Pente fino (A5/A6): valor_atual é sempre o lançamento de data mais recente
+// (um lançamento retroativo não passa na frente; excluir volta ao anterior ou
+// ao valor inicial).
+export async function recalcularValorAtualSv(sinalVitalId: string) {
+  const supabase = createClient()
+  const [{ data: ultimo }, { data: sv }] = await Promise.all([
+    supabase
+      .from('sinais_vitais_lancamentos')
+      .select('valor')
+      .eq('sinal_vital_id', sinalVitalId)
+      .order('data_lancamento', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase.from('sinais_vitais').select('valor_inicial').eq('id', sinalVitalId).maybeSingle(),
+  ])
+  return supabase
+    .from('sinais_vitais')
+    .update({ valor_atual: ultimo?.valor ?? sv?.valor_inicial ?? null })
+    .eq('id', sinalVitalId)
 }

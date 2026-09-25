@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useAcessoAdministrador } from '@/lib/hooks/useAcessoAdministrador'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
 import { Building2, MoreHorizontal, Plus } from 'lucide-react'
-import { mensagemErroExclusao } from '@/lib/utils'
+import { mensagemErroExclusao, mensagemErroGravacao } from '@/lib/utils'
 
 interface FormEmpresa {
   company_name: string
@@ -38,6 +38,7 @@ function ModalEmpresa({
   setForm,
   onSubmit,
   onCancel,
+  erro,
 }: {
   open: boolean
   titulo: string
@@ -45,6 +46,7 @@ function ModalEmpresa({
   setForm: (f: FormEmpresa) => void
   onSubmit: (e: React.FormEvent) => void
   onCancel: () => void
+  erro?: string | null
 }) {
   if (!open) return null
   return (
@@ -125,6 +127,9 @@ function ModalEmpresa({
               />
             </div>
           </div>
+          {erro && (
+            <p className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-xl px-3 py-2">{erro}</p>
+          )}
           <div className="flex gap-2 pt-2">
             <button
               type="button"
@@ -180,6 +185,8 @@ function AdminConteudo() {
   const [editarSetor, setEditarSetor] = useState<{ open: boolean; setor: any | null; nome: string }>({ open: false, setor: null, nome: '' })
 
   const [formEmpresa, setFormEmpresa] = useState<FormEmpresa>(FORM_EMPRESA_INICIAL)
+  // Pente fino (A10): gravação recusada pelo banco aparecia como sucesso.
+  const [erro, setErro] = useState<string | null>(null)
 
   const fetchEmpresas = useCallback(async () => {
     setLoadingEmpresas(true)
@@ -224,16 +231,19 @@ function AdminConteudo() {
 
   async function handleCriarEmpresa(e: React.FormEvent) {
     e.preventDefault()
+    setErro(null)
     const supabase = createClient()
-    await supabase.from('clients').insert({
+    const { error } = await supabase.from('clients').insert({
       company_name: formEmpresa.company_name,
-      nome_fantasia: formEmpresa.nome_fantasia || undefined,
-      razao_social: formEmpresa.razao_social || undefined,
-      cnpj: formEmpresa.cnpj || undefined,
+      nome_fantasia: formEmpresa.nome_fantasia || null,
+      razao_social: formEmpresa.razao_social || null,
+      cnpj: formEmpresa.cnpj || null,
       status: formEmpresa.status,
-      data_inicio: formEmpresa.data_inicio || undefined,
-      data_fim: formEmpresa.data_fim || undefined,
+      data_inicio: formEmpresa.data_inicio || null,
+      data_fim: formEmpresa.data_fim || null,
     })
+    const msg = mensagemErroGravacao(error)
+    if (msg) { setErro(msg); return }
     setFormEmpresa(FORM_EMPRESA_INICIAL)
     setModalCriarEmpresa(false)
     fetchEmpresas()
@@ -242,16 +252,20 @@ function AdminConteudo() {
   async function handleEditarEmpresa(e: React.FormEvent) {
     e.preventDefault()
     if (!modalEditarEmpresa.empresa) return
+    setErro(null)
     const supabase = createClient()
-    await supabase.from('clients').update({
+    // Pente fino (A8): null apaga o campo de verdade (undefined era ignorado).
+    const { data, error } = await supabase.from('clients').update({
       company_name: formEmpresa.company_name,
-      nome_fantasia: formEmpresa.nome_fantasia || undefined,
-      razao_social: formEmpresa.razao_social || undefined,
-      cnpj: formEmpresa.cnpj || undefined,
+      nome_fantasia: formEmpresa.nome_fantasia || null,
+      razao_social: formEmpresa.razao_social || null,
+      cnpj: formEmpresa.cnpj || null,
       status: formEmpresa.status,
-      data_inicio: formEmpresa.data_inicio || undefined,
-      data_fim: formEmpresa.data_fim || undefined,
-    }).eq('id', modalEditarEmpresa.empresa.id)
+      data_inicio: formEmpresa.data_inicio || null,
+      data_fim: formEmpresa.data_fim || null,
+    }).eq('id', modalEditarEmpresa.empresa.id).select('id')
+    const msg = mensagemErroGravacao(error, data?.length)
+    if (msg) { setErro(msg); return }
     setModalEditarEmpresa({ open: false, empresa: null })
     fetchEmpresas()
   }
@@ -272,11 +286,14 @@ function AdminConteudo() {
   async function handleCriarSetor(e: React.FormEvent) {
     e.preventDefault()
     if (!empresaSelecionada || !novoSetor) return
+    setErro(null)
     const supabase = createClient()
-    await supabase.from('setores').insert({
+    const { error } = await supabase.from('setores').insert({
       name: novoSetor,
       client_id: empresaSelecionada.id,
     })
+    const msg = mensagemErroGravacao(error)
+    if (msg) { setErro(msg); return }
     setNovoSetor('')
     setModalCriarSetor(false)
     fetchSetores()
@@ -285,8 +302,11 @@ function AdminConteudo() {
   async function handleEditarSetor(e: React.FormEvent) {
     e.preventDefault()
     if (!editarSetor.setor) return
+    setErro(null)
     const supabase = createClient()
-    await supabase.from('setores').update({ name: editarSetor.nome }).eq('id', editarSetor.setor.id)
+    const { data, error } = await supabase.from('setores').update({ name: editarSetor.nome }).eq('id', editarSetor.setor.id).select('id')
+    const msg = mensagemErroGravacao(error, data?.length)
+    if (msg) { setErro(msg); return }
     setEditarSetor({ open: false, setor: null, nome: '' })
     fetchSetores()
   }
@@ -412,8 +432,9 @@ function AdminConteudo() {
                       >
                         <MoreHorizontal className="w-4 h-4" />
                       </button>
+                      {menuEmpresa === empresa.id && <div className="fixed inset-0 z-10" onClick={() => setMenuEmpresa(null)} />}
                       {menuEmpresa === empresa.id && (
-                        <div className="absolute right-0 top-8 bg-popover border border-border rounded-xl shadow-lg z-10 min-w-36 py-1">
+                        <div className="absolute right-0 top-8 bg-popover border border-border rounded-xl shadow-lg z-20 min-w-36 py-1">
                           <button
                             onClick={() => { setModalEditarEmpresa({ open: true, empresa }); setMenuEmpresa(null) }}
                             className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors"
@@ -502,8 +523,9 @@ function AdminConteudo() {
                     >
                       <MoreHorizontal className="w-4 h-4" />
                     </button>
+                    {menuSetor === setor.id && <div className="fixed inset-0 z-10" onClick={() => setMenuSetor(null)} />}
                     {menuSetor === setor.id && (
-                      <div className="absolute right-0 top-8 bg-popover border border-border rounded-xl shadow-lg z-10 min-w-36 py-1">
+                      <div className="absolute right-0 top-8 bg-popover border border-border rounded-xl shadow-lg z-20 min-w-36 py-1">
                         <button
                           onClick={() => { setEditarSetor({ open: true, setor, nome: setor.name }); setMenuSetor(null) }}
                           className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors"
@@ -533,7 +555,8 @@ function AdminConteudo() {
         form={formEmpresa}
         setForm={setFormEmpresa}
         onSubmit={handleCriarEmpresa}
-        onCancel={() => setModalCriarEmpresa(false)}
+        onCancel={() => { setModalCriarEmpresa(false); setErro(null) }}
+        erro={erro}
       />
 
       {/* Modal Editar Empresa */}
@@ -543,7 +566,8 @@ function AdminConteudo() {
         form={formEmpresa}
         setForm={setFormEmpresa}
         onSubmit={handleEditarEmpresa}
-        onCancel={() => setModalEditarEmpresa({ open: false, empresa: null })}
+        onCancel={() => { setModalEditarEmpresa({ open: false, empresa: null }); setErro(null) }}
+        erro={erro}
       />
 
       {/* Modal Criar Setor */}
@@ -564,6 +588,7 @@ function AdminConteudo() {
                   className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
+              {erro && <p className="text-xs text-destructive">{erro}</p>}
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
@@ -601,6 +626,7 @@ function AdminConteudo() {
                   className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
+              {erro && <p className="text-xs text-destructive">{erro}</p>}
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
@@ -634,7 +660,6 @@ function AdminConteudo() {
       <ModalConfirmarExclusao
         open={modalExcluirSetor.open}
         titulo="Excluir Setor"
-        descricao="Esta ação não pode ser desfeita."
         loading={modalExcluirSetor.loading}
         erro={modalExcluirSetor.erro}
         onConfirmar={handleExcluirSetor}

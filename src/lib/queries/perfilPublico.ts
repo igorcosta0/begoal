@@ -17,7 +17,7 @@ export interface PerfilPublico {
 
 // Busca o perfil público da pessoa logada (pra preencher o formulário na aba
 // Perfil) — null quando ela ainda não escreveu nada.
-export async function getMeuPerfilPublico(): Promise<{ perfil: PerfilPublico | null; error: string | null }> {
+export async function getMeuPerfilPublico(clientId: string): Promise<{ perfil: PerfilPublico | null; error: string | null }> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { perfil: null, error: 'Usuário não autenticado.' }
@@ -26,6 +26,7 @@ export async function getMeuPerfilPublico(): Promise<{ perfil: PerfilPublico | n
     .from('funcionarios_perfil_publico')
     .select('funcionario_id, sobre_mim, habilidades, sonhos, foto_url')
     .eq('user_id', user.id)
+    .eq('client_id', clientId)
     .maybeSingle()
 
   if (error) return { perfil: null, error: error.message }
@@ -36,7 +37,7 @@ export async function getMeuPerfilPublico(): Promise<{ perfil: PerfilPublico | n
 // funcionario_id/client_id da própria linha em `funcionarios` (leitura já é
 // liberada pra qualquer usuário autenticado) porque quem preenche esta
 // tabela pela primeira vez ainda não tem linha aqui pra saber esses IDs.
-export async function upsertMeuPerfilPublico(campos: {
+export async function upsertMeuPerfilPublico(clientId: string, campos: {
   sobre_mim: string
   habilidades: string
   sonhos: string
@@ -49,6 +50,7 @@ export async function upsertMeuPerfilPublico(campos: {
     .from('funcionarios')
     .select('id, client_id')
     .eq('user_id', user.id)
+    .eq('client_id', clientId)
     .maybeSingle()
 
   if (erroFuncionario) return { error: erroFuncionario.message }
@@ -130,7 +132,7 @@ export async function getFotosPerfilPorEmpresa(clientId: string): Promise<{
 // upsertMeuPerfilPublico: resolve funcionario_id/client_id a partir de
 // `funcionarios` (leitura liberada pra qualquer autenticado) porque quem
 // envia a primeira foto ainda pode não ter linha nenhuma nesta tabela.
-export async function uploadMinhaFotoPerfil(arquivo: File): Promise<{ url: string | null; error: string | null }> {
+export async function uploadMinhaFotoPerfil(clientId: string, arquivo: File): Promise<{ url: string | null; error: string | null }> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { url: null, error: 'Usuário não autenticado.' }
@@ -139,6 +141,7 @@ export async function uploadMinhaFotoPerfil(arquivo: File): Promise<{ url: strin
     .from('funcionarios')
     .select('id, client_id')
     .eq('user_id', user.id)
+    .eq('client_id', clientId)
     .maybeSingle()
   if (erroFuncionario) return { url: null, error: erroFuncionario.message }
   if (!meuFuncionario) return { url: null, error: 'Não encontramos seu cadastro de funcionário.' }
@@ -169,6 +172,13 @@ export async function uploadMinhaFotoPerfil(arquivo: File): Promise<{ url: strin
       { onConflict: 'funcionario_id' }
     )
   if (erroSalvar) return { url: null, error: erroSalvar.message }
+
+  // A foto é da pessoa, não da empresa: quem está em mais de uma empresa tem
+  // uma linha por empresa, e todas passam a apontar pra foto nova.
+  await supabase
+    .from('funcionarios_perfil_publico')
+    .update({ foto_url: url, updated_at: new Date().toISOString() })
+    .eq('user_id', user.id)
 
   return { url, error: null }
 }

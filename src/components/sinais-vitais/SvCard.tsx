@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { cn, formatPercent, formatNumber, formatValor, getProgressColor } from '@/lib/utils'
 import { MoreHorizontal, TrendingUp, User, Building2, Target } from 'lucide-react'
+import { progressoSinalVital } from '@/lib/okrProgresso'
 
 interface SvCardProps {
   sv: {
@@ -31,9 +32,7 @@ export default function SvCard({
 }: SvCardProps) {
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const progresso = sv.meta && sv.meta > 0
-    ? Math.max(0, ((sv.valor_atual ?? sv.valor_inicial ?? 0) - (sv.valor_inicial ?? 0)) / (sv.meta - (sv.valor_inicial ?? 0)) * 100)
-    : 0
+  const progresso = progressoSinalVital(sv)
 
   const barColor = progresso >= 70
     ? 'bg-green-500'
@@ -58,8 +57,9 @@ export default function SvCard({
           >
             <MoreHorizontal className="w-4 h-4" />
           </button>
+          {menuOpen && <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />}
           {menuOpen && (
-            <div className="absolute right-0 top-7 bg-popover border border-border rounded-xl shadow-lg z-10 min-w-36 py-1">
+            <div className="absolute right-0 top-7 bg-popover border border-border rounded-xl shadow-lg z-20 min-w-36 py-1">
               <button
                 onClick={() => { onVerHistorico?.(sv); setMenuOpen(false) }}
                 className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors flex items-center gap-2"

@@ -109,6 +109,10 @@ export default function OkrPage() {
     .map((obj) => ({
       ...obj,
       progresso: progressoObjetivo(obj.krs, true),
+      // Pente fino (A14): KR finalizado aparecia no objetivo ativo E na aba
+      // Finalizados. Fica só em Finalizados (e já saía da média).
+      krsFinalizados: obj.krs.filter((kr: any) => kr.concluido),
+      krs: obj.krs.filter((kr: any) => !kr.concluido),
     }))
 
   // Objetivos FINALIZADOS
@@ -125,7 +129,7 @@ export default function OkrPage() {
 
   // KRs finalizados dentro de objetivos ativos
   const krsFinalizadosEmAtivos = objetivosAtivos
-    .map((obj) => ({ ...obj, krs: obj.krs.filter((kr: any) => kr.concluido) }))
+    .map((obj) => ({ ...obj, krs: obj.krsFinalizados }))
     .filter((obj) => obj.krs.length > 0)
 
   async function handleExcluirKr() {

@@ -1120,3 +1120,16 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   - 18 das 28 tabelas usadas pelo app têm as policies só no banco: sem MCP do Supabase nesta sessão,
     o isolamento entre empresas não foi verificado. Script só de leitura para o Igor rodar:
     `Adições futuras/Verificacao isolamento entre empresas - 2026-09-25.sql`.
+- **Correções da verificação (mesmo dia)**, commit local, **sem push**. Corrigidos: A1 (`EmpresaGuard`
+  manda para a seleção quando não há empresa), A2 (consultas de "quem sou eu" filtradas pela empresa;
+  foto vale para todas as linhas da pessoa), A3/A4 (`paraData`/`dataLocalISO` em `utils.ts`), A5/A6
+  (`recalcularValorAtualKr`/`recalcularValorAtualSv`), A7 (`progressoSinalVital`), A8 (null em vez de
+  undefined), A9, A10 (`mensagemErroGravacao`: RLS que bloqueia UPDATE/DELETE devolve 0 linhas, sem
+  erro, por isso as gravações usam `.select('id')`), A14, A15 (importação só CTZ, curingas escapados,
+  contagem de "já existiam"), A16 (botão de excluir a nota mais recente; chave `mercado_posicionamento`
+  do mural Missão mantida de propósito), A17, A18, M5 (`src/lib/apiIa.ts`), M7, M8 (edição de tática,
+  comentários numa consulta só), M10 (senha atual + mínimo 8), M11 (`DicaValor` + `step="any"` nos
+  campos de meta, que antes não aceitavam 0,8), N7 (cabeçalhos em `next.config.mjs`), código morto e
+  menus "⋯". ESLint configurado (`.eslintrc.json`, só `react/no-unescaped-entities` desligada — com
+  config, `next build` roda o lint e falharia nela). `next build` completo passou localmente.
+  **Migration nova para rodar antes do push**: `PENDENTE_20260925000000_avatars_limites.sql` (M6).

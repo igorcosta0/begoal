@@ -59,6 +59,25 @@ export default function SelecaoEmpresaPage() {
     )
   }
 
+  if (empresas.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4 px-8">
+          <p className="text-sm text-muted-foreground">Nenhuma empresa vinculada a este usuário.</p>
+          <button
+            onClick={async () => {
+              await createClient().auth.signOut()
+              window.location.href = '/login'
+            }}
+            className="text-sm text-primary hover:underline"
+          >
+            Voltar para o login
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-lg space-y-8 px-8">

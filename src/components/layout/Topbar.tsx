@@ -83,7 +83,7 @@ export default function Topbar({ papeisPorEmpresa, userEmail, fotoUrl }: TopbarP
       links: [
         { href: '/biblioteca', label: 'Biblioteca', icon: Library },
         { href: '/guia', label: 'Guia de Uso', icon: Compass },
-        { href: '/importar-lancamentos', label: 'Importar', icon: Upload, hidden: !isAdmin },
+        { href: '/importar-lancamentos', label: 'Importar', icon: Upload, hidden: !isAdmin || !ctz },
         { href: '/admin', label: 'Administração', icon: Settings, hidden: !isAdmin },
       ],
     },

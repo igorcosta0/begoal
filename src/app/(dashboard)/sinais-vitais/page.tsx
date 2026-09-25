@@ -183,6 +183,7 @@ export default function SinaisVitaisPage() {
         sv={modalHistorico.sv}
         onClose={() => setModalHistorico({ open: false, sv: null })}
         onLancar={(sv) => setModalLancar({ open: true, sv })}
+        onAlterado={fetchData}
       />
       <ModalConfirmarExclusao
         open={modalExcluir.open}

@@ -2,9 +2,10 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { chamarGemini } from '@/lib/gemini'
+import { erroInterno } from '@/lib/apiIa'
+import { createClient } from '@/lib/supabase/server'
 
-// Espaço extra pro retry de chamarGemini (pior caso ~45s: 4 tentativas de até
-// 10s cada + ~5s de espera entre elas) não bater no timeout padrão da função
+// Espaço extra pro retry de chamarGemini (pior caso ~36s: 2 modelos × 18s)
 // — 60 é o teto do plano Hobby da Vercel sem Fluid Compute.
 export const maxDuration = 60
 
@@ -17,7 +18,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Chave de API não configurada' }, { status: 500 })
     }
 
+    // Pente fino (M5): esta rota não conferia usuário — só o middleware de
+    // login protegia. Agora exige sessão e limita o tamanho do que vai pro prompt.
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
     const { contexto } = await req.json()
+    if (!contexto || typeof contexto !== 'object' || JSON.stringify(contexto).length > 20000) {
+      return NextResponse.json({ error: 'Dados inválidos para sugerir o ICP' }, { status: 400 })
+    }
+    const lista = (v: unknown) => (Array.isArray(v) ? v.map(String) : [])
 
     const prompt = `Você é um especialista em estratégia de negócios e definição de ICP (Ideal Customer Profile).
 
@@ -25,8 +38,8 @@ Com base nos dados abaixo de uma empresa, sugira o perfil ideal de cliente (ICP)
 
 DADOS DA EMPRESA:
 - Principais clientes (por faturamento): ${JSON.stringify(contexto.clientes_top, null, 2)}
-- Mercados priorizados: ${contexto.mercados_priorizados.join(', ') || 'Não informado'}
-- Competências: ${contexto.competencias.join(', ') || 'Não informado'}
+- Mercados priorizados: ${lista(contexto.mercados_priorizados).join(', ') || 'Não informado'}
+- Competências: ${lista(contexto.competencias).join(', ') || 'Não informado'}
 - Diferencial: ${contexto.diferencial || 'Não informado'}
 - Problemas que resolve: ${contexto.problemas_resolve || 'Não informado'}
 
@@ -66,7 +79,6 @@ Responda APENAS com um JSON válido, sem texto adicional, sem markdown, sem expl
 
     return NextResponse.json(sugestao)
   } catch (err) {
-    console.error('Erro sugerir-icp:', err)
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    return erroInterno('sugerir-icp', err)
   }
 }

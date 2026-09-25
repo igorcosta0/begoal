@@ -414,7 +414,6 @@ export default function CargosPage() {
       <ModalConfirmarExclusao
         open={modalExcluir.open}
         titulo="Excluir Cargo"
-        descricao="Essa ação não pode ser desfeita."
         loading={modalExcluir.loading}
         erro={modalExcluir.erro}
         onConfirmar={handleExcluirCargo}

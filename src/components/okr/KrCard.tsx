@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { cn, formatPercent, formatNumber, formatValor, getProgressColor, getProgressStatus } from '@/lib/utils'
+import { cn, formatPercent, formatNumber, formatValor, getProgressColor, getProgressStatus, paraData } from '@/lib/utils'
 import { MoreHorizontal, TrendingUp, User, Building2, Calendar, Zap, ClipboardList, CheckCircle2, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react'
 import { ROTULO_APURACAO, tendenciaKr, type ApuracaoKr, type DirecaoKr, type PontoSerie } from '@/lib/okrProgresso'
 
@@ -88,7 +88,7 @@ export default function KrCard({
     : 'bg-red-500'
   const setorNome = kr.setor?.nome ?? kr.setor?.name
   const endDate = kr.end_date
-    ? new Date(kr.end_date).toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' })
+    ? paraData(kr.end_date).toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' })
     : null
 
   const dataUltimoLancamento = kr.data_ultimo_lancamento
@@ -110,8 +110,9 @@ export default function KrCard({
           >
             <MoreHorizontal className="w-4 h-4" />
           </button>
+          {menuOpen && <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />}
           {menuOpen && (
-            <div className="absolute right-0 top-7 bg-popover border border-border rounded-xl shadow-lg z-10 min-w-40 py-1">
+            <div className="absolute right-0 top-7 bg-popover border border-border rounded-xl shadow-lg z-20 min-w-40 py-1">
               <button
                 onClick={() => { onVerGrafico?.(kr); setMenuOpen(false) }}
                 className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors flex items-center gap-2"

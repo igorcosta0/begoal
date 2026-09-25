@@ -1,6 +1,8 @@
 'use client'
 
+import DicaValor from '@/components/DicaValor'
 import { useState } from 'react'
+import { dataLocalISO, formatValor } from '@/lib/utils'
 import { createKrLancamento } from '@/lib/queries/okr'
 
 interface ModalLancarKrProps {
@@ -24,7 +26,7 @@ export default function ModalLancarKr({
 }: ModalLancarKrProps) {
   const [valor, setValor] = useState('')
   const [data, setData] = useState(
-    new Date().toISOString().split('T')[0]
+    dataLocalISO()
   )
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -48,7 +50,7 @@ export default function ModalLancarKr({
     }
 
     setValor('')
-    setData(new Date().toISOString().split('T')[0])
+    setData(dataLocalISO())
     onSuccess()
     onClose()
     setLoading(false)
@@ -70,12 +72,12 @@ export default function ModalLancarKr({
         <div className="flex items-center justify-between text-xs text-muted-foreground mb-4 bg-secondary rounded-md px-3 py-2">
           <span>
             Valor atual: <span className="font-medium text-foreground">
-              {kr.valor_atual ?? 0} {kr.tipo_valor}
+              {formatValor(kr.valor_atual ?? 0, kr.tipo_valor)}
             </span>
           </span>
           <span>
             Meta: <span className="font-medium text-foreground">
-              {kr.meta ?? 0} {kr.tipo_valor}
+              {formatValor(kr.meta ?? 0, kr.tipo_valor)}
             </span>
           </span>
         </div>
@@ -94,6 +96,7 @@ export default function ModalLancarKr({
               placeholder="0"
               className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
+            <DicaValor valor={valor} tipoValor={kr.tipo_valor} />
           </div>
 
           <div>

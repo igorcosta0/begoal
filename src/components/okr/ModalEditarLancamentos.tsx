@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { X, Edit2, Check, Trash2, Plus } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import { recalcularValorAtualKr, deleteKrLancamento } from '@/lib/queries/okr'
+import BotaoExcluirConfirmando from '@/components/BotaoExcluirConfirmando'
 
 interface ModalEditarLancamentosProps {
   open: boolean
@@ -67,21 +69,7 @@ export default function ModalEditarLancamentos({
       })
       .eq('id', id)
 
-    // Atualiza valor_atual do KR com o lançamento mais recente
-    const { data: ultimo } = await supabase
-      .from('kr_lancamentos')
-      .select('valor')
-      .eq('kr_id', kr.id)
-      .order('data_lancamento', { ascending: false })
-      .limit(1)
-      .single()
-
-    if (ultimo) {
-      await supabase
-        .from('krs')
-        .update({ valor_atual: ultimo.valor })
-        .eq('id', kr.id)
-    }
+    await recalcularValorAtualKr(kr.id)
 
     setEditandoId(null)
     setSalvando(false)
@@ -91,22 +79,7 @@ export default function ModalEditarLancamentos({
 
   async function handleExcluir(id: string) {
     setExcluindo(id)
-    const supabase = createClient()
-    await supabase.from('kr_lancamentos').delete().eq('id', id)
-
-    // Atualiza valor_atual com o lançamento mais recente restante
-    const { data: ultimo } = await supabase
-      .from('kr_lancamentos')
-      .select('valor')
-      .eq('kr_id', kr.id)
-      .order('data_lancamento', { ascending: false })
-      .limit(1)
-      .single()
-
-    await supabase
-      .from('krs')
-      .update({ valor_atual: ultimo?.valor ?? kr.valor_inicial })
-      .eq('id', kr.id)
+    await deleteKrLancamento(id, kr.id)
 
     setExcluindo(null)
     await fetchLancamentos()
@@ -230,14 +203,10 @@ export default function ModalEditarLancamentos({
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
-                        <button
-                          onClick={() => handleExcluir(lancamento.id)}
+                        <BotaoExcluirConfirmando
+                          onConfirmar={() => handleExcluir(lancamento.id)}
                           disabled={excluindo === lancamento.id}
-                          className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-destructive disabled:opacity-50"
-                          title="Excluir"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        />
                       </div>
                     </div>
                   )}

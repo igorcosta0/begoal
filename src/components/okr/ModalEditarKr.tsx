@@ -1,5 +1,6 @@
 'use client'
 
+import DicaValor from '@/components/DicaValor'
 import { useState, useEffect } from 'react'
 import { updateKr, getSetoresByEmpresa, getFuncionariosByEmpresa } from '@/lib/queries/okr'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
@@ -62,8 +63,10 @@ export default function ModalEditarKr({
 
     const { error } = await updateKr(kr.id, {
       titulo: form.titulo,
-      responsavel_id: form.responsavel_id,
-      setor_id: form.setor_id || undefined,
+      // Pente fino (A8): undefined faz o Supabase ignorar o campo — limpar
+      // setor/responsável nunca era salvo. null apaga de verdade.
+      responsavel_id: form.responsavel_id || null,
+      setor_id: form.setor_id || null,
       valor_inicial: parseFloat(form.valor_inicial) || 0,
       meta: parseFloat(form.meta) || 0,
       tipo_valor: form.tipo_valor || undefined,
@@ -139,20 +142,24 @@ export default function ModalEditarKr({
               <label className="text-xs font-medium text-foreground">Valor inicial</label>
               <input
                 type="number"
+                step="any"
                 value={form.valor_inicial}
                 onChange={(e) => setForm({ ...form, valor_inicial: e.target.value })}
                 className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
+              <DicaValor valor={form.valor_inicial} tipoValor={form.tipo_valor} />
             </div>
             <div>
               <label className="text-xs font-medium text-foreground">Meta</label>
               <input
                 type="number"
+                step="any"
                 value={form.meta}
                 onChange={(e) => setForm({ ...form, meta: e.target.value })}
                 required
                 className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
+              <DicaValor valor={form.meta} tipoValor={form.tipo_valor} />
             </div>
             <div>
               <label className="text-xs font-medium text-foreground">Tipo</label>

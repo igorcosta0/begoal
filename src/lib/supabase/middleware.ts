@@ -46,10 +46,10 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Se tem usuário e está na raiz, redireciona para okr
+  // Se tem usuário e está na raiz, redireciona para a página inicial
   if (user && pathname === '/') {
     const url = request.nextUrl.clone()
-    url.pathname = '/okr'
+    url.pathname = '/inicio'
     return NextResponse.redirect(url)
   }
 

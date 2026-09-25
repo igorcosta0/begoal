@@ -1,6 +1,8 @@
 'use client'
 
+import DicaValor from '@/components/DicaValor'
 import { useState } from 'react'
+import { dataLocalISO, formatValor } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { Flag } from 'lucide-react'
 
@@ -51,7 +53,7 @@ export default function ModalFinalizarKr({
       await supabase.from('kr_lancamentos').insert({
         kr_id: kr.id,
         valor,
-        data_lancamento: new Date().toISOString().split('T')[0],
+        data_lancamento: dataLocalISO(),
         is_final_result: true,
         comentario: 'Resultado final',
       })
@@ -87,7 +89,7 @@ export default function ModalFinalizarKr({
 
         <div className="bg-secondary rounded-md px-3 py-2 text-xs text-muted-foreground mb-4 text-center">
           Meta: <span className="font-medium text-foreground">
-            {kr.meta ?? 0} {kr.tipo_valor}
+            {formatValor(kr.meta ?? 0, kr.tipo_valor)}
           </span>
         </div>
 
@@ -106,6 +108,7 @@ export default function ModalFinalizarKr({
               autoFocus
               className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
+            <DicaValor valor={resultado} tipoValor={kr.tipo_valor} />
           </div>
 
           <p className="text-xs text-muted-foreground bg-blue-50 border border-blue-200 rounded-md px-3 py-2">

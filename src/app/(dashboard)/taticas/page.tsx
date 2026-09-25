@@ -2,14 +2,13 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
-import { useAuthStore } from '@/store/useAuthStore'
 import { createClient } from '@/lib/supabase/client'
 import { getObjetivos, getSetoresByEmpresa, getFuncionariosByEmpresa } from '@/lib/queries/okr'
 import { getFotosPerfilPorEmpresa } from '@/lib/queries/perfilPublico'
 import Avatar from '@/components/Avatar'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
-import { User, Building2, Calendar, CheckCircle2, Circle, MessageSquare, Send, Trash2, ChevronDown, ChevronUp, Zap, Plus, X, GripVertical } from 'lucide-react'
-import { cn, formatDate, mensagemErroExclusao } from '@/lib/utils'
+import { User, Building2, Calendar, CheckCircle2, Circle, MessageSquare, Send, Trash2, ChevronDown, ChevronUp, Zap, Plus, X, GripVertical, Pencil } from 'lucide-react'
+import { cn, formatDate, mensagemErroExclusao, mensagemErroGravacao } from '@/lib/utils'
 
 const STATUS_OPTIONS = ['Não Iniciado', 'Em Andamento', 'Concluído']
 
@@ -39,44 +38,54 @@ const FORM_INICIAL: FormTatica = {
   Status: 'Não Iniciado',
 }
 
-function ComentariosTatica({ taticaId, userId, nomeUsuario, fotosPorUserId }: { taticaId: string; userId: string; nomeUsuario: string; fotosPorUserId: Record<string, string> }) {
-  const [comentarios, setComentarios] = useState<any[]>([])
+// Pente fino (M8): antes cada cartão fazia a própria consulta de comentários
+// (uma por tática). Agora a página busca todos de uma vez e passa a lista.
+function ComentariosTatica({ taticaId, comentarios, userId, nomeUsuario, fotosPorUserId, onAlterado }: {
+  taticaId: string
+  comentarios: any[]
+  userId: string
+  nomeUsuario: string
+  fotosPorUserId: Record<string, string>
+  onAlterado: () => Promise<void>
+}) {
   const [novoComentario, setNovoComentario] = useState('')
   const [loading, setLoading] = useState(false)
   const [aberto, setAberto] = useState(false)
-
-  const fetchComentarios = useCallback(async () => {
-    const supabase = createClient()
-    const { data } = await supabase
-      .from('taticas_comentarios')
-      .select('*')
-      .eq('tatica_id', taticaId)
-      .order('created_at', { ascending: true })
-    setComentarios(data ?? [])
-  }, [taticaId])
-
-  useEffect(() => { fetchComentarios() }, [fetchComentarios])
+  const [erro, setErro] = useState<string | null>(null)
 
   async function handleEnviar(e: React.FormEvent) {
     e.preventDefault()
     if (!novoComentario.trim()) return
     setLoading(true)
+    setErro(null)
     const supabase = createClient()
-    await supabase.from('taticas_comentarios').insert({
+    const { error } = await supabase.from('taticas_comentarios').insert({
       tatica_id: taticaId,
       comentario: novoComentario.trim(),
       autor_nome: nomeUsuario || 'Usuário',
       user_id: userId,
     })
+    const msg = mensagemErroGravacao(error)
+    if (msg) {
+      setErro(msg)
+      setLoading(false)
+      return
+    }
     setNovoComentario('')
-    await fetchComentarios()
+    await onAlterado()
     setLoading(false)
   }
 
   async function handleExcluir(id: string) {
+    setErro(null)
     const supabase = createClient()
-    await supabase.from('taticas_comentarios').delete().eq('id', id)
-    await fetchComentarios()
+    const { data, error } = await supabase.from('taticas_comentarios').delete().eq('id', id).select('id')
+    const msg = mensagemErroGravacao(error, data?.length)
+    if (msg) {
+      setErro(msg)
+      return
+    }
+    await onAlterado()
   }
 
   return (
@@ -137,6 +146,7 @@ function ComentariosTatica({ taticaId, userId, nomeUsuario, fotosPorUserId }: { 
               <Send className="w-3 h-3" />
             </button>
           </form>
+          {erro && <p className="text-[10px] text-destructive">{erro}</p>}
         </div>
       )}
     </div>
@@ -144,11 +154,12 @@ function ComentariosTatica({ taticaId, userId, nomeUsuario, fotosPorUserId }: { 
 }
 
 function ModalTatica({
-  open, titulo, form, setForm, setores, funcionarios, krs, objetivos, onSubmit, onCancel,
+  open, titulo, form, setForm, setores, funcionarios, krs, objetivos, onSubmit, onCancel, erro, salvando,
 }: {
   open: boolean; titulo: string; form: FormTatica; setForm: (f: FormTatica) => void
   setores: any[]; funcionarios: any[]; krs: any[]; objetivos: any[]
   onSubmit: (e: React.FormEvent) => void; onCancel: () => void
+  erro?: string | null; salvando?: boolean
 }) {
   if (!open) return null
   return (
@@ -216,14 +227,17 @@ function ModalTatica({
               </select>
             </div>
           </div>
+          {erro && (
+            <p className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-xl px-3 py-2">{erro}</p>
+          )}
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={onCancel}
               className="flex-1 py-2 px-4 border border-border rounded-xl text-sm text-muted-foreground hover:bg-accent transition-colors">
               Cancelar
             </button>
-            <button type="submit"
-              className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity">
-              Salvar
+            <button type="submit" disabled={salvando}
+              className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
+              {salvando ? 'Salvando...' : 'Salvar'}
             </button>
           </div>
         </form>
@@ -234,7 +248,6 @@ function ModalTatica({
 
 export default function TaticasPage() {
   const { empresa } = useEmpresaStore()
-  const { user } = useAuthStore()
 
   const [taticas, setTaticas] = useState<any[]>([])
   const [objetivos, setObjetivos] = useState<any[]>([])
@@ -253,8 +266,31 @@ export default function TaticasPage() {
   const [colunaSobre, setColunaSobre] = useState<string | null>(null)
 
   const [modalCriar, setModalCriar] = useState(false)
+  // Pente fino (M8): não existia edição de tática — só criar, mover e excluir.
+  const [taticaEditando, setTaticaEditando] = useState<any | null>(null)
   const [modalExcluir, setModalExcluir] = useState<{ open: boolean; tatica: any | null; loading: boolean; erro: string | null }>({ open: false, tatica: null, loading: false, erro: null })
   const [form, setForm] = useState<FormTatica>(FORM_INICIAL)
+  const [erroForm, setErroForm] = useState<string | null>(null)
+  const [salvandoForm, setSalvandoForm] = useState(false)
+  // Erro de ações feitas direto no quadro (marcar concluída, arrastar).
+  const [erroQuadro, setErroQuadro] = useState<string | null>(null)
+  const [comentariosPorTatica, setComentariosPorTatica] = useState<Record<string, any[]>>({})
+
+  const fetchComentarios = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) {
+      setComentariosPorTatica({})
+      return
+    }
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('taticas_comentarios')
+      .select('*')
+      .in('tatica_id', ids)
+      .order('created_at', { ascending: true })
+    const mapa: Record<string, any[]> = {}
+    for (const c of data ?? []) (mapa[c.tatica_id] ??= []).push(c)
+    setComentariosPorTatica(mapa)
+  }, [])
 
   const fetchData = useCallback(async () => {
     if (!empresa) return
@@ -264,7 +300,7 @@ export default function TaticasPage() {
     const { data: { user: authUser } } = await supabase.auth.getUser()
     if (authUser) setUserId(authUser.id)
 
-    const { data: funcData } = await supabase.from('funcionarios').select('full_name').eq('user_id', authUser?.id ?? '').maybeSingle()
+    const { data: funcData } = await supabase.from('funcionarios').select('full_name').eq('user_id', authUser?.id ?? '').eq('client_id', empresa.id).maybeSingle()
     if (funcData) setNomeUsuario(funcData.full_name?.split(' ')[0] ?? '')
 
     const { data } = await supabase
@@ -280,8 +316,9 @@ export default function TaticasPage() {
       .eq('Client_Id', empresa.id)
       .order('created_at', { ascending: false })
     setTaticas(data ?? [])
+    await fetchComentarios((data ?? []).map((t: any) => t.id))
     setLoading(false)
-  }, [empresa])
+  }, [empresa, fetchComentarios])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -296,23 +333,75 @@ export default function TaticasPage() {
     getFotosPerfilPorEmpresa(empresa.id).then(({ porUserId }) => setFotosPorUserId(porUserId))
   }, [empresa])
 
+  function camposDoForm() {
+    return {
+      descricao: form.descricao,
+      responsavel_id: form.responsavel_id || null,
+      setor_id: form.setor_id || null,
+      objetivo_id: form.objetivo_id || null,
+      kr_id: form.kr_id,
+      prazo: form.prazo || null,
+      Status: form.Status,
+      concluida: form.Status === 'Concluído',
+    }
+  }
+
+  function fecharModalForm() {
+    setModalCriar(false)
+    setTaticaEditando(null)
+    setErroForm(null)
+  }
+
   async function handleCriar(e: React.FormEvent) {
     e.preventDefault()
     if (!empresa || !form.kr_id) return
+    setSalvandoForm(true)
+    setErroForm(null)
     const supabase = createClient()
-    await supabase.from('taticas').insert({
-      descricao: form.descricao,
-      responsavel_id: form.responsavel_id || undefined,
-      setor_id: form.setor_id || undefined,
-      objetivo_id: form.objetivo_id || undefined,
-      kr_id: form.kr_id,
-      prazo: form.prazo || undefined,
-      Client_Id: empresa.id,
-      concluida: false,
-      Status: form.Status,
-    })
+    const { error } = await supabase.from('taticas').insert({ ...camposDoForm(), Client_Id: empresa.id })
+    setSalvandoForm(false)
+    const msg = mensagemErroGravacao(error)
+    if (msg) { setErroForm(msg); return }
     setForm(FORM_INICIAL)
-    setModalCriar(false)
+    fecharModalForm()
+    fetchData()
+  }
+
+  function abrirEdicao(tatica: any) {
+    setForm({
+      descricao: tatica.descricao ?? '',
+      responsavel_id: tatica.responsavel_id ?? '',
+      setor_id: tatica.setor_id ?? '',
+      objetivo_id: tatica.objetivo_id ?? '',
+      kr_id: tatica.kr_id ?? '',
+      prazo: tatica.prazo ?? '',
+      Status: tatica.Status || 'Não Iniciado',
+    })
+    setErroForm(null)
+    setTaticaEditando(tatica)
+  }
+
+  async function handleEditar(e: React.FormEvent) {
+    e.preventDefault()
+    if (!taticaEditando || !form.kr_id) return
+    setSalvandoForm(true)
+    setErroForm(null)
+    const supabase = createClient()
+    const { data, error } = await supabase.from('taticas').update(camposDoForm()).eq('id', taticaEditando.id).select('id')
+    setSalvandoForm(false)
+    const msg = mensagemErroGravacao(error, data?.length)
+    if (msg) { setErroForm(msg); return }
+    setForm(FORM_INICIAL)
+    fecharModalForm()
+    fetchData()
+  }
+
+  async function atualizarNoQuadro(taticaId: string, campos: Record<string, unknown>) {
+    setErroQuadro(null)
+    const supabase = createClient()
+    const { data, error } = await supabase.from('taticas').update(campos).eq('id', taticaId).select('id')
+    const msg = mensagemErroGravacao(error, data?.length)
+    if (msg) setErroQuadro(msg)
     fetchData()
   }
 
@@ -320,21 +409,25 @@ export default function TaticasPage() {
   // de Táticas do KR) somam pendentes/concluídas a partir do booleano `concluida`.
   async function handleToggleConcluida(tatica: any) {
     const novaConcluida = !tatica.concluida
-    const supabase = createClient()
-    await supabase.from('taticas').update({
+    await atualizarNoQuadro(tatica.id, {
       concluida: novaConcluida,
       Status: novaConcluida ? 'Concluído' : (tatica.Status === 'Concluído' ? 'Não Iniciado' : tatica.Status),
-    }).eq('id', tatica.id)
-    fetchData()
+    })
   }
 
   async function handleMoverStatus(taticaId: string, novoStatus: string) {
-    const supabase = createClient()
-    await supabase.from('taticas').update({
+    await atualizarNoQuadro(taticaId, {
       Status: novoStatus,
       concluida: novoStatus === 'Concluído',
-    }).eq('id', taticaId)
-    fetchData()
+    })
+  }
+
+  const filtroAtivo = !!(filtroObjetivo || filtroKr || filtroResponsavel || filtroSetor)
+  function limparFiltros() {
+    setFiltroObjetivo('')
+    setFiltroKr('')
+    setFiltroResponsavel('')
+    setFiltroSetor('')
   }
 
   function handleDragStart(e: React.DragEvent, taticaId: string) {
@@ -396,7 +489,7 @@ export default function TaticasPage() {
           </div>
         </div>
         <button
-          onClick={() => setModalCriar(true)}
+          onClick={() => { setForm(FORM_INICIAL); setErroForm(null); setModalCriar(true) }}
           className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
         >
           <Plus className="w-4 h-4" /> Nova Tática
@@ -429,6 +522,10 @@ export default function TaticasPage() {
         </select>
       </div>
 
+      {erroQuadro && (
+        <p className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-xl px-3 py-2">{erroQuadro}</p>
+      )}
+
       {/* Board Kanban */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -441,11 +538,23 @@ export default function TaticasPage() {
           <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
             <Zap className="w-6 h-6 text-muted-foreground/40" />
           </div>
-          <p className="text-muted-foreground text-sm mb-3">Nenhuma tática encontrada.</p>
-          <button onClick={() => setModalCriar(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm">
-            <Plus className="w-4 h-4" /> Criar primeira tática
-          </button>
+          {filtroAtivo && taticas.length > 0 ? (
+            <>
+              <p className="text-muted-foreground text-sm mb-3">Nenhuma tática com esses filtros.</p>
+              <button onClick={limparFiltros}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 border border-border rounded-xl text-sm font-semibold text-foreground hover:bg-accent transition-colors">
+                Limpar filtros
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-muted-foreground text-sm mb-3">Nenhuma tática encontrada.</p>
+              <button onClick={() => { setForm(FORM_INICIAL); setErroForm(null); setModalCriar(true) }}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm">
+                <Plus className="w-4 h-4" /> Criar primeira tática
+              </button>
+            </>
+          )}
         </div>
       ) : (
         <div data-tour="tour-taticas-board" className="flex gap-4 overflow-x-auto pb-1">
@@ -544,14 +653,24 @@ export default function TaticasPage() {
                       <div className="ml-6">
                         <ComentariosTatica
                           taticaId={tatica.id}
+                          comentarios={comentariosPorTatica[tatica.id] ?? []}
                           userId={userId}
                           nomeUsuario={nomeUsuario}
                           fotosPorUserId={fotosPorUserId}
+                          onAlterado={() => fetchComentarios(taticas.map((t) => t.id))}
                         />
                       </div>
 
-                      <div className="flex justify-end mt-1">
+                      <div className="flex justify-end gap-1 mt-1">
                         <button
+                          onClick={() => abrirEdicao(tatica)}
+                          title="Editar tática"
+                          className="p-1 rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-accent transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                        <button
+                          title="Excluir tática"
                           onClick={() => setModalExcluir({ open: true, tatica, loading: false, erro: null })}
                           className="p-1 rounded-md text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
                         >
@@ -577,13 +696,29 @@ export default function TaticasPage() {
         krs={krs}
         objetivos={objetivos}
         onSubmit={handleCriar}
-        onCancel={() => setModalCriar(false)}
+        onCancel={fecharModalForm}
+        erro={erroForm}
+        salvando={salvandoForm}
+      />
+
+      <ModalTatica
+        open={!!taticaEditando}
+        titulo="Editar Tática"
+        form={form}
+        setForm={setForm}
+        setores={setores}
+        funcionarios={funcionarios}
+        krs={krs}
+        objetivos={objetivos}
+        onSubmit={handleEditar}
+        onCancel={fecharModalForm}
+        erro={erroForm}
+        salvando={salvandoForm}
       />
 
       <ModalConfirmarExclusao
         open={modalExcluir.open}
         titulo="Excluir Tática"
-        descricao="Esta ação não pode ser desfeita."
         loading={modalExcluir.loading}
         erro={modalExcluir.erro}
         onConfirmar={handleExcluir}

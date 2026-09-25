@@ -22,11 +22,11 @@ const AREAS = [
   },
   {
     href: '/objetivo', icon: Heart, titulo: 'Nosso jeito de ser',
-    descricao: 'Identidade da empresa: visão de futuro, mercado de atuação (com um mural de recados fixados) e os valores que guiam o dia a dia.',
+    descricao: 'Identidade da empresa: visão de futuro, mercado de atuação, o mural da missão e os valores que guiam o dia a dia.',
   },
   {
     href: '/taticas', icon: Zap, titulo: 'Táticas',
-    descricao: 'Board Kanban (Não Iniciado / Em Andamento / Concluído) com as ações do dia a dia vinculadas a cada KR. Arraste o cartão pra mudar o status.',
+    descricao: 'Board Kanban (Não Iniciado / Em Andamento / Concluído) com as ações do dia a dia vinculadas a cada KR. Arraste o cartão pra mudar o status ou use o lápis pra editar.',
   },
   {
     href: '/sinais-vitais', icon: Activity, titulo: 'Sinais Vitais',
@@ -43,6 +43,8 @@ const AREAS = [
   {
     href: '/avaliacao', icon: ClipboardList, titulo: 'Avaliação de Desempenho',
     descricao: 'Ciclo semestral com autoavaliação, avaliação do gestor e calibração — metade cultura, metade metas técnicas da vertical.',
+    // Pente fino (M7): o guia listava a Avaliação para qualquer empresa.
+    somenteCtz: true,
   },
   {
     href: '/biblioteca', icon: Library, titulo: 'Biblioteca',
@@ -63,8 +65,8 @@ const PASSOS = [
   },
   {
     icon: LayoutList,
-    titulo: 'Use o menu à esquerda pra navegar',
-    texto: 'Cada área tem seu próprio ícone. Nem todo mundo vê os mesmos itens: Administração e Importar, por exemplo, são só pra administradores.',
+    titulo: 'Use a barra do topo pra navegar',
+    texto: 'As áreas estão agrupadas em menus (Estratégia, Pessoas, Recursos...). Nem todo mundo vê os mesmos itens: Administração, por exemplo, é só pra administradores.',
   },
   {
     icon: Target,
@@ -80,15 +82,15 @@ const FAQ = [
   },
   {
     pergunta: 'Tenho acesso a mais de uma empresa, como troco?',
-    resposta: 'Se você é administrador, use "Mudar Empresa" no rodapé do menu lateral. Usuários comuns normalmente têm acesso a uma única empresa.',
+    resposta: 'Clique na sua foto, no canto superior direito, e escolha "Mudar Empresa". A opção só aparece para quem tem acesso a mais de uma empresa.',
   },
   {
-    pergunta: 'Quem vê minha autoavaliação de desempenho?',
-    resposta: 'Só você, até o seu gestor concluir a avaliação dele. As notas do gestor e o resultado final só aparecem depois que ele marcar "Revelar avaliação".',
+    pergunta: 'Vou ver a nota que recebi na avaliação de desempenho?',
+    resposta: 'Não. Pela plataforma, cada pessoa só vê as notas que ela mesma deu, em qualquer etapa do ciclo.',
   },
   {
-    pergunta: 'Posso editar um Sinal Vital depois de lançado?',
-    resposta: 'Sim — abra o histórico do Sinal Vital pra ver ou ajustar os lançamentos anteriores.',
+    pergunta: 'Lancei um valor errado num Sinal Vital, e agora?',
+    resposta: 'Abra o histórico do Sinal Vital, exclua o lançamento errado e lance de novo com o valor certo. O valor atual é recalculado sozinho.',
   },
 ]
 
@@ -121,7 +123,7 @@ export default function GuiaPage() {
       {/* Tour guiado */}
       <div
         className="relative rounded-2xl overflow-hidden p-6 flex items-center justify-between gap-4 flex-wrap"
-        style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #234b7c 45%, #163863 100%)' }}
+        style={{ background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(231 76% 32%) 100%)' }}
       >
         <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
         <div className="relative flex items-start gap-3 min-w-0">
@@ -178,7 +180,7 @@ export default function GuiaPage() {
       <div>
         <h2 className="text-xs font-bold text-foreground uppercase tracking-widest mb-3">Conheça cada área</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {AREAS.map((area) => (
+          {AREAS.filter((area) => !area.somenteCtz || ctz).map((area) => (
             <Link
               key={area.href}
               href={area.href}

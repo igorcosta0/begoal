@@ -292,7 +292,7 @@ export default function BibliotecaPage() {
 
       const [{ data: role }, { data: func }] = await Promise.all([
         supabase.from('user_company_roles').select('permission_level').eq('user_id', user.id).eq('client_id', empresa!.id).maybeSingle(),
-        supabase.from('funcionarios').select('full_name').eq('user_id', user.id).maybeSingle(),
+        supabase.from('funcionarios').select('full_name').eq('user_id', user.id).eq('client_id', empresa!.id).maybeSingle(),
       ])
       setPodeGerenciar(role?.permission_level === 'administrador' || role?.permission_level === 'gestor')
       if (func) setNomeUsuario(func.full_name?.split(' ')[0] ?? '')
@@ -475,7 +475,6 @@ export default function BibliotecaPage() {
       <ModalConfirmarExclusao
         open={modalExcluir.open}
         titulo="Excluir documento"
-        descricao="Esta ação não pode ser desfeita."
         loading={modalExcluir.loading}
         erro={modalExcluir.erro}
         onConfirmar={handleExcluir}

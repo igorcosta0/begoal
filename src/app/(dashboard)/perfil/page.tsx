@@ -8,6 +8,7 @@ import Avatar from '@/components/Avatar'
 import { User, Globe, Camera } from 'lucide-react'
 
 const LIMITE_CAMPO_PUBLICO = 1000
+const TAMANHO_MINIMO_SENHA = 8
 
 export default function PerfilPage() {
   const { empresa } = useEmpresaStore()
@@ -21,6 +22,7 @@ export default function PerfilPage() {
   })
 
   const [senhaForm, setSenhaForm] = useState({
+    senha_atual: '',
     nova_senha: '',
     confirmar_senha: '',
   })
@@ -44,6 +46,8 @@ export default function PerfilPage() {
   const inputFotoRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    if (!empresa) return
+    const empresaId = empresa.id
     async function fetchPerfil() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
@@ -53,6 +57,7 @@ export default function PerfilPage() {
         .from('funcionarios')
         .select('full_name, email')
         .eq('user_id', user.id)
+        .eq('client_id', empresaId)
         .maybeSingle()
 
       if (func) {
@@ -61,7 +66,7 @@ export default function PerfilPage() {
         setForm({ full_name: '', email: user.email ?? '' })
       }
 
-      const { perfil } = await getMeuPerfilPublico()
+      const { perfil } = await getMeuPerfilPublico(empresaId)
       if (perfil) {
         setPerfilPublico({
           sobre_mim: perfil.sobre_mim ?? '',
@@ -73,14 +78,15 @@ export default function PerfilPage() {
       setLoading(false)
     }
     fetchPerfil()
-  }, [])
+  }, [empresa])
 
   async function handleEscolherFoto(e: React.ChangeEvent<HTMLInputElement>) {
     const arquivo = e.target.files?.[0]
     e.target.value = ''
-    if (!arquivo) return
-    if (!arquivo.type.startsWith('image/')) {
-      setMensagem({ tipo: 'erro', texto: 'Escolha um arquivo de imagem (JPG, PNG...).' })
+    if (!arquivo || !empresa) return
+    // Mesma lista do bucket (migration PENDENTE_20260925000000): sem SVG, que pode carregar script.
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(arquivo.type)) {
+      setMensagem({ tipo: 'erro', texto: 'Escolha uma imagem JPG, PNG, WEBP ou GIF.' })
       return
     }
     if (arquivo.size > 5 * 1024 * 1024) {
@@ -89,7 +95,7 @@ export default function PerfilPage() {
     }
     setEnviandoFoto(true)
     setMensagem(null)
-    const { url, error } = await uploadMinhaFotoPerfil(arquivo)
+    const { url, error } = await uploadMinhaFotoPerfil(empresa.id, arquivo)
     if (error) {
       setMensagem({ tipo: 'erro', texto: `Erro ao enviar a foto: ${error}` })
     } else {
@@ -101,9 +107,10 @@ export default function PerfilPage() {
 
   async function handleSalvarPerfilPublico(e: React.FormEvent) {
     e.preventDefault()
+    if (!empresa) return
     setSalvandoPublico(true)
     setMensagem(null)
-    const { error } = await upsertMeuPerfilPublico(perfilPublico)
+    const { error } = await upsertMeuPerfilPublico(empresa.id, perfilPublico)
     if (error) {
       setMensagem({ tipo: 'erro', texto: error })
     } else {
@@ -145,13 +152,29 @@ export default function PerfilPage() {
       setMensagem({ tipo: 'erro', texto: 'As senhas não coincidem.' })
       return
     }
+    if (senhaForm.nova_senha.length < TAMANHO_MINIMO_SENHA) {
+      setMensagem({ tipo: 'erro', texto: `A nova senha precisa ter pelo menos ${TAMANHO_MINIMO_SENHA} caracteres.` })
+      return
+    }
     setSalvando(true)
     setMensagem(null)
     try {
       const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user?.email) throw new Error('Usuário não encontrado')
+      // Pente fino (M10): antes pedia só a senha nova — quem pegasse o
+      // computador desbloqueado conseguia trocar a senha de outra pessoa.
+      const { error: erroSenhaAtual } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: senhaForm.senha_atual,
+      })
+      if (erroSenhaAtual) {
+        setMensagem({ tipo: 'erro', texto: 'Senha atual incorreta.' })
+        return
+      }
       const { error } = await supabase.auth.updateUser({ password: senhaForm.nova_senha })
       if (error) throw error
-      setSenhaForm({ nova_senha: '', confirmar_senha: '' })
+      setSenhaForm({ senha_atual: '', nova_senha: '', confirmar_senha: '' })
       setMensagem({ tipo: 'sucesso', texto: 'Senha atualizada com sucesso!' })
     } catch {
       setMensagem({ tipo: 'erro', texto: 'Erro ao atualizar senha.' })
@@ -206,7 +229,7 @@ export default function PerfilPage() {
             <input
               ref={inputFotoRef}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp,image/gif"
               className="hidden"
               onChange={handleEscolherFoto}
             />
@@ -311,13 +334,24 @@ export default function PerfilPage() {
         <h2 className="text-sm font-semibold text-foreground mb-4">Alterar senha</h2>
         <form onSubmit={handleSalvarSenha} className="space-y-4">
           <div>
-            <label className="text-xs font-medium text-foreground">Nova senha</label>
+            <label className="text-xs font-medium text-foreground">Senha atual</label>
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={senhaForm.senha_atual}
+              onChange={(e) => setSenhaForm({ ...senhaForm, senha_atual: e.target.value })}
+              required
+              className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-foreground">Nova senha (mínimo {TAMANHO_MINIMO_SENHA} caracteres)</label>
             <input
               type="password"
               value={senhaForm.nova_senha}
               onChange={(e) => setSenhaForm({ ...senhaForm, nova_senha: e.target.value })}
               required
-              minLength={6}
+              minLength={TAMANHO_MINIMO_SENHA}
               className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
@@ -328,7 +362,7 @@ export default function PerfilPage() {
               value={senhaForm.confirmar_senha}
               onChange={(e) => setSenhaForm({ ...senhaForm, confirmar_senha: e.target.value })}
               required
-              minLength={6}
+              minLength={TAMANHO_MINIMO_SENHA}
               className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>

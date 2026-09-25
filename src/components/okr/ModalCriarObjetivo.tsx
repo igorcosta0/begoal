@@ -100,7 +100,7 @@ export default function ModalCriarObjetivo({
                         : 'bg-background text-muted-foreground border-border hover:bg-accent'
                     }`}
                   >
-                    {s.nome}
+                    {s.name ?? s.nome}
                   </button>
                 ))}
               </div>

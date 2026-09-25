@@ -1,8 +1,9 @@
 'use client'
 
+import DicaValor from '@/components/DicaValor'
 import { useState } from 'react'
 import { createSvLancamento } from '@/lib/queries/sinais-vitais'
-import { formatNumber } from '@/lib/utils'
+import { formatNumber, formatValor, dataLocalISO } from '@/lib/utils'
 
 interface ModalLancarSvProps {
   open: boolean
@@ -19,7 +20,7 @@ interface ModalLancarSvProps {
 
 export default function ModalLancarSv({ open, sv, onClose, onSuccess }: ModalLancarSvProps) {
   const [valor, setValor] = useState('')
-  const [data, setData] = useState(new Date().toISOString().split('T')[0])
+  const [data, setData] = useState(dataLocalISO())
   const [comentario, setComentario] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -45,7 +46,7 @@ export default function ModalLancarSv({ open, sv, onClose, onSuccess }: ModalLan
 
     setValor('')
     setComentario('')
-    setData(new Date().toISOString().split('T')[0])
+    setData(dataLocalISO())
     onSuccess()
     onClose()
     setLoading(false)
@@ -61,8 +62,8 @@ export default function ModalLancarSv({ open, sv, onClose, onSuccess }: ModalLan
         <p className="text-xs text-muted-foreground mb-4 line-clamp-2">{sv.titulo}</p>
 
         <div className="flex items-center justify-between text-xs text-muted-foreground mb-4 bg-secondary rounded-md px-3 py-2">
-          <span>Atual: <span className="font-medium text-foreground">{formatNumber(sv.valor_atual ?? 0)} {sv.tipo_valor}</span></span>
-          <span>Meta: <span className="font-medium text-foreground">{formatNumber(sv.meta ?? 0)} {sv.tipo_valor}</span></span>
+          <span>Atual: <span className="font-medium text-foreground">{formatValor(sv.valor_atual ?? 0, sv.tipo_valor)}</span></span>
+          <span>Meta: <span className="font-medium text-foreground">{formatValor(sv.meta ?? 0, sv.tipo_valor)}</span></span>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -79,6 +80,7 @@ export default function ModalLancarSv({ open, sv, onClose, onSuccess }: ModalLan
               placeholder="0"
               className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
+            <DicaValor valor={valor} tipoValor={sv.tipo_valor} />
           </div>
 
           <div>

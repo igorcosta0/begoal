@@ -12,7 +12,7 @@ export default function NotFound() {
           A página que você está procurando não existe ou foi movida.
         </p>
         <Link
-          href="/okr"
+          href="/inicio"
           className="inline-block px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
         >
           Voltar para o início

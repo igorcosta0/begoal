@@ -18,6 +18,7 @@ export default function ModalEditarObjetivo({
 }: ModalEditarObjetivoProps) {
   const [titulo, setTitulo] = useState('')
   const [loading, setLoading] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
 
   useEffect(() => {
     if (!objetivo) return
@@ -28,7 +29,13 @@ export default function ModalEditarObjetivo({
     e.preventDefault()
     if (!objetivo) return
     setLoading(true)
-    await updateObjetivo(objetivo.id, { titulo })
+    setErro(null)
+    const { error } = await updateObjetivo(objetivo.id, { titulo })
+    if (error) {
+      setErro(error)
+      setLoading(false)
+      return
+    }
     onSuccess()
     onClose()
     setLoading(false)
@@ -54,6 +61,7 @@ export default function ModalEditarObjetivo({
               className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
+          {erro && <p className="text-xs text-destructive">{erro}</p>}
           <div className="flex gap-2 pt-2">
             <button
               type="button"

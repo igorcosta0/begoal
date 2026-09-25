@@ -4,9 +4,9 @@ import { useEffect, useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
 import { getObjetivos, getKrsByEmpresa } from '@/lib/queries/okr'
-import { calcularKr, progressoObjetivo } from '@/lib/okrProgresso'
+import { calcularKr, progressoObjetivo, progressoSinalVital } from '@/lib/okrProgresso'
 import { getCiclosAvaliacao } from '@/lib/queries/avaliacao'
-import { formatPercent, isEmpresaCTZ, souPilotoAutoconhecimento } from '@/lib/utils'
+import { formatPercent, isEmpresaCTZ, souPilotoAutoconhecimento, mensagemErroGravacao } from '@/lib/utils'
 import {
   Edit2, Check, X, ArrowRight, TrendingUp, Megaphone, Plus,
   Sparkles, Library, Compass,
@@ -20,6 +20,7 @@ export default function InicioPage() {
   const [formIdentidade, setFormIdentidade] = useState({ campanha_titulo: '', campanha_descricao: '' })
   const [editando, setEditando] = useState<string | null>(null)
   const [verCampanha, setVerCampanha] = useState(false)
+  const [erroCampanha, setErroCampanha] = useState<string | null>(null)
 
   const [objetivos, setObjetivos] = useState<any[]>([])
   const [krs, setKrs] = useState<any[]>([])
@@ -62,7 +63,7 @@ export default function InicioPage() {
     ] = await Promise.all([
       supabase.from('empresa_identidade').select('*').eq('client_id', empresa.id).maybeSingle(),
       getObjetivos(empresa.id), getKrsByEmpresa(empresa.id),
-      supabase.from('funcionarios').select('full_name').eq('user_id', user?.id ?? '').maybeSingle(),
+      supabase.from('funcionarios').select('full_name').eq('user_id', user?.id ?? '').eq('client_id', empresa.id).maybeSingle(),
       supabase.from('user_company_roles').select('permission_level').eq('user_id', user?.id ?? '').eq('client_id', empresa.id).maybeSingle(),
       supabase.from('taticas').select('id', { count: 'exact', head: true }).eq('Client_Id', empresa.id).eq('concluida', false),
       supabase.from('funcionarios').select('id', { count: 'exact', head: true }).eq('client_id', empresa.id),
@@ -82,16 +83,7 @@ export default function InicioPage() {
     setFuncionariosCount(funcCount ?? 0)
     setBibliotecaCount(bibCount ?? 0)
 
-    const alertas = (sinaisData ?? []).filter((sv: any) => {
-      const atual = sv.valor_atual ?? sv.valor_inicial ?? 0
-      const inicial = sv.valor_inicial ?? 0
-      const meta = sv.meta ?? 0
-      if (meta === inicial) return false
-      const progresso = meta < inicial
-        ? ((inicial - atual) / (inicial - meta)) * 100
-        : ((atual - inicial) / (meta - inicial)) * 100
-      return progresso < 40
-    }).length
+    const alertas = (sinaisData ?? []).filter((sv: any) => progressoSinalVital(sv) < 40).length
     setAlertasSinaisVitais(alertas)
 
     const ciclos = (ciclosRes as any)?.data ?? []
@@ -111,11 +103,13 @@ export default function InicioPage() {
     if (!empresa) return
     const supabase = createClient()
     const valor = (formIdentidade as any)[campo]
-    if (identidade) {
-      await supabase.from('empresa_identidade').update({ [campo]: valor, updated_at: new Date().toISOString() }).eq('client_id', empresa.id)
-    } else {
-      await supabase.from('empresa_identidade').insert({ client_id: empresa.id, [campo]: valor })
-    }
+    const { data, error } = identidade
+      ? await supabase.from('empresa_identidade').update({ [campo]: valor, updated_at: new Date().toISOString() }).eq('client_id', empresa.id).select('client_id')
+      : await supabase.from('empresa_identidade').insert({ client_id: empresa.id, [campo]: valor }).select('client_id')
+    // Pente fino (A10): sem isso, uma gravação recusada fechava a edição como se tivesse salvado.
+    const msg = mensagemErroGravacao(error, data?.length)
+    if (msg) { setErroCampanha(msg); return }
+    setErroCampanha(null)
     setEditando(null); fetchData()
   }, [empresa, formIdentidade, identidade, fetchData])
 
@@ -217,6 +211,7 @@ export default function InicioPage() {
                   </div>
                 )}
               </div>
+              {erroCampanha && <p className="mt-2 text-xs text-destructive">{erroCampanha}</p>}
             </div>
           </div>
         ) : (

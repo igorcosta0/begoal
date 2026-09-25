@@ -120,3 +120,22 @@ export function tendenciaKr(serie: PontoSerie[], direcao: DirecaoKr, tipoValor?:
     melhorou: delta === 0 ? null : direcao === 'maior' ? delta > 0 : delta < 0,
   }
 }
+
+// Pente fino (A7): o card de Sinal Vital e a Início tinham fórmulas
+// diferentes (o card ignorava "quanto menor, melhor" e zerava com meta <= 0).
+// Mesma regra dos KRs: meta < inicial = quanto menor, melhor; meta = inicial
+// = dentro ou fora da meta. Sem valor lançado nem inicial = null.
+export function progressoSinalVital(sv: {
+  valor_inicial?: number | null
+  valor_atual?: number | null
+  meta?: number | null
+}): number {
+  const inicial = Number(sv.valor_inicial ?? 0)
+  const atual = Number(sv.valor_atual ?? sv.valor_inicial ?? 0)
+  const meta = Number(sv.meta ?? 0)
+  let p: number
+  if (meta === inicial) p = atual >= meta ? 100 : 0
+  else if (meta < inicial) p = ((inicial - atual) / (inicial - meta)) * 100
+  else p = ((atual - inicial) / (meta - inicial)) * 100
+  return Math.min(100, Math.max(0, p))
+}

@@ -1,5 +1,6 @@
 'use client'
 
+import DicaValor from '@/components/DicaValor'
 import { useState, useEffect } from 'react'
 import { createSinalVital } from '@/lib/queries/sinais-vitais'
 import { getSetoresByEmpresa, getFuncionariosByEmpresa } from '@/lib/queries/okr'
@@ -116,19 +117,23 @@ export default function ModalCriarSv({ open, onClose, onSuccess }: ModalCriarSvP
               <label className="text-xs font-medium text-foreground">Valor inicial</label>
               <input
                 type="number"
+                step="any"
                 value={form.valor_inicial}
                 onChange={(e) => setForm({ ...form, valor_inicial: e.target.value })}
                 className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
+              <DicaValor valor={form.valor_inicial} tipoValor={form.tipo_valor} />
             </div>
             <div>
               <label className="text-xs font-medium text-foreground">Meta</label>
               <input
                 type="number"
+                step="any"
                 value={form.meta}
                 onChange={(e) => setForm({ ...form, meta: e.target.value })}
                 className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
+              <DicaValor valor={form.meta} tipoValor={form.tipo_valor} />
             </div>
             <div>
               <label className="text-xs font-medium text-foreground">Tipo</label>

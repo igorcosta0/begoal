@@ -3,9 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { souPilotoAutoconhecimento } from '@/lib/utils'
 import { TIPOS_ENEAGRAMA } from '@/lib/eneagrama/tipos'
 import { chamarGemini } from '@/lib/gemini'
+import { limparHistorico, LIMITE_PERGUNTA, erroInterno } from '@/lib/apiIa'
 
-// Espaço extra pro retry de chamarGemini (pior caso ~45s: 4 tentativas de até
-// 10s cada + ~5s de espera entre elas) não bater no timeout padrão da função
+// Espaço extra pro retry de chamarGemini (pior caso ~36s: 2 modelos × 18s)
 // — 60 é o teto do plano Hobby da Vercel sem Fluid Compute.
 export const maxDuration = 60
 
@@ -55,6 +55,9 @@ export async function POST(req: NextRequest) {
     if (!situacao || typeof situacao !== 'string') {
       return NextResponse.json({ error: 'Situação ausente' }, { status: 400 })
     }
+    if (situacao.length > LIMITE_PERGUNTA) {
+      return NextResponse.json({ error: `Texto muito longo (máximo ${LIMITE_PERGUNTA} caracteres)` }, { status: 400 })
+    }
 
     const { data: perfisAlvo, error: erroPerfil } = await supabase
       .rpc('obter_tipo_colega_mesma_empresa', { p_funcionario_alvo_id: funcionarioAlvoId })
@@ -76,7 +79,7 @@ export async function POST(req: NextRequest) {
     const systemInstruction = montarSystemInstruction(tipoInfo, situacao)
 
     const contents = [
-      ...(historico ?? []).map((m) => ({ role: m.role, parts: [{ text: m.texto }] })),
+      ...limparHistorico(historico),
       { role: 'user', parts: [{ text: situacao }] },
     ]
 
@@ -116,8 +119,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ resposta })
   } catch (err) {
-    console.error('Erro como-abordar-colega:', err)
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    return erroInterno('como-abordar-colega', err)
   }
 }
 

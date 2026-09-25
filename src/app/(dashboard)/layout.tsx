@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Topbar from '@/components/layout/Topbar'
 import TourOverlay from '@/components/tour/TourOverlay'
+import EmpresaGuard from '@/components/layout/EmpresaGuard'
 
 export default async function DashboardLayout({
   children,
@@ -32,6 +33,8 @@ export default async function DashboardLayout({
       .from('funcionarios_perfil_publico')
       .select('foto_url')
       .eq('user_id', user.id)
+      .not('foto_url', 'is', null)
+      .limit(1)
       .maybeSingle(),
   ])
 
@@ -44,7 +47,9 @@ export default async function DashboardLayout({
     <div className="min-h-screen bg-background">
       <Topbar papeisPorEmpresa={papeisPorEmpresa} userEmail={user.email} fotoUrl={perfilPublico?.foto_url ?? null} />
       <main className="max-w-[1440px] mx-auto px-4 md:px-6 py-6">
-        {children}
+        <EmpresaGuard empresasPermitidas={Object.keys(papeisPorEmpresa)}>
+          {children}
+        </EmpresaGuard>
       </main>
       <TourOverlay />
     </div>

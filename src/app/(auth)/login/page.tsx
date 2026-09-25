@@ -66,6 +66,9 @@ export default function LoginPage() {
       return
     }
 
+    // Sem empresa, a sessão não serve pra nada: fecha pra não deixar entrar num
+    // painel vazio pelo middleware.
+    await supabase.auth.signOut()
     setError('Nenhuma empresa vinculada a este usuário.')
     setLoading(false)
   }

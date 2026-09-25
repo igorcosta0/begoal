@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Heart, Edit2, Check, X, Plus, Trash2, MapPin, MessageCircle, Send, Sparkles, Quote, Compass } from 'lucide-react'
 import { getFotosPerfilPorEmpresa } from '@/lib/queries/perfilPublico'
 import Avatar from '@/components/Avatar'
+import BotaoExcluirConfirmando from '@/components/BotaoExcluirConfirmando'
+import { mensagemErroGravacao } from '@/lib/utils'
 
 type Tom = { grad: string; dot: string; texto: string }
 
@@ -125,12 +127,16 @@ function ChipList({ campo, itens, placeholder, onSalvar }: { campo: string; iten
   )
 }
 
-/** Bloco de nota/comentários fixado — mostra o último registro e permite expandir a conversa. */
+/** Bloco de nota/comentários fixado — mostra o último registro e permite expandir a conversa.
+ *  O mural "Missão" grava com campo='mercado_posicionamento' por herança do nome antigo. O
+ *  Mercado não usa comentários (é a lista de chips), então não há mistura; trocar a chave
+ *  esconderia as notas já gravadas. */
 function NotaFixada({ campo, clientId, userId, nomeUsuario, fotosPorUserId }: { campo: string; clientId: string; userId: string; nomeUsuario: string; fotosPorUserId: Record<string, string> }) {
   const [comentarios, setComentarios] = useState<any[]>([])
   const [novoComentario, setNovoComentario] = useState('')
   const [loading, setLoading] = useState(false)
   const [expandido, setExpandido] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
 
   const fetchComentarios = useCallback(async () => {
     const supabase = createClient()
@@ -144,16 +150,22 @@ function NotaFixada({ campo, clientId, userId, nomeUsuario, fotosPorUserId }: { 
     e.preventDefault()
     if (!novoComentario.trim()) return
     setLoading(true)
+    setErro(null)
     const supabase = createClient()
-    await supabase.from('empresa_identidade_comentarios').insert({ client_id: clientId, campo, comentario: novoComentario.trim(), autor_nome: nomeUsuario || 'Usuário', user_id: userId })
+    const { error } = await supabase.from('empresa_identidade_comentarios').insert({ client_id: clientId, campo, comentario: novoComentario.trim(), autor_nome: nomeUsuario || 'Usuário', user_id: userId })
+    const msg = mensagemErroGravacao(error)
+    if (msg) { setErro(msg); setLoading(false); return }
     setNovoComentario('')
     await fetchComentarios()
     setLoading(false)
   }
 
   async function handleExcluir(id: string) {
+    setErro(null)
     const supabase = createClient()
-    await supabase.from('empresa_identidade_comentarios').delete().eq('id', id)
+    const { data, error } = await supabase.from('empresa_identidade_comentarios').delete().eq('id', id).select('id')
+    const msg = mensagemErroGravacao(error, data?.length)
+    if (msg) { setErro(msg); return }
     await fetchComentarios()
   }
 
@@ -175,6 +187,10 @@ function NotaFixada({ campo, clientId, userId, nomeUsuario, fotosPorUserId }: { 
             </p>
             <p className="text-xs leading-snug mt-0.5 text-foreground/90">{ultimo.comentario}</p>
           </div>
+          {/* Pente fino (A16): a nota mais recente não tinha botão de excluir. */}
+          {ultimo.user_id === userId && (
+            <BotaoExcluirConfirmando onConfirmar={() => handleExcluir(ultimo.id)} className="ml-auto shrink-0" iconClassName="w-3 h-3" />
+          )}
         </div>
       ) : (
         <p className="text-xs text-muted-foreground/60 italic">Nenhuma nota registrada ainda.</p>
@@ -201,9 +217,7 @@ function NotaFixada({ campo, clientId, userId, nomeUsuario, fotosPorUserId }: { 
                     <p className="text-xs text-foreground">{c.comentario}</p>
                   </div>
                   {c.user_id === userId && (
-                    <button onClick={() => handleExcluir(c.id)} className="opacity-0 group-hover/comment:opacity-100 p-0.5 rounded shrink-0">
-                      <Trash2 className="w-2.5 h-2.5 text-muted-foreground" />
-                    </button>
+                    <BotaoExcluirConfirmando onConfirmar={() => handleExcluir(c.id)} className="shrink-0" iconClassName="w-2.5 h-2.5" />
                   )}
                 </div>
               ))}
@@ -213,6 +227,7 @@ function NotaFixada({ campo, clientId, userId, nomeUsuario, fotosPorUserId }: { 
             <input type="text" value={novoComentario} onChange={(e) => setNovoComentario(e.target.value)} placeholder="Escrever nota..." className="flex-1 px-2.5 py-1.5 text-xs rounded-full border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
             <button type="submit" disabled={loading || !novoComentario.trim()} className="p-1.5 rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"><Send className="w-3 h-3" /></button>
           </form>
+          {erro && <p className="text-[11px] text-destructive">{erro}</p>}
         </div>
       )}
     </div>
@@ -235,6 +250,8 @@ export default function ObjetivoPage() {
   const [nomeUsuario, setNomeUsuario] = useState('')
   const [userId, setUserId] = useState('')
   const [fotosPorUserId, setFotosPorUserId] = useState<Record<string, string>>({})
+  // Pente fino (A10): gravações recusadas pelo banco pareciam ter dado certo.
+  const [erro, setErro] = useState<string | null>(null)
 
   const fetchValores = useCallback(async () => {
     if (!empresa) return
@@ -258,7 +275,7 @@ export default function ObjetivoPage() {
 
     const [{ data: identidadeData }, { data: funcData }] = await Promise.all([
       supabase.from('empresa_identidade').select('*').eq('client_id', empresa.id).maybeSingle(),
-      supabase.from('funcionarios').select('full_name').eq('user_id', user?.id ?? '').maybeSingle(),
+      supabase.from('funcionarios').select('full_name').eq('user_id', user?.id ?? '').eq('client_id', empresa.id).maybeSingle(),
     ])
 
     setIdentidade(identidadeData)
@@ -281,49 +298,54 @@ export default function ObjetivoPage() {
   const handleEdit = useCallback((campo: string) => { setEditando(campo) }, [])
   const handleCancelar = useCallback(() => { setEditando(null) }, [])
 
-  const handleSalvarTexto = useCallback(async (campo: string) => {
-    if (!empresa) return
+  // Devolve a mensagem de erro (ou null) — update quando a linha já existe,
+  // insert quando é o primeiro preenchimento da empresa.
+  const gravarIdentidade = useCallback(async (campo: string, valor: unknown): Promise<string | null> => {
+    if (!empresa) return null
+    setErro(null)
     const supabase = createClient()
-    const valor = (formIdentidade as any)[campo]
-    if (identidade) {
-      await supabase.from('empresa_identidade').update({ [campo]: valor, updated_at: new Date().toISOString() }).eq('client_id', empresa.id)
-    } else {
-      await supabase.from('empresa_identidade').insert({ client_id: empresa.id, [campo]: valor })
-    }
+    const { data, error } = identidade
+      ? await supabase.from('empresa_identidade').update({ [campo]: valor, updated_at: new Date().toISOString() }).eq('client_id', empresa.id).select('client_id')
+      : await supabase.from('empresa_identidade').insert({ client_id: empresa.id, [campo]: valor }).select('client_id')
+    return mensagemErroGravacao(error, data?.length)
+  }, [empresa, identidade])
+
+  const handleSalvarTexto = useCallback(async (campo: string) => {
+    const msg = await gravarIdentidade(campo, (formIdentidade as any)[campo])
+    if (msg) { setErro(msg); return }
     setEditando(null); fetchData()
-  }, [empresa, formIdentidade, identidade, fetchData])
+  }, [gravarIdentidade, formIdentidade, fetchData])
 
   const handleSalvarLista = useCallback(async (campo: string, novosItens: string[]) => {
-    if (!empresa) return
-    const supabase = createClient()
-    if (identidade) {
-      await supabase.from('empresa_identidade').update({ [campo]: novosItens, updated_at: new Date().toISOString() }).eq('client_id', empresa.id)
-    } else {
-      await supabase.from('empresa_identidade').insert({ client_id: empresa.id, [campo]: novosItens })
-    }
+    const msg = await gravarIdentidade(campo, novosItens)
+    if (msg) { setErro(msg); return }
     if (campo === 'mercado_posicionamento') setMercadoItens(novosItens)
     fetchData()
-  }, [empresa, identidade, fetchData])
+  }, [gravarIdentidade, fetchData])
 
   async function handleSalvarValor(e: React.FormEvent) {
     e.preventDefault()
     if (!empresa || !textoValor.trim()) return
     setSalvandoValor(true)
+    setErro(null)
     const supabase = createClient()
-    if (modalValor.valor) {
-      await supabase.from('empresa_valores').update({ texto: textoValor.trim(), updated_at: new Date().toISOString() }).eq('id', modalValor.valor.id)
-    } else {
-      await supabase.from('empresa_valores').insert({ client_id: empresa.id, texto: textoValor.trim(), ordem: valores.length })
-    }
+    const { data, error } = modalValor.valor
+      ? await supabase.from('empresa_valores').update({ texto: textoValor.trim(), updated_at: new Date().toISOString() }).eq('id', modalValor.valor.id).select('id')
+      : await supabase.from('empresa_valores').insert({ client_id: empresa.id, texto: textoValor.trim(), ordem: valores.length }).select('id')
     setSalvandoValor(false)
+    const msg = mensagemErroGravacao(error, data?.length)
+    if (msg) { setErro(msg); return }
     setModalValor({ open: false, valor: null })
     setTextoValor('')
     fetchValores()
   }
 
   async function handleExcluirValor(id: string) {
+    setErro(null)
     const supabase = createClient()
-    await supabase.from('empresa_valores').delete().eq('id', id)
+    const { data, error } = await supabase.from('empresa_valores').delete().eq('id', id).select('id')
+    const msg = mensagemErroGravacao(error, data?.length)
+    if (msg) setErro(msg)
     fetchValores()
   }
 
@@ -361,6 +383,10 @@ export default function ObjetivoPage() {
           </p>
         </div>
       </div>
+
+      {erro && (
+        <p className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-xl px-3 py-2">{erro}</p>
+      )}
 
       {/* VISÃO DE FUTURO — banner de abertura, largura cheia */}
       <div data-tour="tour-visao-futuro" className="glass-panel rounded-2xl overflow-hidden">
@@ -441,9 +467,7 @@ export default function ObjetivoPage() {
                   <button onClick={() => handleAbrirModalValor(valor)} className="p-1 rounded-md hover:bg-accent transition-colors">
                     <Edit2 className="w-3 h-3 text-muted-foreground" />
                   </button>
-                  <button onClick={() => handleExcluirValor(valor.id)} className="p-1 rounded-md hover:bg-accent transition-colors">
-                    <Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive" />
-                  </button>
+                  <BotaoExcluirConfirmando onConfirmar={() => handleExcluirValor(valor.id)} className="p-1" iconClassName="w-3 h-3" />
                 </div>
               </div>
             ))}

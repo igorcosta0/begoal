@@ -3,9 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { souPilotoAutoconhecimento } from '@/lib/utils'
 import { TIPOS_ENEAGRAMA } from '@/lib/eneagrama/tipos'
 import { chamarGemini } from '@/lib/gemini'
+import { erroInterno } from '@/lib/apiIa'
 
-// Espaço extra pro retry de chamarGemini (pior caso ~45s: 4 tentativas de até
-// 10s cada + ~5s de espera entre elas) não bater no timeout padrão da função
+// Espaço extra pro retry de chamarGemini (pior caso ~36s: 2 modelos × 18s)
 // — 60 é o teto do plano Hobby da Vercel sem Fluid Compute.
 export const maxDuration = 60
 
@@ -115,8 +115,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ dicas })
   } catch (err) {
-    console.error('Erro gerar-dica-cargo-eneagrama:', err)
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    return erroInterno('gerar-dica-cargo-eneagrama', err)
   }
 }
 
@@ -138,7 +137,7 @@ function montarPrompt(
     .map(([nome, c]) => `- ${nome}: costuma "${c.comoAge}" — ponto de atenção: ${c.pontoAtencao} — desenvolver: ${c.desenvolver}`)
     .join('\n')
 
-  return `Você é um analista de RH da empresa CTZ, especializado em cruzar perfil comportamental (Eneagrama, Programa Foco da BeHive) com perfil de cargo. Escreva uma análise curta e prática para uso interno da liderança (não é enviada pra própria pessoa).
+  return `Você é um analista de RH da empresa CTZ, especializado em cruzar perfil comportamental (Eneagrama, Programa Foco da BeHive) com perfil de cargo. Escreva uma análise curta e prática. Ela é lida pela liderança E pela própria pessoa (aparece no Autoconhecimento dela): tom respeitoso e construtivo, nada que soe como julgamento ou diagnóstico sobre ela.
 
 CARGO: ${cargo.cargo_base}${cargo.nivel ? ` (${cargo.nivel})` : ''} — área ${cargo.area}
 Sumário do cargo: ${cargo.sumario}
@@ -161,7 +160,7 @@ TAREFA: escreva, em português do Brasil, uma análise objetiva com 4 seções c
 **O que o Eneagrama ajuda neste cargo** — 2 a 3 frases conectando forças reais do tipo com as competências comportamentais e responsabilidades específicas listadas acima (não genérico, cite a competência do cargo).
 **O que pode atrapalhar** — 2 a 3 frases conectando a sombra/armadilha do tipo com riscos concretos nas responsabilidades ou no nível de autonomia esperado desse cargo.
 **Como esse tipo tende a agir nas 6 competências relacionais** — liste as 6 competências acima (relacionamento interpessoal, tomada de decisão, comunicação, feedback, gestão de conflitos, orientação a resultados), uma por linha, cada uma em 1 frase curta descrevendo como ESSE tipo específico costuma se comportar nela (use o "costuma agir" e o ponto de atenção de cada competência listados acima, não invente comportamento genérico).
-**Sugestão prática de desenvolvimento** — 1 a 2 frases de ação concreta pra liderança apoiar essa pessoa nesse cargo específico, considerando a virtude a desenvolver do tipo.
+**Sugestão prática de desenvolvimento** — 1 a 2 frases de ação concreta para essa pessoa se desenvolver nesse cargo, com o apoio da liderança, considerando a virtude a desenvolver do tipo.
 
 Regras: nunca trate o tipo como rótulo fechado ou desculpa. Seja específico ao cargo (não escreva algo genérico que serviria pra qualquer cargo). Máximo 320 palavras no total. Sem saudação, vá direto às 4 seções.`
 }

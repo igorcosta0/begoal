@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { getSvLancamentos, deleteSvLancamento } from '@/lib/queries/sinais-vitais'
-import { formatNumber } from '@/lib/utils'
-import { X, Trash2 } from 'lucide-react'
+import { formatNumber, formatValor, formatDate } from '@/lib/utils'
+import { X } from 'lucide-react'
+import BotaoExcluirConfirmando from '@/components/BotaoExcluirConfirmando'
 import KrChart from '@/components/okr/KrChart'
 
 interface ModalHistoricoSvProps {
@@ -11,9 +12,10 @@ interface ModalHistoricoSvProps {
   sv: any | null
   onClose: () => void
   onLancar: (sv: any) => void
+  onAlterado?: () => void
 }
 
-export default function ModalHistoricoSv({ open, sv, onClose, onLancar }: ModalHistoricoSvProps) {
+export default function ModalHistoricoSv({ open, sv, onClose, onLancar, onAlterado }: ModalHistoricoSvProps) {
   const [lancamentos, setLancamentos] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -27,8 +29,11 @@ export default function ModalHistoricoSv({ open, sv, onClose, onLancar }: ModalH
   }, [open, sv])
 
   async function handleDelete(id: string) {
-    await deleteSvLancamento(id)
+    // Pente fino (A6): recalcula o valor atual e atualiza a página.
+    const { error } = await deleteSvLancamento(id, sv.id)
+    if (error) return
     setLancamentos((prev) => prev.filter((l) => l.id !== id))
+    onAlterado?.()
   }
 
   if (!open || !sv) return null
@@ -51,11 +56,11 @@ export default function ModalHistoricoSv({ open, sv, onClose, onLancar }: ModalH
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
               Atual: <span className="font-medium text-foreground">
-                {formatNumber(sv.valor_atual ?? 0)} {sv.tipo_valor}
+                {formatValor(sv.valor_atual ?? 0, sv.tipo_valor)}
               </span>
               {' · '}
               Meta: <span className="font-medium text-foreground">
-                {formatNumber(sv.meta ?? 0)} {sv.tipo_valor}
+                {formatValor(sv.meta ?? 0, sv.tipo_valor)}
               </span>
             </p>
           </div>
@@ -97,21 +102,20 @@ export default function ModalHistoricoSv({ open, sv, onClose, onLancar }: ModalH
               >
                 <div className="flex-1">
                   <span className="font-medium text-foreground">
-                    {formatNumber(l.valor)} {sv.tipo_valor}
+                    {formatValor(l.valor, sv.tipo_valor)}
                   </span>
                   <span className="text-muted-foreground ml-2">
-                    {new Date(l.data_lancamento).toLocaleDateString('pt-BR')}
+                    {formatDate(l.data_lancamento)}
                   </span>
                   {l.comentario && (
                     <p className="text-muted-foreground mt-0.5">{l.comentario}</p>
                   )}
                 </div>
-                <button
-                  onClick={() => handleDelete(l.id)}
-                  className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                <BotaoExcluirConfirmando
+                  onConfirmar={() => handleDelete(l.id)}
+                  className="shrink-0"
+                  iconClassName="w-3 h-3"
+                />
               </div>
             ))
           )}

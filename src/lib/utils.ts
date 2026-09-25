@@ -5,12 +5,31 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Pente fino (A3): new Date('2026-09-30') é meia-noite UTC, que no Brasil
+// ainda é dia 29. Data pura (sem hora) é lida como data local.
+export function paraData(date: string | Date): Date {
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const [ano, mes, dia] = date.split('-').map(Number)
+    return new Date(ano, mes - 1, dia)
+  }
+  return new Date(date)
+}
+
+// Pente fino (A4): toISOString() usa UTC — depois das 21h no Brasil a data
+// "de hoje" virava o dia seguinte.
+export function dataLocalISO(date: Date = new Date()): string {
+  const ano = date.getFullYear()
+  const mes = String(date.getMonth() + 1).padStart(2, '0')
+  const dia = String(date.getDate()).padStart(2, '0')
+  return `${ano}-${mes}-${dia}`
+}
+
 export function formatDate(date: string | Date) {
   return new Intl.DateTimeFormat('pt-BR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-  }).format(new Date(date))
+  }).format(paraData(date))
 }
 
 export function formatPercent(value: number) {
@@ -77,6 +96,23 @@ export function mensagemErroExclusao(
     return `Não foi possível excluir: ainda há ${vinculos} vinculados a este registro. Remova ou reatribua esses vínculos primeiro.`
   }
   return error.message || 'Erro ao excluir. Tente novamente.'
+}
+
+// Pente fino (A10): várias telas fechavam o modal como se tivessem salvado
+// mesmo quando o banco recusava. Detalhe: quando a RLS bloqueia um UPDATE ou
+// DELETE, o Supabase NÃO devolve erro — só afeta 0 linhas. Por isso a gravação
+// usa `.select('id')` e passa aqui quantas linhas voltaram.
+export function mensagemErroGravacao(
+  error: { code?: string; message?: string } | null | undefined,
+  linhasAfetadas?: number | null
+): string | null {
+  if (error) {
+    if (error.code === '42501') return 'Você não tem permissão para fazer esta alteração.'
+    if (error.code === '23505') return 'Já existe um registro com esses dados.'
+    return 'Não foi possível salvar. Tente novamente.'
+  }
+  if (linhasAfetadas === 0) return 'Você não tem permissão para fazer esta alteração.'
+  return null
 }
 
 export function formatBytes(bytes?: number | null): string {

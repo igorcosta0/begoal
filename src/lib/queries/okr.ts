@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { mensagemErroGravacao } from '@/lib/utils'
 
 // ==================== OBJETIVOS ====================
 
@@ -40,14 +41,18 @@ export async function updateObjetivo(
   const supabase = createClient()
   const { setor_ids, ...data } = payload
   if (Object.keys(data).length > 0) {
-    await supabase.from('objetivos').update(data).eq('id', id)
+    const { data: linhas, error } = await supabase.from('objetivos').update(data).eq('id', id).select('id')
+    const erro = mensagemErroGravacao(error, linhas?.length)
+    if (erro) return { error: erro }
   }
   if (setor_ids) {
-    await supabase.rpc('link_objective_sectors', {
+    const { error } = await supabase.rpc('link_objective_sectors', {
       p_objetivo_id: id,
       p_setor_ids: setor_ids,
     })
+    if (error) return { error: mensagemErroGravacao(error) }
   }
+  return { error: null }
 }
 
 export async function deleteObjetivo(id: string) {
@@ -95,6 +100,12 @@ export async function getKrsByEmpresa(clientId: string) {
         ...kr,
         lancamentos: lista,
         data_ultimo_lancamento: lista.length > 0 ? lista[lista.length - 1].data_lancamento : null,
+        // Pente fino (A14): o card mostra "Referente a mm/aaaa" do KR
+        // finalizado, mas krs não guarda data de encerramento — usa a data
+        // do lançamento de resultado final.
+        end_date: kr.concluido
+          ? ([...lista].reverse().find((l: any) => l.is_final_result)?.data_lancamento ?? null)
+          : null,
       }
     }),
     error: null,
@@ -121,8 +132,8 @@ export async function updateKr(
   id: string,
   payload: {
     titulo?: string
-    responsavel_id?: string
-    setor_id?: string
+    responsavel_id?: string | null
+    setor_id?: string | null
     valor_inicial?: number
     meta?: number
     tipo_valor?: string
@@ -137,14 +148,6 @@ export async function updateKr(
 export async function deleteKr(id: string) {
   const supabase = createClient()
   return supabase.from('krs').delete().eq('id', id)
-}
-
-export async function finalizarKr(krId: string, resultado: number) {
-  const supabase = createClient()
-  return supabase.rpc('finalize_kr_result', {
-    p_kr_id: krId,
-    p_resultado: resultado,
-  })
 }
 
 export async function reativarKr(id: string) {
@@ -176,17 +179,37 @@ export async function createKrLancamento(payload: {
 
   if (error) return { data: null, error }
 
-  await supabase
-    .from('krs')
-    .update({ valor_atual: payload.valor })
-    .eq('id', payload.kr_id)
+  await recalcularValorAtualKr(payload.kr_id)
 
   return { data, error: null }
 }
 
-export async function deleteKrLancamento(id: string) {
+export async function deleteKrLancamento(id: string, krId: string) {
   const supabase = createClient()
-  return supabase.from('kr_lancamentos').delete().eq('id', id)
+  const res = await supabase.from('kr_lancamentos').delete().eq('id', id)
+  if (!res.error) await recalcularValorAtualKr(krId)
+  return res
+}
+
+// Pente fino (A5): valor_atual é sempre o lançamento de data mais recente —
+// um lançamento retroativo não sobrescreve um mais novo.
+export async function recalcularValorAtualKr(krId: string) {
+  const supabase = createClient()
+  const [{ data: ultimo }, { data: kr }] = await Promise.all([
+    supabase
+      .from('kr_lancamentos')
+      .select('valor')
+      .eq('kr_id', krId)
+      .order('data_lancamento', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase.from('krs').select('valor_inicial').eq('id', krId).maybeSingle(),
+  ])
+  return supabase
+    .from('krs')
+    .update({ valor_atual: ultimo?.valor ?? kr?.valor_inicial ?? null })
+    .eq('id', krId)
 }
 
 // ==================== AUXILIARES ====================

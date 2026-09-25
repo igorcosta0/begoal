@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { dataLocalISO } from '@/lib/utils'
 
 // ─── Quem Somos ───────────────────────────────────────────────
 export async function getQuemSomos(clientId: string) {
@@ -157,8 +158,8 @@ export async function criarObjetivoDoMercado(
     client_id: clientId,
     titulo: `Expandir no mercado: ${nomeMercado}`,
     descricao: `Objetivo gerado a partir do mercado priorizado no módulo de Estratégia.`,
-    start_date: hoje.toISOString().split('T')[0],
-    end_date: fimAno.toISOString().split('T')[0],
+    start_date: dataLocalISO(hoje),
+    end_date: dataLocalISO(fimAno),
     concluido: false,
   })
   return error
