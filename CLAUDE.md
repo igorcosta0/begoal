@@ -1133,3 +1133,26 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   menus "⋯". ESLint configurado (`.eslintrc.json`, só `react/no-unescaped-entities` desligada — com
   config, `next build` roda o lint e falharia nela). `next build` completo passou localmente.
   **Migration nova para rodar antes do push**: `PENDENTE_20260925000000_avatars_limites.sql` (M6).
+
+### 2026-09-26
+- **v2 retomada** (revoga a decisão de 22/09 de abandoná-la). Decisões do Igor: (1) banco sai do
+  Supabase, Postgres em VPS própria (ele já tem a VPS); (2) reescrita do zero, limpa, para escalar e
+  vender como produto multiempresa; (3) redesign visual completo; (4) construída em paralelo à v1, que
+  continua evoluindo — o que entrar na v1 precisa ser reproduzido na v2 (manter lista de paridade).
+  Stack: Next.js 16 em projeto único, regra de negócio isolada em `src/server/...`, isolamento por
+  empresa num ponto só com testes, app stateless, worker para tarefas pesadas, configuração por empresa
+  no banco (nada de `isEmpresaCTZ()`). Migração da CTZ para a v2: decidir depois (esquema deve permitir).
+- **Direção visual aprovada** após 8 rodadas no canvas https://claude.ai/artifact/1enrc3zHtDLYqgAp2pcaxT
+  (tela `PretoVivo`): fundo preto `#0A0A0B` com brilhos sutis de amarelo, glassmorphism forte, amarelo
+  vivo `#FFD60A` como cor da marca, fontes Syne + Manrope + Geist Mono, mapa do alvo, gráfico
+  realizado × meta × projeção, copiloto de IA. Status: verde-água / laranja / rosa-coral (amarelo é
+  exclusivo da marca). Rejeitados: visual genérico de SaaS, fundo multicolorido, fundo amarelo.
+  Telas OKRs desktop e Início/OKRs celular aprovadas. **Design system** (tokens, guia da marca,
+  10 componentes React com preview, logos): https://claude.ai/artifact/Cw4MXKPUkmNKs3gxutQvRc
+  (namespace `Begoal`). É a base visual do código da v2.
+- **Fluxo de login da v2 aprovado** (mesmo canvas, topo): tela dividida com formulário à direita
+  (`LoginDividida`; o card central `LoginCentral` foi descartado) + Verificação em duas etapas,
+  Esqueci minha senha, E-mail enviado, Criar senha nova, Primeiro acesso por convite, Escolher
+  empresa, Mensagens de erro e versão celular. Confirmado pelo Igor em 27/09 (o registro se perdeu
+  quando o chat fechou). Pendente: levar os componentes novos do login (código de verificação,
+  mensagens de erro) para o design system.
