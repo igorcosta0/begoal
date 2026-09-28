@@ -1156,3 +1156,15 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   empresa, Mensagens de erro e versão celular. Confirmado pelo Igor em 27/09 (o registro se perdeu
   quando o chat fechou). Pendente: levar os componentes novos do login (código de verificação,
   mensagens de erro) para o design system.
+
+### 2026-09-28
+- Carga dos OKRs de Novos Negócios (`Adições futuras/OKRs_Novos Negócios.xlsx`, trimestral) na CTZ.
+  Os 3 KRs já existiam com nomes um pouco diferentes da planilha (conferido com o Igor):
+  "N° de contratos de áreas compradas (assinado)" e "N° de áreas que perdemos dos corretores
+  ativos" (TER O MELHOR LANDBANK), "VGV CTZ - loteamentos próprios" (TER FLUXO DE LANÇAMENTOS
+  PRÓPRIOS). Responsável: Finato. Apuração 'soma' contra a meta anual; áreas perdidas → 'menor'.
+  Um lançamento por trimestre no 1º dia (01/01, 01/04, 01/07); VGV 1º tri sem valor na planilha,
+  ficou sem lançamento. Script: `Adições futuras/OKR Novos Negócios - carga.sql`.
+- **Primeira vez rodando SQL pelo Claude in Chrome**: o SQL Editor do Supabase abre logado no
+  Chrome do Igor; o texto entra via `window.monaco.editor.getModels()[0].setValue(...)` e o
+  resultado sai com `get_page_text`. Conferido: 3 KRs, acumulados 3 / R$ 77M / 3.
