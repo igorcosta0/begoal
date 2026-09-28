@@ -1168,3 +1168,21 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
 - **Primeira vez rodando SQL pelo Claude in Chrome**: o SQL Editor do Supabase abre logado no
   Chrome do Igor; o texto entra via `window.monaco.editor.getModels()[0].setValue(...)` e o
   resultado sai com `get_page_text`. Conferido: 3 KRs, acumulados 3 / R$ 77M / 3.
+
+### 2026-09-28
+- **v2, sessão longa de design e decisões** (tudo registrado em detalhe na memória
+  `begoal-v2-decisoes.md` e no Notion, página "Begoal v2" › Modelo de dados; aqui só o resumo).
+  O chat de 26/09 tinha fechado sem querer: o histórico foi recuperado da transcrição
+  (`~/.claude/projects/C--dev/88a91ae6-...jsonl`) e da memória da pasta `C:\dev`, que esta pasta não
+  carregava — as duas memórias da v2 foram copiadas para a memória de `C:\dev\begoal`.
+- Validado tela a tela e aprovado no canvas (organizado em 4 páginas: sistema, login, plataforma,
+  histórico): login (11 telas, incl. 2 novas de ativar verificação em duas etapas), painel da
+  plataforma (9), Início (computador, novo, 8 blocos), OKRs (computador + guia de estados especiais),
+  Início/OKRs no celular (sem dados da CTZ) e notificações (sino, computador e celular).
+- Decisões principais: acesso do admin da plataforma às empresas sem aprovação (suporte pede
+  aprovação para editar), cadastro de pessoa sem login, importação de pessoas e de OKRs/lançamentos
+  por planilha, regras de KR (maior/menor/manter, ponto de partida opcional, status pelo ritmo,
+  apuração padrão = último valor), menu único, Autoconhecimento fora da v2 por enquanto, pt-BR e R$
+  (código preparado para outros idiomas), notificações (sino + e-mail + resumo semanal).
+- Design system v6 (20 componentes). Nenhum código da v2 ainda. Próximo: telas essenciais
+  (onboarding da empresa → Pessoas → criar KR → lançar → configurações → meu perfil).
