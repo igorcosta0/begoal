@@ -1203,3 +1203,9 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
     lançamento). Venda de lotes Sagrado Coração ficou com meta 14/mês, deduzida (a planilha não tem).
   - Fora da carga: "N° de empreendimentos disponíveis para captação de investidores" (dado só na
     aba antiga, confuso). Conferido via SQL depois de rodar.
+- **Mini-gráfico do card de KR mais preciso** (pedido "ver direto no card sem precisar entrar"):
+  `KrCard.tsx` trocou o sparkline de 28px por `MiniGrafico` (80px): escala inclui zero e meta,
+  eixo X proporcional ao tempo, linha de meta com valor, pontos, meses embaixo, valor do mês ao
+  passar o mouse (e acumulado nos KRs de soma, que agora plotam o acumulado contra a meta — antes
+  ficavam sem linha de meta). Clicar no gráfico ou em "Gráfico completo" abre o `KrChart` de sempre.
+  Aparece também com 1 lançamento só. Enviado sem teste visual, a pedido do Igor.
