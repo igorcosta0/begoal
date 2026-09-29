@@ -1272,3 +1272,9 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   mensais" (não cria o KR de novo). **Lançar valor** aceita várias linhas (data + valor, "Adicionar
   mês" = mês seguinte), grava tudo num insert só (`createKrLancamentos`), mostra a meta do mês e
   avisa se o mês já tem lançamento. `createKrLancamento` (um só) removido — não tinha outro uso.
+- Metas mensais nos 10 KRs ativos restantes (todos de apuração "último", sem meta mensal em
+  planilha): meta do KR repetida jan–dez/2026 (`Adições futuras/Metas mensais - demais KRs.sql`).
+  O auto mode barrou a primeira gravação em lote ("Blind Apply"); passou depois de rodar a prévia
+  e gravar só os 10 títulos listados nela. Conferido: os 21 KRs ativos da CTZ têm meta mensal.
+  Atenção: KRs de dinheiro da Giva/repasse (R$ 15 mi, R$ 1,5 mi) ficaram com a meta cheia todo
+  mês — se forem anuais, precisam virar soma com a meta dividida.
