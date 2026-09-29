@@ -1186,3 +1186,20 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   (código preparado para outros idiomas), notificações (sino + e-mail + resumo semanal).
 - Design system v6 (20 componentes). Nenhum código da v2 ainda. Próximo: telas essenciais
   (onboarding da empresa → Pessoas → criar KR → lançar → configurações → meu perfil).
+
+### 2026-09-29
+- Carga dos OKRs da Loteadora (`Adições futuras/OKR CTZ LOTEADORA.xlsx`, aba "OKR - Mensal (2)",
+  a única com realizado até setembro; "OKR - Mensal" é versão antiga e "_v1" é a planilha da
+  Concretize) no objetivo já existente "SE POSICIONAR COMO ECOSSISTEMAS/ LOTEAMENTO", responsável
+  Guilherme. O Igor deixou as decisões por minha conta. Script: `Adições futuras/OKR Loteadora - carga.sql`
+  (rodado pelo Igor; a gravação pelo Chrome foi barrada pelo auto mode classifier, a leitura não).
+  - "% de lotes vendidos" virou "Nº de lotes vendidos": a planilha lança quantidade. Número, soma,
+    meta 46 (previsto do ano), 6 lançamentos abr–set (total 14).
+  - "% de cumprimento do cronograma": meta 100 → 1. Lançado 0% abr/mai como na planilha, mas o
+    sinal vital de Sagrado Coração diz 100% em maio — conferir com o Guilherme.
+  - KR novo "Cronograma financeiro realizado (R$)", soma, meta R$ 279.500 (previsto Sagrado Coração
+    + Itajaí), R$ 88.000 em junho.
+  - 9 sinais vitais novos ligados ao objetivo, metas mensais (sinal vital compara o último
+    lançamento). Venda de lotes Sagrado Coração ficou com meta 14/mês, deduzida (a planilha não tem).
+  - Fora da carga: "N° de empreendimentos disponíveis para captação de investidores" (dado só na
+    aba antiga, confuso). Conferido via SQL depois de rodar.
