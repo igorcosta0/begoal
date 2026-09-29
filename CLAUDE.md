@@ -1283,3 +1283,9 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   "Nº de clientes que recompram nos últimos 12 meses" (o KR 4 tinha o nome do KR 3 copiado; valores
   da linha de origem, jun–set = 1). Sinais vitais da aba ainda não criados (pedido do Igor).
   Script: `Adições futuras/OKR Comercial - KRs 3 e 4 - carga.sql`.
+- Correções (pedido do Igor): "Venda de Projetos Concretize" → Moeda + soma, setembro 33.700 lançado,
+  meta mensal de set ajustada pra 666.665 (soma exata 8 mi; planilha arredondava); "Quantidade de
+  Pesquisas Realizadas" meta 9 → 1 (planilha: 1 por mês); "Vendas de cotas para investidores (Giva)"
+  → soma com 1,25 mi/mês (metas da Giva são anuais). Os 2 KRs de contagem da Giva (empreendimentos,
+  investidores ativos) continuam "último" com a meta anual. Corretagem/repasse (Finato): sem resposta
+  ainda sobre anual × mensal.
