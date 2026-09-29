@@ -1250,4 +1250,11 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   `PENDENTE_20260929000000_kr_metas_mensais.sql`. `getKrsByEmpresa` traz `metas_mensais` (se a
   tabela não existir, ignora o erro e o card cai na divisão igual). Mini-gráfico usa a meta
   cadastrada do mês quando existe; "Editar KR" ganhou 12 campos por ano + botão de dividir/repetir
-  a meta (`salvarMetasMensaisKr` apaga e regrava o ano).
+  a meta (`salvarMetasMensaisKr` apaga e regrava o ano). Migration rodada pelo Chrome e conferida
+  (12 metas, soma 4.050.000); push `d5486e8`.
+- Metas mensais dos outros KRs carregadas (`Adições futuras/Metas mensais - carga.sql`, rodado e
+  conferido): Loteadora pela linha PREV (lotes vendidos jun 1/set–nov 15 = 46; cronograma abr 0%,
+  mai–jun 100%; cronograma financeiro jun 90 mil, ago 110 mil, set 79,5 mil = 279,5 mil) e Novos
+  Negócios por trimestre (contratos 1, VGV 70 mi, áreas perdidas 0, em jan/abr/jul/out). O KR NPQ
+  foi renomeado por alguém para "NPQ - Nota de Percepção Quantificada" com meta 9 depois da carga
+  (lançamentos continuam 0,0,1,11,0…): ficou sem metas mensais.
