@@ -17,6 +17,12 @@ export interface PontoSerie {
   valor: number
 }
 
+// Meta de um mês específico (tabela kr_metas_mensais); mes = "AAAA-MM-01".
+export interface MetaMensalKr {
+  mes: string
+  meta: number
+}
+
 export interface ResultadoKr {
   // Valor apurado conforme a forma de apuração; null = sem lançamentos.
   valorApurado: number | null

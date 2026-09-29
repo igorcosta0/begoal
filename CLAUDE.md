@@ -1243,3 +1243,11 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   (0,0,1,11,0,0,0,0,0) — o 11 de abril é a fórmula da planilha somando nº de pesquisas (2) + nota
   média (9). Os 2 sinais vitais acima dele na planilha não foram criados (decisão do Igor). Rodado
   pelo Chrome no SQL Editor e conferido; script em `Adições futuras/OKR NPQ - carga.sql`.
+- **Metas mensais de verdade por KR** (o Igor mostrou em `OKR Concretize.jpeg` que a meta muda
+  por mês: Faturamento 300 mil jan–mar, 325 mil abr–jun, 350 mil jul–set, 375 mil out–dez; a
+  divisão igual do item acima estava errada pra ele). Tabela nova `kr_metas_mensais` (kr_id, mes,
+  meta; RLS igual à de `kr_lancamentos`) + carga das 12 metas do Faturamento, migration
+  `PENDENTE_20260929000000_kr_metas_mensais.sql`. `getKrsByEmpresa` traz `metas_mensais` (se a
+  tabela não existir, ignora o erro e o card cai na divisão igual). Mini-gráfico usa a meta
+  cadastrada do mês quando existe; "Editar KR" ganhou 12 campos por ano + botão de dividir/repetir
+  a meta (`salvarMetasMensaisKr` apaga e regrava o ano).

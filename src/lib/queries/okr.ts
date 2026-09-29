@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import { mensagemErroGravacao } from '@/lib/utils'
+import type { MetaMensalKr } from '@/lib/okrProgresso'
 
 // ==================== OBJETIVOS ====================
 
@@ -93,12 +94,24 @@ export async function getKrsByEmpresa(clientId: string) {
     ;(porKr[l.kr_id] ??= []).push(l)
   })
 
+  // Meta de cada mês (opcional; KR sem linhas usa só a meta do KR).
+  const { data: metasMensais } = await supabase
+    .from('kr_metas_mensais')
+    .select('kr_id, mes, meta')
+    .in('kr_id', krIds)
+    .order('mes', { ascending: true })
+  const metasPorKr: Record<string, MetaMensalKr[]> = {}
+  metasMensais?.forEach((m: any) => {
+    ;(metasPorKr[m.kr_id] ??= []).push({ mes: m.mes, meta: Number(m.meta) })
+  })
+
   return {
     data: data.map((kr: any) => {
       const lista = porKr[kr.id] ?? []
       return {
         ...kr,
         lancamentos: lista,
+        metas_mensais: metasPorKr[kr.id] ?? [],
         data_ultimo_lancamento: lista.length > 0 ? lista[lista.length - 1].data_lancamento : null,
         // Pente fino (A14): o card mostra "Referente a mm/aaaa" do KR
         // finalizado, mas krs não guarda data de encerramento — usa a data
@@ -143,6 +156,25 @@ export async function updateKr(
 ) {
   const supabase = createClient()
   return supabase.from('krs').update(payload).eq('id', id).select().single()
+}
+
+// Substitui as metas mensais do KR no ano: apaga as do ano e grava as
+// preenchidas (mês sem valor = sem meta naquele mês).
+export async function salvarMetasMensaisKr(krId: string, ano: number, metas: (number | null)[]) {
+  const supabase = createClient()
+  const { error: erroApagar } = await supabase
+    .from('kr_metas_mensais')
+    .delete()
+    .eq('kr_id', krId)
+    .gte('mes', `${ano}-01-01`)
+    .lte('mes', `${ano}-12-01`)
+  if (erroApagar) return { error: mensagemErroGravacao(erroApagar) }
+  const linhas = metas
+    .map((meta, i) => ({ kr_id: krId, mes: `${ano}-${String(i + 1).padStart(2, '0')}-01`, meta }))
+    .filter((l) => l.meta !== null && !Number.isNaN(l.meta))
+  if (linhas.length === 0) return { error: null }
+  const { data, error } = await supabase.from('kr_metas_mensais').insert(linhas).select('kr_id')
+  return { error: mensagemErroGravacao(error, data?.length) }
 }
 
 export async function deleteKr(id: string) {

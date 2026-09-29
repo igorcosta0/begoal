@@ -2,7 +2,21 @@
 
 import DicaValor from '@/components/DicaValor'
 import { useState, useEffect } from 'react'
-import { updateKr, getSetoresByEmpresa, getFuncionariosByEmpresa } from '@/lib/queries/okr'
+import { updateKr, salvarMetasMensaisKr, getSetoresByEmpresa, getFuncionariosByEmpresa } from '@/lib/queries/okr'
+import { formatValor } from '@/lib/utils'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+
+const MESES_CURTOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+
+// Metas mensais do KR no ano, como texto dos 12 campos ('' = sem meta).
+function metasDoAno(kr: any, ano: number): string[] {
+  const lista: string[] = Array(12).fill('')
+  ;(kr?.metas_mensais ?? []).forEach((m: { mes: string; meta: number }) => {
+    const [a, mes] = m.mes.split('-').map(Number)
+    if (a === ano) lista[mes - 1] = String(m.meta)
+  })
+  return lista
+}
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 
 interface ModalEditarKrProps {
@@ -23,6 +37,9 @@ export default function ModalEditarKr({
   const [error, setError] = useState<string | null>(null)
   const [setores, setSetores] = useState<any[]>([])
   const [funcionarios, setFuncionarios] = useState<any[]>([])
+  const [anoMetas, setAnoMetas] = useState(new Date().getFullYear())
+  const [metasMensais, setMetasMensais] = useState<string[]>(Array(12).fill(''))
+  const [metasAlteradas, setMetasAlteradas] = useState(false)
 
   const [form, setForm] = useState({
     titulo: '',
@@ -53,7 +70,30 @@ export default function ModalEditarKr({
       direcao: kr.direcao ?? 'maior',
       apuracao: kr.apuracao ?? 'ultimo',
     })
+    setMetasMensais(metasDoAno(kr, anoMetas))
+    setMetasAlteradas(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kr])
+
+  function trocarAnoMetas(ano: number) {
+    setAnoMetas(ano)
+    setMetasMensais(metasDoAno(kr, ano))
+    setMetasAlteradas(false)
+  }
+
+  function alterarMetaMes(i: number, valor: string) {
+    setMetasMensais((atual) => atual.map((v, j) => (j === i ? valor : v)))
+    setMetasAlteradas(true)
+  }
+
+  // Soma: divide a meta do KR pelos 12 meses. Demais: repete a meta.
+  function preencherMetas() {
+    const meta = parseFloat(form.meta)
+    if (Number.isNaN(meta)) return
+    const porMes = form.apuracao === 'soma' ? Math.round((meta / 12) * 100) / 100 : meta
+    setMetasMensais(Array(12).fill(String(porMes)))
+    setMetasAlteradas(true)
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -80,6 +120,19 @@ export default function ModalEditarKr({
       return
     }
 
+    if (metasAlteradas) {
+      const { error: erroMetas } = await salvarMetasMensaisKr(
+        kr.id,
+        anoMetas,
+        metasMensais.map((v) => (v.trim() === '' ? null : parseFloat(v)))
+      )
+      if (erroMetas) {
+        setError(`KR salvo, mas as metas mensais não: ${erroMetas}`)
+        setLoading(false)
+        return
+      }
+    }
+
     onSuccess()
     onClose()
     setLoading(false)
@@ -90,7 +143,7 @@ export default function ModalEditarKr({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
+      <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <h2 className="text-base font-semibold text-foreground mb-4">
           Editar Key Result
         </h2>
@@ -204,6 +257,55 @@ export default function ModalEditarKr({
           <p className="text-[11px] text-muted-foreground -mt-1">
             Soma: a meta é o total do período (ex.: faturamento do ano). Último: cada lançamento é comparado à meta.
           </p>
+
+          <div className="pt-1 border-t border-border">
+            <div className="flex items-center justify-between gap-2 pt-3">
+              <label className="text-xs font-medium text-foreground">Metas mensais (opcional)</label>
+              <div className="flex items-center gap-1 text-xs">
+                <button type="button" onClick={() => trocarAnoMetas(anoMetas - 1)} className="p-1 rounded-md hover:bg-accent text-muted-foreground" aria-label="Ano anterior">
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <span className="font-semibold tabular-nums">{anoMetas}</span>
+                <button type="button" onClick={() => trocarAnoMetas(anoMetas + 1)} className="p-1 rounded-md hover:bg-accent text-muted-foreground" aria-label="Próximo ano">
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Meta de cada mês, usada no gráfico do card. Mês em branco fica sem meta.{' '}
+              <button type="button" onClick={preencherMetas} className="text-primary hover:underline">
+                {form.apuracao === 'soma' ? 'Dividir a meta pelos 12 meses' : 'Repetir a meta em todos os meses'}
+              </button>
+            </p>
+            <div className="mt-2 grid grid-cols-3 sm:grid-cols-4 gap-2">
+              {MESES_CURTOS.map((mes, i) => (
+                <div key={mes}>
+                  <label className="text-[10px] text-muted-foreground">{mes}</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={metasMensais[i]}
+                    onChange={(e) => alterarMetaMes(i, e.target.value)}
+                    className="w-full px-2 py-1.5 text-xs rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+              ))}
+            </div>
+            {(() => {
+              const valores = metasMensais.map((v) => parseFloat(v)).filter((v) => !Number.isNaN(v))
+              if (form.apuracao !== 'soma' || valores.length === 0) return null
+              const total = valores.reduce((a, v) => a + v, 0)
+              const meta = parseFloat(form.meta)
+              const diferente = !Number.isNaN(meta) && Math.abs(total - meta) > 0.005
+              return (
+                <p className={diferente ? 'mt-1.5 text-[11px] text-amber-600' : 'mt-1.5 text-[11px] text-muted-foreground'}>
+                  Soma das metas do ano: <span className="font-semibold">{formatValor(total, form.tipo_valor)}</span>
+                  {diferente && <> — diferente da meta do KR ({formatValor(meta, form.tipo_valor)})</>}
+                </p>
+              )
+            })()}
+            <DicaValor valor={metasMensais.find((v) => v !== '') ?? ''} tipoValor={form.tipo_valor} />
+          </div>
 
           {error && <p className="text-xs text-destructive">{error}</p>}
 
