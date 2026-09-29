@@ -907,50 +907,6 @@ export default function AutoconhecimentoPage() {
         )}
       </nav>
 
-      {/* Histórico de validação do protótipo: só para quem administra (antes aparecia pra todos). */}
-      {souAdminPiloto && (
-      <details className="glass-panel rounded-2xl p-6 group">
-        <summary className="text-sm font-semibold text-foreground cursor-pointer list-none flex items-center justify-between gap-2">
-          <span>Pedido original × o que foi construído (pra validação)</span>
-          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 transition-transform group-open:rotate-180" />
-        </summary>
-        <div className="mt-4 space-y-4 text-sm">
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Pedido (10/09/2026)</p>
-            <ul className="list-disc list-inside space-y-1 text-foreground">
-              <li>Subir a metodologia de "Adições futuras/Abordagem .pdf" (pitch da BeHive: EU/Autoliderança e NÓS/Liderança de pessoas) e criar 3 mapas: Autoliderança (todos), Liderando o time (só líderes) e Relacionando com o time (todos).</li>
-            </ul>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">O que foi construído</p>
-            <ul className="list-disc list-inside space-y-1 text-foreground">
-              <li><strong>Mapa 1 · Autoliderança</strong>: o card do seu tipo + o chat "Pergunte ao assistente" logo abaixo — já existiam desde 31/08, reenquadrados aqui como o Mapa 1 do PDF. Só fala do tipo de quem pergunta, nunca de terceiros — por isso é o único já aberto pra CTZ inteira.</li>
-              <li><strong>Mapa 2 · Liderando o time</strong>: novo — o líder escolhe um dos seus liderados diretos (organograma) e recebe orientação de liderança (delegação, desenvolvimento, decisão, feedback, conflito) pra ele, sem nunca ver o tipo dele.</li>
-              <li><strong>Mapa 3 · Relacionando com o time</strong>: era "Como abordar um colega" (09/09/2026), reenquadrado como Mapa 3 — mesma mecânica, escolhendo qualquer colega da empresa com tipo mapeado.</li>
-              <li>Acesso (decisão de 10/09/2026, depois de avaliar o risco junto com o Igor): só o Mapa 1 abriu pra CTZ inteira. Mapas 2 e 3 falam do tipo de OUTRA pessoa — mesmo com a trava técnica funcionando (o tipo nunca é devolvido ao navegador, só usado internamente pra calibrar a orientação da IA), isso ainda não foi testado com uso real de mais gente, então continuam restritos a Igor/Priscila por enquanto, junto com "Perfis da equipe" e o cruzamento cargo x Eneagrama (mais abaixo), que nunca fizeram parte do pedido dos 3 mapas.</li>
-            </ul>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Decisões tomadas durante a construção</p>
-            <ul className="list-disc list-inside space-y-1 text-foreground">
-              <li>"Líder" pro Mapa 2 = tem pelo menos 1 liderado direto no organograma (funcionarios.gestor_id), não a marcação manual usada em Avaliação de Pares — confirmado com o Igor.</li>
-              <li>Quem ainda não tem tipo mapeado continua vendo o menu "Autoconhecimento" normalmente, com um aviso de que o perfil ainda não foi cadastrado, em vez de esconder o módulo inteiro — confirmado com o Igor.</li>
-              <li>Nos Mapas 1 e 2, o tipo da OUTRA pessoa nunca é devolvido pro navegador — só é lido dentro de funções do banco chamadas pelas rotas de API, que embutem o perfil no prompt da IA e nunca no JSON de resposta (mesma regra desde 09/09/2026). Mesmo assim, falar de outra pessoa ficou restrito a Igor/Priscila (ver item de acesso acima) — a proteção técnica reduz o risco, mas não elimina a falta de teste com uso real.</li>
-            </ul>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Atualização (14/09/2026)</p>
-            <ul className="list-disc list-inside space-y-1 text-foreground">
-              <li>O antigo Mapa 3 ("Relacionando com o time") deixou de ser seção própria — virou um MODO do mesmo chat do Mapa 1: o seletor agora tem "Eu mesmo" (padrão) ou um colega, em vez de duas caixas de chat separadas. Conceito do Mapa 1: pessoal e colega a colega, NUNCA líder-liderado.</li>
-              <li>Mapa 2 ganhou um resumo do time (agregado nos 3 centros do Eneagrama — nunca o tipo de ninguém individualmente). O chat do Mapa 2 é só pra tratar de UM liderado específico, e passou a considerar também o próprio perfil do líder, não só o do liderado, pra traçar uma abordagem que funcione pros dois estilos (achado 14/09/2026: um segundo chat mais genérico sobre o time como um todo tinha sido adicionado por engano aqui e foi removido — o conceito do Mapa 2 é sempre líder tratando de alguém específico do time, nunca uma conversa solta sobre o time).</li>
-              <li>Os dois blocos de "Simulação (visão de administrador)" — como a tela apareceria pro Felipe Marques Santos — continuam restritos a Igor/Priscila, mesmo raciocínio de validar antes de abrir geral.</li>
-              <li>Regra reforçada (14/09/2026): o tipo de uma pessoa NUNCA é revelado pra outra em nenhum dos chats, independente de cargo/posição — nem o chat "Eu mesmo/colega" do Mapa 1, nem o chat líder-liderado do Mapa 2. O único tipo que cada chat pode citar abertamente é o de quem está perguntando (a própria pessoa, ou o próprio líder no Mapa 2).</li>
-            </ul>
-          </div>
-        </div>
-      </details>
-      )}
-
       {erroPerfil && (
         <div className="px-4 py-3 rounded-xl text-sm font-medium bg-red-50 text-red-700 border border-red-200">
           {erroPerfil}

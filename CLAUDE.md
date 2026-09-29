@@ -1230,3 +1230,5 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   seguem só Igor/Priscila). O bloco "Pedido original × construído" passou a aparecer só pra eles.
   Descrições dos 3 grupos do time (`GRUPOS_TIME`) são texto meu, provisório — o Igor pode pedir
   para reverter. `getMinhaDicaCargo` passou a devolver também o nome do cargo.
+- Bloco "Pedido original × o que foi construído" removido do Autoconhecimento a pedido do Igor
+  (o histórico continua neste log e no git).
