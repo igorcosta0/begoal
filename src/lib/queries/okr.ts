@@ -197,23 +197,20 @@ export async function getKrChartData(krId: string) {
 
 // ==================== LANÇAMENTOS ====================
 
-export async function createKrLancamento(payload: {
-  kr_id: string
-  valor: number
-  data_lancamento: string
-}) {
+// Vários lançamentos de uma vez (ex.: meses atrasados). Um único insert: ou
+// grava todos, ou nenhum.
+export async function createKrLancamentos(krId: string, lancamentos: { valor: number; data_lancamento: string }[]) {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('kr_lancamentos')
-    .insert(payload)
-    .select()
-    .single()
+    .insert(lancamentos.map((l) => ({ kr_id: krId, ...l })))
+    .select('id')
 
-  if (error) return { data: null, error }
+  if (error) return { error: mensagemErroGravacao(error) }
+  if (!data || data.length !== lancamentos.length) return { error: mensagemErroGravacao(null, 0) }
 
-  await recalcularValorAtualKr(payload.kr_id)
-
-  return { data, error: null }
+  await recalcularValorAtualKr(krId)
+  return { error: null }
 }
 
 export async function deleteKrLancamento(id: string, krId: string) {

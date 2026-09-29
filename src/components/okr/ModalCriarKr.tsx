@@ -2,7 +2,8 @@
 
 import DicaValor from '@/components/DicaValor'
 import { useState, useEffect } from 'react'
-import { createKr, getSetoresByEmpresa, getFuncionariosByEmpresa } from '@/lib/queries/okr'
+import { createKr, salvarMetasMensaisKr, getSetoresByEmpresa, getFuncionariosByEmpresa } from '@/lib/queries/okr'
+import CamposMetasMensais, { metasParaSalvar } from '@/components/okr/CamposMetasMensais'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 
 interface ModalCriarKrProps {
@@ -25,6 +26,15 @@ export default function ModalCriarKr({
   const [error, setError] = useState<string | null>(null)
   const [setores, setSetores] = useState<any[]>([])
   const [funcionarios, setFuncionarios] = useState<any[]>([])
+  const [anoMetas, setAnoMetas] = useState(new Date().getFullYear())
+  const [metasMensais, setMetasMensais] = useState<string[]>(Array(12).fill(''))
+  // KR já criado, mas as metas mensais falharam: o próximo clique só tenta as metas.
+  const [krCriadoId, setKrCriadoId] = useState<string | null>(null)
+
+  // Fechou o modal: a próxima abertura cria um KR novo.
+  useEffect(() => {
+    if (!open) setKrCriadoId(null)
+  }, [open])
 
   const [form, setForm] = useState({
     titulo: '',
@@ -49,26 +59,44 @@ export default function ModalCriarKr({
     setLoading(true)
     setError(null)
 
-    const { error } = await createKr({
-      titulo: form.titulo,
-      objetivo_id: objetivoId,
-      responsavel_id: form.responsavel_id,
-      setor_id: form.setor_id || undefined,
-      client_id: empresa.id,
-      valor_inicial: parseFloat(form.valor_inicial) || 0,
-      meta: parseFloat(form.meta) || 0,
-      tipo_valor: form.tipo_valor || undefined,
-      direcao: form.direcao,
-      apuracao: form.apuracao,
-    })
+    let krId = krCriadoId
+    if (!krId) {
+      const { data: krCriado, error } = await createKr({
+        titulo: form.titulo,
+        objetivo_id: objetivoId,
+        responsavel_id: form.responsavel_id,
+        setor_id: form.setor_id || undefined,
+        client_id: empresa.id,
+        valor_inicial: parseFloat(form.valor_inicial) || 0,
+        meta: parseFloat(form.meta) || 0,
+        tipo_valor: form.tipo_valor || undefined,
+        direcao: form.direcao,
+        apuracao: form.apuracao,
+      })
 
-    if (error) {
-      setError('Erro ao criar KR. Tente novamente.')
-      setLoading(false)
-      return
+      if (error || !krCriado) {
+        setError('Erro ao criar KR. Tente novamente.')
+        setLoading(false)
+        return
+      }
+      krId = krCriado.id as string
     }
 
+    if (krId && metasMensais.some((v) => v.trim() !== '')) {
+      const { error: erroMetas } = await salvarMetasMensaisKr(krId, anoMetas, metasParaSalvar(metasMensais))
+      if (erroMetas) {
+        setKrCriadoId(krId)
+        onSuccess()
+        setError(`KR criado, mas as metas mensais não: ${erroMetas} Tente de novo ou cadastre em "Editar KR".`)
+        setLoading(false)
+        return
+      }
+    }
+
+    setKrCriadoId(null)
+
     setForm({ titulo: '', responsavel_id: '', setor_id: '', valor_inicial: '0', meta: '', tipo_valor: '', direcao: 'maior', apuracao: 'ultimo' })
+    setMetasMensais(Array(12).fill(''))
     onSuccess()
     onClose()
     setLoading(false)
@@ -79,7 +107,7 @@ export default function ModalCriarKr({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
+      <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <h2 className="text-base font-semibold text-foreground mb-1">Criar Key Result</h2>
         {objetivoTitulo && (
           <p className="text-xs text-muted-foreground mb-4">Objetivo: {objetivoTitulo}</p>
@@ -196,6 +224,16 @@ export default function ModalCriarKr({
             Soma: a meta é o total do período (ex.: faturamento do ano). Último: cada lançamento é comparado à meta.
           </p>
 
+          <CamposMetasMensais
+            ano={anoMetas}
+            onAno={setAnoMetas}
+            metas={metasMensais}
+            onMetas={setMetasMensais}
+            meta={form.meta}
+            apuracao={form.apuracao}
+            tipoValor={form.tipo_valor}
+          />
+
           {error && <p className="text-xs text-destructive">{error}</p>}
 
           <div className="flex gap-2 pt-2">
@@ -211,7 +249,7 @@ export default function ModalCriarKr({
               disabled={loading}
               className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
             >
-              {loading ? 'Criando...' : 'Criar KR'}
+              {loading ? 'Salvando...' : krCriadoId ? 'Salvar metas mensais' : 'Criar KR'}
             </button>
           </div>
         </form>

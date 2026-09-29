@@ -1258,3 +1258,17 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   Negócios por trimestre (contratos 1, VGV 70 mi, áreas perdidas 0, em jan/abr/jul/out). O KR NPQ
   foi renomeado por alguém para "NPQ - Nota de Percepção Quantificada" com meta 9 depois da carga
   (lançamentos continuam 0,0,1,11,0…): ficou sem metas mensais.
+- Verificação de metas mensais (pedido do Igor): somadas metas de Venda de Projetos Concretize
+  (533.333/533.333/533.334, 666.667 abr–set, 800 mil out–dez = 8 mi), Número de projetos sem
+  retrabalho e aprovações sem retrabalho (Legalização) (80% todo mês) e Quantidade de Pesquisas
+  Realizadas (1 por mês) — 11 KRs com meta mensal no total. Sem fonte de meta mensal nas planilhas:
+  KRs Giva, Corretagem/Venda de projetos dos loteamentos (repasse), parceiros de captação,
+  empreendimentos p/ investidores, Agrimensura. Achados sem mexer: "Venda de Projetos Concretize"
+  (criado à mão) está como Número/último, com julho = 1.332.490 (é o acumulado da planilha; o mês
+  foi 421.650) e sem ago/set; "Nº Loteadoras priorizadas com relacionamento ativo" (planilha
+  Comercial, KR 3) não existe no banco.
+- **Criar KR** ganhou os mesmos campos de meta mensal do Editar KR (componente
+  `CamposMetasMensais.tsx`); se o KR for criado e as metas falharem, o botão vira "Salvar metas
+  mensais" (não cria o KR de novo). **Lançar valor** aceita várias linhas (data + valor, "Adicionar
+  mês" = mês seguinte), grava tudo num insert só (`createKrLancamentos`), mostra a meta do mês e
+  avisa se o mês já tem lançamento. `createKrLancamento` (um só) removido — não tinha outro uso.
