@@ -50,14 +50,14 @@ export const TOUR_PASSOS: TourPasso[] = [
     pagina: '/objetivo',
     alvo: null,
     titulo: 'Nosso jeito de ser',
-    texto: 'Aqui mora a identidade da empresa: visão de futuro, mercado de atuação e os valores que guiam o dia a dia.',
+    texto: 'Aqui mora a identidade da empresa: missão, visão de futuro, as verticais de negócio e os valores que guiam o dia a dia.',
   },
   {
     id: 'jeito-de-ser-mercado',
     pagina: '/objetivo',
     alvo: 'tour-mercado',
-    titulo: 'Mercado e recados',
-    texto: 'De um lado, onde a empresa atua. Do outro, um mural de recados fixados pra equipe — dá pra comentar direto ali.',
+    titulo: 'Nossas verticais',
+    texto: 'As frentes de negócio da empresa, cada uma com seu propósito e o foco do ano.',
     posicao: 'bottom',
   },
   {

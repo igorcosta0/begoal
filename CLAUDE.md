@@ -1209,3 +1209,13 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   passar o mouse (e acumulado nos KRs de soma, que agora plotam o acumulado contra a meta — antes
   ficavam sem linha de meta). Clicar no gráfico ou em "Gráfico completo" abre o `KrChart` de sempre.
   Aparece também com 1 lançamento só. Enviado sem teste visual, a pedido do Igor.
+- **"Nosso jeito de ser" repaginada** (pedido "mais atraente e harmônica" + descrever as verticais
+  do card de Mercado): abertura com Missão e Visão lado a lado (a Missão continua sendo a última
+  nota do mural, chave `mercado_posicionamento` em `empresa_identidade_comentarios`, agora em
+  destaque, sem o prefixo "Missão:"); "Mercado" virou **"Nossas verticais"**, um cartão por
+  vertical com propósito e "Foco do ano", editável na tela; Valores em 4 cartões (o numeral saía
+  duplicado porque os textos já começam com "I.", "II."…). `mercado_posicionamento` (jsonb) passa
+  a guardar `{nome, descricao, foco}`; texto puro antigo continua sendo lido. Textos da CTZ vindos
+  do Código de Cultura 2026 (CSC não está lá: veio dos focos da Avaliação) em
+  `Adições futuras/Verticais CTZ - descricoes.sql` — **rodar só DEPOIS do deploy**: o front antigo
+  quebra ao receber objetos nessa lista. Textos do tour ajustados.

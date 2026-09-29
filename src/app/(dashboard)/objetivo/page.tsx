@@ -3,46 +3,11 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
-import { Heart, Edit2, Check, X, Plus, Trash2, MapPin, MessageCircle, Send, Sparkles, Quote, Compass } from 'lucide-react'
+import { Heart, Edit2, Check, X, Plus, Send, Sparkles, Compass, Target, Layers } from 'lucide-react'
 import { getFotosPerfilPorEmpresa } from '@/lib/queries/perfilPublico'
 import Avatar from '@/components/Avatar'
 import BotaoExcluirConfirmando from '@/components/BotaoExcluirConfirmando'
-import { mensagemErroGravacao } from '@/lib/utils'
-
-type Tom = { grad: string; dot: string; texto: string }
-
-const TOM_AZUL: Tom = { grad: 'rgba(59,130,246,0.14)', dot: 'rgba(59,130,246,0.35)', texto: 'text-blue-600' }
-const TOM_AMBAR: Tom = { grad: 'rgba(245,158,11,0.14)', dot: 'rgba(245,158,11,0.35)', texto: 'text-amber-600' }
-const TOM_VIOLETA: Tom = { grad: 'rgba(139,92,246,0.14)', dot: 'rgba(139,92,246,0.35)', texto: 'text-violet-600' }
-
-/** Cabeçalho colorido reutilizado nas 4 seções da página — mesmo padrão visual (faixa em
- *  degradê + textura de pontos + selo/título/descrição), só muda o tom por seção. */
-function CabecalhoSecao({ icon: Icon, eyebrow, titulo, descricao, tom }: {
-  icon: typeof MapPin
-  eyebrow: string
-  titulo: string
-  descricao: string
-  tom: Tom
-}) {
-  return (
-    <div className="relative px-5 py-5 border-b border-border shrink-0 overflow-hidden"
-      style={{ background: `linear-gradient(160deg, ${tom.grad}, transparent 70%)` }}>
-      <div className="absolute inset-0 opacity-[0.35] pointer-events-none"
-        style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, ${tom.dot} 1px, transparent 0)`,
-          backgroundSize: '16px 16px',
-          maskImage: 'linear-gradient(180deg, black, transparent)',
-          WebkitMaskImage: 'linear-gradient(180deg, black, transparent)',
-        }} />
-      <div className={`relative flex items-center gap-1.5 ${tom.texto}`}>
-        <Icon className="w-3 h-3" />
-        <p className="text-[9.5px] font-bold uppercase tracking-widest">{eyebrow}</p>
-      </div>
-      <p className="relative font-display text-lg font-bold text-foreground mt-1 tracking-tight">{titulo}</p>
-      <p className="relative text-[11px] text-muted-foreground mt-1 leading-relaxed">{descricao}</p>
-    </div>
-  )
-}
+import { cn, mensagemErroGravacao } from '@/lib/utils'
 
 function toRoman(num: number) {
   const map: [number, string][] = [
@@ -54,84 +19,183 @@ function toRoman(num: number) {
   return out
 }
 
+// Valores cadastrados já com o numeral ("I. Excelência...") apareciam com o número duas vezes.
+function semNumeral(texto: string) {
+  return texto.replace(/^\s*[IVXLCDM]+\s*[.)–-]\s*/, '')
+}
+
 function formatDataHora(iso: string) {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
-/** Lista de tags editável (chips) — usada para o posicionamento de mercado. */
-function ChipList({ campo, itens, placeholder, onSalvar }: { campo: string; itens: string[]; placeholder: string; onSalvar: (campo: string, itens: string[]) => Promise<void> }) {
-  const [editandoIdx, setEditandoIdx] = useState<number | null>(null)
-  const [textoEdicao, setTextoEdicao] = useState('')
-  const [adicionando, setAdicionando] = useState(false)
-  const [novoItem, setNovoItem] = useState('')
+/** Título de seção: selo pequeno + título + descrição, com ação opcional à direita. */
+function TituloSecao({ icon: Icon, eyebrow, titulo, descricao, acao }: {
+  icon: typeof Heart
+  eyebrow: string
+  titulo: string
+  descricao?: string
+  acao?: React.ReactNode
+}) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <div className="flex items-center gap-1.5 text-primary">
+          <Icon className="w-3.5 h-3.5" />
+          <p className="text-[10px] font-bold uppercase tracking-widest">{eyebrow}</p>
+        </div>
+        <h2 className="font-display text-xl font-bold text-foreground tracking-tight mt-1">{titulo}</h2>
+        {descricao && <p className="text-xs text-muted-foreground mt-1">{descricao}</p>}
+      </div>
+      {acao}
+    </div>
+  )
+}
 
-  async function handleEditarSalvar(idx: number) {
-    if (!textoEdicao.trim()) return
-    const novos = [...itens]; novos[idx] = textoEdicao.trim()
-    await onSalvar(campo, novos); setEditandoIdx(null)
+// ── Verticais (antes "Mercado": só uma lista de nomes) ─────────────────────
+// Guardadas em empresa_identidade.mercado_posicionamento (jsonb). Itens antigos
+// são texto puro; os novos são { nome, descricao, foco }. Os dois formatos são lidos.
+
+type Vertical = { nome: string; descricao?: string; foco?: string }
+
+function paraVerticais(val: unknown): Vertical[] {
+  let lista: unknown = val
+  if (typeof lista === 'string') {
+    try { lista = JSON.parse(lista) } catch { lista = [lista] }
   }
+  if (!Array.isArray(lista)) return []
+  return lista
+    .map((item): Vertical | null => {
+      if (typeof item === 'string') return { nome: item }
+      if (item && typeof item === 'object' && typeof (item as any).nome === 'string') {
+        const v = item as any
+        return { nome: v.nome, descricao: v.descricao || undefined, foco: v.foco || undefined }
+      }
+      return null
+    })
+    .filter((v): v is Vertical => v !== null)
+}
 
-  async function handleExcluir(idx: number) {
-    await onSalvar(campo, itens.filter((_, i) => i !== idx))
-  }
+// Uma cor por posição, só para diferenciar os cartões (não carrega significado).
+const TONS_VERTICAL = [
+  { barra: 'bg-blue-500', suave: 'bg-blue-500/10', texto: 'text-blue-600' },
+  { barra: 'bg-emerald-500', suave: 'bg-emerald-500/10', texto: 'text-emerald-600' },
+  { barra: 'bg-amber-500', suave: 'bg-amber-500/10', texto: 'text-amber-600' },
+  { barra: 'bg-violet-500', suave: 'bg-violet-500/10', texto: 'text-violet-600' },
+  { barra: 'bg-slate-500', suave: 'bg-slate-500/10', texto: 'text-slate-600' },
+  { barra: 'bg-rose-500', suave: 'bg-rose-500/10', texto: 'text-rose-600' },
+]
 
-  async function handleAdicionar(e: React.FormEvent) {
+const CAMPO_FORM = 'w-full px-3 py-2 text-xs rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring'
+
+function FormVertical({ inicial, onSalvar, onCancelar }: {
+  inicial: Vertical
+  onSalvar: (v: Vertical) => Promise<void>
+  onCancelar: () => void
+}) {
+  const [form, setForm] = useState({ nome: inicial.nome, descricao: inicial.descricao ?? '', foco: inicial.foco ?? '' })
+  const [salvando, setSalvando] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!novoItem.trim()) return
-    await onSalvar(campo, [...itens, novoItem.trim()])
-    setNovoItem(''); setAdicionando(false)
+    if (!form.nome.trim()) return
+    setSalvando(true)
+    await onSalvar({ nome: form.nome.trim(), descricao: form.descricao.trim() || undefined, foco: form.foco.trim() || undefined })
+    setSalvando(false)
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {itens.length === 0 && !adicionando && (
-        <p className="text-xs text-muted-foreground/60 italic">{placeholder}</p>
-      )}
+    <form onSubmit={handleSubmit} className="space-y-2">
+      <input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Nome da vertical" autoFocus required className={cn(CAMPO_FORM, 'font-semibold')} />
+      <textarea value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} placeholder="Propósito: o que essa vertical faz" rows={3} className={cn(CAMPO_FORM, 'resize-none')} />
+      <textarea value={form.foco} onChange={(e) => setForm({ ...form, foco: e.target.value })} placeholder="Foco do ano (opcional)" rows={2} className={cn(CAMPO_FORM, 'resize-none')} />
+      <div className="flex gap-2">
+        <button type="submit" disabled={salvando || !form.nome.trim()} className="flex items-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity">
+          <Check className="w-3 h-3" /> {salvando ? 'Salvando...' : 'Salvar'}
+        </button>
+        <button type="button" onClick={onCancelar} className="flex items-center gap-1 px-3 py-1.5 border border-border rounded-lg text-xs text-muted-foreground hover:bg-accent transition-colors">
+          <X className="w-3 h-3" /> Cancelar
+        </button>
+      </div>
+    </form>
+  )
+}
 
-      {itens.map((item, idx) =>
-        editandoIdx === idx ? (
-          <div key={idx} className="flex items-center gap-1">
-            <input
-              type="text" value={textoEdicao} onChange={(e) => setTextoEdicao(e.target.value)} autoFocus
-              className="px-3 py-1.5 text-xs rounded-full border border-primary/40 bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
-              onKeyDown={(e) => { if (e.key === 'Enter') handleEditarSalvar(idx); if (e.key === 'Escape') setEditandoIdx(null) }}
-            />
-            <button onClick={() => handleEditarSalvar(idx)} className="p-1 rounded-full bg-primary text-primary-foreground"><Check className="w-3 h-3" /></button>
-            <button onClick={() => setEditandoIdx(null)} className="p-1 rounded-full border border-border text-muted-foreground"><X className="w-3 h-3" /></button>
-          </div>
-        ) : (
-          <div key={idx} className="group/chip flex items-center gap-1 pl-3 pr-1.5 py-1.5 rounded-full text-xs font-semibold bg-primary/[0.07] text-primary border border-primary/[0.16] transition-colors hover:bg-primary/[0.12]">
-            <span>{item}</span>
-            <span className="flex items-center gap-0.5 opacity-0 group-hover/chip:opacity-100 transition-opacity">
-              <button onClick={() => { setEditandoIdx(idx); setTextoEdicao(item) }} className="p-0.5 rounded-full hover:bg-primary/10"><Edit2 className="w-2.5 h-2.5" /></button>
-              <button onClick={() => handleExcluir(idx)} className="p-0.5 rounded-full hover:bg-primary/10"><X className="w-2.5 h-2.5" /></button>
-            </span>
-          </div>
+function Verticais({ itens, onSalvar }: { itens: Vertical[]; onSalvar: (itens: Vertical[]) => Promise<boolean> }) {
+  const [editando, setEditando] = useState<number | 'nova' | null>(null)
+
+  async function salvar(idx: number | 'nova', v: Vertical) {
+    const novos = idx === 'nova' ? [...itens, v] : itens.map((item, i) => (i === idx ? v : item))
+    if (await onSalvar(novos)) setEditando(null)
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      {itens.map((v, idx) => {
+        const tom = TONS_VERTICAL[idx % TONS_VERTICAL.length]
+        return (
+          <article key={idx} className="group relative glass-panel rounded-2xl overflow-hidden flex flex-col">
+            <div className={cn('h-1 w-full', tom.barra)} />
+            <div className="p-5 flex-1 flex flex-col">
+              {editando === idx ? (
+                <FormVertical inicial={v} onSalvar={(nv) => salvar(idx, nv)} onCancelar={() => setEditando(null)} />
+              ) : (
+                <>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className={cn('w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold tabular-nums shrink-0', tom.suave, tom.texto)}>
+                        {String(idx + 1).padStart(2, '0')}
+                      </span>
+                      <h3 className="font-display text-base font-bold text-foreground tracking-tight truncate">{v.nome}</h3>
+                    </div>
+                    <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
+                      <button onClick={() => setEditando(idx)} className="p-1 rounded-md hover:bg-accent transition-colors" aria-label={`Editar ${v.nome}`}>
+                        <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
+                      </button>
+                      <BotaoExcluirConfirmando onConfirmar={async () => { await onSalvar(itens.filter((_, i) => i !== idx)) }} className="p-1" iconClassName="w-3.5 h-3.5" />
+                    </div>
+                  </div>
+
+                  {v.descricao ? (
+                    <p className="text-sm text-foreground/80 leading-relaxed mt-3">{v.descricao}</p>
+                  ) : (
+                    <button onClick={() => setEditando(idx)} className="text-xs text-muted-foreground/60 italic mt-3 text-left hover:text-primary transition-colors">
+                      + Descrever o propósito desta vertical
+                    </button>
+                  )}
+
+                  {v.foco && (
+                    <div className="mt-auto pt-4">
+                      <div className="rounded-xl bg-secondary/60 px-3 py-2.5">
+                        <p className={cn('text-[10px] font-bold uppercase tracking-widest', tom.texto)}>Foco do ano</p>
+                        <p className="text-xs text-foreground/80 leading-relaxed mt-1">{v.foco}</p>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </article>
         )
-      )}
+      })}
 
-      {adicionando ? (
-        <form onSubmit={handleAdicionar} className="flex items-center gap-1">
-          <input type="text" value={novoItem} onChange={(e) => setNovoItem(e.target.value)} placeholder="Novo item..." autoFocus
-            className="px-3 py-1.5 text-xs rounded-full border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            onKeyDown={(e) => { if (e.key === 'Escape') setAdicionando(false) }} />
-          <button type="submit" disabled={!novoItem.trim()} className="p-1.5 rounded-full bg-primary text-primary-foreground disabled:opacity-50"><Check className="w-3 h-3" /></button>
-          <button type="button" onClick={() => setAdicionando(false)} className="p-1.5 rounded-full border border-border text-muted-foreground"><X className="w-3 h-3" /></button>
-        </form>
+      {editando === 'nova' ? (
+        <div className="glass-panel rounded-2xl p-5">
+          <FormVertical inicial={{ nome: '' }} onSalvar={(v) => salvar('nova', v)} onCancelar={() => setEditando(null)} />
+        </div>
       ) : (
-        <button onClick={() => setAdicionando(true)} className="flex items-center gap-1 pl-2.5 pr-3 py-1.5 rounded-full text-xs font-medium text-muted-foreground border border-dashed border-border hover:border-primary/40 hover:text-primary transition-colors">
-          <Plus className="w-3 h-3" /> Adicionar
+        <button onClick={() => setEditando('nova')}
+          className="min-h-[140px] rounded-2xl border border-dashed border-border flex flex-col items-center justify-center gap-1.5 text-xs font-semibold text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors">
+          <Plus className="w-4 h-4" /> Adicionar vertical
         </button>
       )}
     </div>
   )
 }
 
-/** Bloco de nota/comentários fixado — mostra o último registro e permite expandir a conversa.
- *  O mural "Missão" grava com campo='mercado_posicionamento' por herança do nome antigo. O
- *  Mercado não usa comentários (é a lista de chips), então não há mistura; trocar a chave
- *  esconderia as notas já gravadas. */
-function NotaFixada({ campo, clientId, userId, nomeUsuario, fotosPorUserId }: { campo: string; clientId: string; userId: string; nomeUsuario: string; fotosPorUserId: Record<string, string> }) {
+/** Missão: a última nota do mural, em destaque, com a conversa recolhível.
+ *  Grava com campo='mercado_posicionamento' por herança do nome antigo — trocar a
+ *  chave esconderia as notas já gravadas. */
+function Missao({ campo, clientId, userId, nomeUsuario, fotosPorUserId }: { campo: string; clientId: string; userId: string; nomeUsuario: string; fotosPorUserId: Record<string, string> }) {
   const [comentarios, setComentarios] = useState<any[]>([])
   const [novoComentario, setNovoComentario] = useState('')
   const [loading, setLoading] = useState(false)
@@ -170,47 +234,49 @@ function NotaFixada({ campo, clientId, userId, nomeUsuario, fotosPorUserId }: { 
   }
 
   const ultimo = comentarios[comentarios.length - 1]
+  // A nota costuma começar com "Missão:", redundante sob o título.
+  const textoMissao = ultimo ? String(ultimo.comentario).replace(/^\s*miss[aã]o\s*:\s*/i, '') : ''
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex flex-col h-full">
       {ultimo ? (
-        <div className="flex items-start gap-2.5">
-          <Avatar
-            nome={ultimo.autor_nome ?? 'U'}
-            fotoUrl={fotosPorUserId[ultimo.user_id]}
-            sizeClassName="w-6 h-6 text-[11px] font-extrabold mt-px"
-            corClassName="bg-violet-500/15 text-violet-600"
-          />
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold text-foreground">
-              {ultimo.autor_nome} <span className="font-normal text-muted-foreground">{formatDataHora(ultimo.created_at)}</span>
+        <>
+          <p className="font-display text-lg md:text-xl font-semibold text-foreground leading-snug tracking-tight">{textoMissao}</p>
+          <div className="flex items-center gap-2 mt-4">
+            <Avatar
+              nome={ultimo.autor_nome ?? 'U'}
+              fotoUrl={fotosPorUserId[ultimo.user_id]}
+              sizeClassName="w-5 h-5 text-[10px] font-bold"
+              corClassName="bg-primary/10 text-primary"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              {ultimo.autor_nome} · {formatDataHora(ultimo.created_at)}
             </p>
-            <p className="text-xs leading-snug mt-0.5 text-foreground/90">{ultimo.comentario}</p>
+            {/* Pente fino (A16): a nota mais recente não tinha botão de excluir. */}
+            {ultimo.user_id === userId && (
+              <BotaoExcluirConfirmando onConfirmar={() => handleExcluir(ultimo.id)} className="shrink-0" iconClassName="w-3 h-3" />
+            )}
           </div>
-          {/* Pente fino (A16): a nota mais recente não tinha botão de excluir. */}
-          {ultimo.user_id === userId && (
-            <BotaoExcluirConfirmando onConfirmar={() => handleExcluir(ultimo.id)} className="ml-auto shrink-0" iconClassName="w-3 h-3" />
-          )}
-        </div>
+        </>
       ) : (
-        <p className="text-xs text-muted-foreground/60 italic">Nenhuma nota registrada ainda.</p>
+        <p className="text-sm text-muted-foreground/60 italic">Nenhuma missão registrada ainda.</p>
       )}
 
-      <button onClick={() => setExpandido(!expandido)} className="mt-2.5 self-start text-[11px] font-semibold text-primary hover:text-primary/80 transition-colors">
-        {expandido ? 'Ocultar conversa' : ultimo ? `Ver conversa${comentarios.length > 1 ? ` (${comentarios.length})` : ''} →` : '+ Adicionar nota'}
+      <button onClick={() => setExpandido(!expandido)} className="mt-3 self-start text-[11px] font-semibold text-primary hover:text-primary/80 transition-colors">
+        {expandido ? 'Ocultar histórico' : ultimo ? `Histórico e notas${comentarios.length > 1 ? ` (${comentarios.length})` : ''} →` : '+ Registrar missão'}
       </button>
 
       {expandido && (
         <div className="mt-3 pt-3 border-t border-border space-y-2.5">
           {comentarios.length > 1 && (
-            <div className="max-h-24 overflow-y-auto space-y-2 pr-1">
+            <div className="max-h-28 overflow-y-auto space-y-2 pr-1">
               {comentarios.slice(0, -1).map((c) => (
-                <div key={c.id} className="group/comment flex items-start gap-1.5">
+                <div key={c.id} className="flex items-start gap-1.5">
                   <Avatar
                     nome={c.autor_nome ?? 'U'}
                     fotoUrl={fotosPorUserId[c.user_id]}
                     sizeClassName="w-5 h-5 text-[10px] font-bold mt-0.5"
-                    corClassName="bg-violet-500/10 text-violet-600"
+                    corClassName="bg-primary/10 text-primary"
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-semibold text-foreground">{c.autor_nome} <span className="text-muted-foreground font-normal">{formatDataHora(c.created_at)}</span></p>
@@ -238,7 +304,7 @@ export default function ObjetivoPage() {
   const { empresa } = useEmpresaStore()
   const [identidade, setIdentidade] = useState<any>(null)
   const [formIdentidade, setFormIdentidade] = useState({ visao_futuro: '' })
-  const [mercadoItens, setMercadoItens] = useState<string[]>([])
+  const [verticais, setVerticais] = useState<Vertical[]>([])
   const [editando, setEditando] = useState<string | null>(null)
 
   const [valores, setValores] = useState<any[]>([])
@@ -252,6 +318,8 @@ export default function ObjetivoPage() {
   const [fotosPorUserId, setFotosPorUserId] = useState<Record<string, string>>({})
   // Pente fino (A10): gravações recusadas pelo banco pareciam ter dado certo.
   const [erro, setErro] = useState<string | null>(null)
+
+  const nomeEmpresa = empresa?.company_name ? `da ${empresa.company_name}` : 'da empresa'
 
   const fetchValores = useCallback(async () => {
     if (!empresa) return
@@ -281,22 +349,13 @@ export default function ObjetivoPage() {
     setIdentidade(identidadeData)
     if (identidadeData) {
       setFormIdentidade({ visao_futuro: identidadeData.visao_futuro ?? '' })
-      const parseLista = (val: any): string[] => {
-        if (!val) return []
-        if (Array.isArray(val)) return val
-        try { return JSON.parse(val) } catch { return [String(val)] }
-      }
-      setMercadoItens(parseLista(identidadeData.mercado_posicionamento))
+      setVerticais(paraVerticais(identidadeData.mercado_posicionamento))
     }
     if (funcData) setNomeUsuario(funcData.full_name?.split(' ')[0] ?? '')
     setLoading(false)
   }, [empresa])
 
   useEffect(() => { fetchData(); fetchValores(); fetchFotos() }, [fetchData, fetchValores, fetchFotos])
-
-  const handleChange = useCallback((campo: string, valor: string) => { setFormIdentidade((prev) => ({ ...prev, [campo]: valor })) }, [])
-  const handleEdit = useCallback((campo: string) => { setEditando(campo) }, [])
-  const handleCancelar = useCallback(() => { setEditando(null) }, [])
 
   // Devolve a mensagem de erro (ou null) — update quando a linha já existe,
   // insert quando é o primeiro preenchimento da empresa.
@@ -310,17 +369,18 @@ export default function ObjetivoPage() {
     return mensagemErroGravacao(error, data?.length)
   }, [empresa, identidade])
 
-  const handleSalvarTexto = useCallback(async (campo: string) => {
-    const msg = await gravarIdentidade(campo, (formIdentidade as any)[campo])
+  const handleSalvarVisao = useCallback(async () => {
+    const msg = await gravarIdentidade('visao_futuro', formIdentidade.visao_futuro)
     if (msg) { setErro(msg); return }
     setEditando(null); fetchData()
   }, [gravarIdentidade, formIdentidade, fetchData])
 
-  const handleSalvarLista = useCallback(async (campo: string, novosItens: string[]) => {
-    const msg = await gravarIdentidade(campo, novosItens)
-    if (msg) { setErro(msg); return }
-    if (campo === 'mercado_posicionamento') setMercadoItens(novosItens)
+  const handleSalvarVerticais = useCallback(async (novas: Vertical[]): Promise<boolean> => {
+    const msg = await gravarIdentidade('mercado_posicionamento', novas)
+    if (msg) { setErro(msg); return false }
+    setVerticais(novas)
     fetchData()
+    return true
   }, [gravarIdentidade, fetchData])
 
   async function handleSalvarValor(e: React.FormEvent) {
@@ -356,20 +416,20 @@ export default function ObjetivoPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6 animate-pulse">
+      <div className="space-y-8 animate-pulse">
         <div className="h-10 w-64 rounded-xl bg-secondary" />
-        <div className="h-40 rounded-2xl bg-secondary" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="h-64 rounded-2xl bg-secondary" />
-          <div className="h-64 rounded-2xl bg-secondary" />
-          <div className="h-64 rounded-2xl bg-secondary" />
+        <div className="h-56 rounded-3xl bg-secondary" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="h-44 rounded-2xl bg-secondary" />
+          <div className="h-44 rounded-2xl bg-secondary" />
+          <div className="h-44 rounded-2xl bg-secondary" />
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
 
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -379,7 +439,7 @@ export default function ObjetivoPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight">Nosso jeito de ser</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {empresa?.company_name} — cultura, mercado e visão de futuro
+            Por que existimos, aonde vamos, como nos organizamos e o que nos guia
           </p>
         </div>
       </div>
@@ -388,98 +448,101 @@ export default function ObjetivoPage() {
         <p className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-xl px-3 py-2">{erro}</p>
       )}
 
-      {/* VISÃO DE FUTURO — banner de abertura, largura cheia */}
-      <div data-tour="tour-visao-futuro" className="glass-panel rounded-2xl overflow-hidden">
-        <CabecalhoSecao
-          icon={Compass}
-          eyebrow="Rumo"
-          titulo="Visão de Futuro"
-          descricao={`O norte de longo prazo ${empresa?.company_name ? `da ${empresa.company_name}` : 'da empresa'}.`}
-          tom={TOM_AZUL}
-        />
-        <div className="relative p-5 md:p-6">
-          <Quote className="absolute top-4 right-5 w-12 h-12 text-primary/[0.08] pointer-events-none -scale-x-100" />
-          <div className="group relative">
+      {/* MISSÃO + VISÃO — abertura da página */}
+      <section className="relative glass-panel rounded-3xl overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(120% 90% at 0% 0%, hsl(var(--primary) / 0.12), transparent 60%), radial-gradient(90% 90% at 100% 100%, hsl(var(--primary) / 0.07), transparent 60%)' }} />
+        <div className="relative grid grid-cols-1 md:grid-cols-2">
+
+          <div className="p-6 md:p-8 border-b md:border-b-0 md:border-r border-border/70">
+            <div className="flex items-center gap-1.5 text-primary mb-4">
+              <Target className="w-3.5 h-3.5" />
+              <p className="text-[10px] font-bold uppercase tracking-widest">Missão · Por que existimos</p>
+            </div>
+            {empresa && <Missao campo="mercado_posicionamento" clientId={empresa.id} userId={userId} nomeUsuario={nomeUsuario} fotosPorUserId={fotosPorUserId} />}
+          </div>
+
+          <div data-tour="tour-visao-futuro" className="group p-6 md:p-8">
+            <div className="flex items-center justify-between gap-2 mb-4">
+              <div className="flex items-center gap-1.5 text-primary">
+                <Compass className="w-3.5 h-3.5" />
+                <p className="text-[10px] font-bold uppercase tracking-widest">Visão de futuro · Aonde vamos</p>
+              </div>
+              {editando !== 'visao_futuro' && (
+                <button onClick={() => setEditando('visao_futuro')} className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-accent shrink-0" aria-label="Editar visão de futuro">
+                  <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
+                </button>
+              )}
+            </div>
             {editando === 'visao_futuro' ? (
-              <div className="space-y-2 max-w-2xl">
-                <textarea value={formIdentidade.visao_futuro} onChange={(e) => handleChange('visao_futuro', e.target.value)} rows={3}
+              <div className="space-y-2">
+                <textarea value={formIdentidade.visao_futuro} onChange={(e) => setFormIdentidade({ visao_futuro: e.target.value })} rows={4}
                   placeholder="Qual é o norte de longo prazo da empresa?"
                   className="w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none" autoFocus />
                 <div className="flex gap-2">
-                  <button onClick={() => handleSalvarTexto('visao_futuro')} className="flex items-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity"><Check className="w-3 h-3" /> Salvar</button>
-                  <button onClick={handleCancelar} className="flex items-center gap-1 px-3 py-1.5 border border-border rounded-lg text-xs text-muted-foreground hover:bg-accent transition-colors"><X className="w-3 h-3" /> Cancelar</button>
+                  <button onClick={handleSalvarVisao} className="flex items-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity"><Check className="w-3 h-3" /> Salvar</button>
+                  <button onClick={() => setEditando(null)} className="flex items-center gap-1 px-3 py-1.5 border border-border rounded-lg text-xs text-muted-foreground hover:bg-accent transition-colors"><X className="w-3 h-3" /> Cancelar</button>
                 </div>
               </div>
             ) : (
-              <div className="relative flex items-start gap-3 max-w-2xl">
-                <div className="flex-1">
-                  <p className={`text-base md:text-lg font-medium leading-relaxed ${formIdentidade.visao_futuro ? 'text-foreground' : 'text-muted-foreground/50 italic text-sm'}`}>
-                    {formIdentidade.visao_futuro || 'Clique no lápis para adicionar a visão de futuro...'}
-                  </p>
-                </div>
-                <button onClick={() => handleEdit('visao_futuro')} className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-accent shrink-0">
-                  <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
-                </button>
-              </div>
+              <p className={cn(
+                'leading-snug',
+                formIdentidade.visao_futuro
+                  ? 'font-display text-lg md:text-xl font-semibold text-foreground tracking-tight'
+                  : 'text-sm text-muted-foreground/60 italic'
+              )}>
+                {formIdentidade.visao_futuro || 'Clique no lápis para adicionar a visão de futuro...'}
+              </p>
             )}
           </div>
+
         </div>
-      </div>
+      </section>
 
-      {/* MERCADO · NOTA FIXADA · VALORES — 3 seções lado a lado */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+      {/* VERTICAIS */}
+      <section data-tour="tour-mercado" className="space-y-4">
+        <TituloSecao
+          icon={Layers}
+          eyebrow="Como nos organizamos"
+          titulo="Nossas verticais"
+          descricao={`As frentes de negócio ${nomeEmpresa} e o propósito de cada uma.`}
+        />
+        <Verticais itens={verticais} onSalvar={handleSalvarVerticais} />
+      </section>
 
-        {/* MERCADO */}
-        <div data-tour="tour-mercado" className="glass-panel rounded-2xl overflow-hidden flex flex-col">
-          <CabecalhoSecao icon={MapPin} eyebrow="Posicionamento" titulo="Mercado" descricao="Onde a empresa atua." tom={TOM_AZUL} />
-          <div className="p-4 md:p-5">
-            <ChipList campo="mercado_posicionamento" itens={mercadoItens} placeholder="Adicione onde atuamos..." onSalvar={handleSalvarLista} />
-          </div>
-        </div>
-
-        {/* NOTA FIXADA */}
-        <div className="glass-panel rounded-2xl overflow-hidden flex flex-col">
-          <CabecalhoSecao icon={MessageCircle} eyebrow="Mural" titulo="Missão" descricao="Recado da equipe, sempre à vista." tom={TOM_AMBAR} />
-          <div className="p-4 md:p-5 flex-1 flex flex-col">
-            {empresa && <NotaFixada campo="mercado_posicionamento" clientId={empresa.id} userId={userId} nomeUsuario={nomeUsuario} fotosPorUserId={fotosPorUserId} />}
-          </div>
-        </div>
-
-        {/* VALORES */}
-        <div data-tour="tour-valores" className="glass-panel rounded-2xl overflow-hidden flex flex-col">
-          <CabecalhoSecao
-            icon={Sparkles}
-            eyebrow="Cultura"
-            titulo="Valores"
-            descricao={`O que guia as decisões ${empresa?.company_name ? `da ${empresa.company_name}` : 'da empresa'} no dia a dia.`}
-            tom={TOM_VIOLETA}
-          />
-
-          <div className="flex-1 overflow-y-auto p-2">
-            {valores.length === 0 && (
-              <p className="text-xs text-muted-foreground/60 italic px-3 py-3">Nenhum valor cadastrado ainda.</p>
-            )}
+      {/* VALORES */}
+      <section data-tour="tour-valores" className="space-y-4">
+        <TituloSecao
+          icon={Sparkles}
+          eyebrow="Cultura"
+          titulo="Nossos valores"
+          descricao={`O que guia as decisões ${nomeEmpresa} no dia a dia.`}
+          acao={
+            <button onClick={() => handleAbrirModalValor()}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-dashed border-border text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors text-xs font-semibold">
+              <Plus className="w-3.5 h-3.5" /> Adicionar valor
+            </button>
+          }
+        />
+        {valores.length === 0 ? (
+          <p className="text-sm text-muted-foreground/60 italic">Nenhum valor cadastrado ainda.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             {valores.map((valor, idx) => (
-              <div key={valor.id} className="group relative flex items-start gap-3 px-3 py-3 rounded-xl hover:bg-accent/60 transition-colors border-b border-border/60 last:border-b-0">
-                <span className="text-xs font-extrabold text-violet-600 w-5 shrink-0 tabular-nums">{toRoman(idx + 1)}</span>
-                <p className="flex-1 text-xs font-semibold text-foreground leading-snug pr-8">{valor.texto}</p>
-                <div className="absolute right-2 top-2.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => handleAbrirModalValor(valor)} className="p-1 rounded-md hover:bg-accent transition-colors">
-                    <Edit2 className="w-3 h-3 text-muted-foreground" />
+              <div key={valor.id} className="group relative glass-panel rounded-2xl p-5 flex flex-col gap-3 min-h-[140px]">
+                <span className="font-display text-3xl font-bold text-primary/25 leading-none tabular-nums">{toRoman(idx + 1)}</span>
+                <p className="text-sm font-semibold text-foreground leading-snug">{semNumeral(valor.texto)}</p>
+                <div className="absolute right-3 top-3 flex gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                  <button onClick={() => handleAbrirModalValor(valor)} className="p-1 rounded-md hover:bg-accent transition-colors" aria-label="Editar valor">
+                    <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
                   </button>
-                  <BotaoExcluirConfirmando onConfirmar={() => handleExcluirValor(valor.id)} className="p-1" iconClassName="w-3 h-3" />
+                  <BotaoExcluirConfirmando onConfirmar={() => handleExcluirValor(valor.id)} className="p-1" iconClassName="w-3.5 h-3.5" />
                 </div>
               </div>
             ))}
           </div>
-
-          <button onClick={() => handleAbrirModalValor()}
-            className="mx-3 mb-3 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed border-border text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors text-xs font-semibold shrink-0">
-            <Plus className="w-3.5 h-3.5" /> Adicionar valor
-          </button>
-        </div>
-
-      </div>
+        )}
+      </section>
 
       {/* Modal Cadastrar/Editar Valor */}
       {modalValor.open && (
