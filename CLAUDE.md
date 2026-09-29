@@ -1278,3 +1278,8 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   e gravar só os 10 títulos listados nela. Conferido: os 21 KRs ativos da CTZ têm meta mensal.
   Atenção: KRs de dinheiro da Giva/repasse (R$ 15 mi, R$ 1,5 mi) ficaram com a meta cheia todo
   mês — se forem anuais, precisam virar soma com a meta dividida.
+- KRs 3 e 4 da aba OKR - COMERCIAL criados em "SER ECONOMICAMENTE SUSTENTÁVEL." (Ross), com metas
+  mensais e realizado jan–set: "Nº Loteadoras priorizadas com relacionamento ativo" (meta 20) e
+  "Nº de clientes que recompram nos últimos 12 meses" (o KR 4 tinha o nome do KR 3 copiado; valores
+  da linha de origem, jun–set = 1). Sinais vitais da aba ainda não criados (pedido do Igor).
+  Script: `Adições futuras/OKR Comercial - KRs 3 e 4 - carga.sql`.
