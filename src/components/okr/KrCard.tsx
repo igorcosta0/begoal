@@ -18,34 +18,84 @@ function rotuloMes(data: string): string {
   return `${MESES[Number(mes) - 1]}/${ano.slice(2)}`
 }
 
+function mesesEntre(de: string, ate: string): number {
+  const [a1, m1] = de.split('-').map(Number)
+  const [a2, m2] = ate.split('-').map(Number)
+  return (a2 - a1) * 12 + (m2 - m1)
+}
+
+function somarMeses(data: string, meses: number): string {
+  const [ano, mes] = data.split('-').map(Number)
+  const total = ano * 12 + (mes - 1) + meses
+  return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}-01`
+}
+
 // Gráfico compacto do card: eixo X proporcional ao tempo, escala que sempre
-// inclui o zero e a meta (não exagera variação pequena), linha de meta, um
-// ponto por lançamento e o valor ao passar o mouse. No KR apurado por soma,
-// plota o acumulado, que é o que se compara com a meta.
+// inclui o zero e a meta (não exagera variação pequena), um ponto por
+// lançamento e o valor ao passar o mouse. Ponto verde = o lançamento bateu a
+// meta do mês; laranja = não bateu.
+// - KR apurado por soma: plota o acumulado contra a meta mensal acumulada
+//   (linha tracejada até o fim do ano, anel vazado em cada mês). A meta mensal
+//   é a meta dividida igualmente entre os meses do primeiro lançamento até
+//   dezembro (de 3 em 3 meses quando os lançamentos são trimestrais) — não
+//   existe meta por mês gravada no banco.
+// - Demais KRs: a meta já vale para cada mês, linha reta.
 // Linhas em SVG esticado; pontos e textos em HTML, pra não deformarem.
 function MiniGrafico({
   serie,
   meta,
   acumular,
+  direcao,
   tipoValor,
   onAbrir,
 }: {
   serie: PontoSerie[]
   meta?: number
   acumular: boolean
+  direcao: DirecaoKr
   tipoValor?: string
   onAbrir?: () => void
 }) {
   const [ativo, setAtivo] = useState<number | null>(null)
   if (serie.length === 0) return null
 
+  const temMeta = typeof meta === 'number' && !Number.isNaN(meta)
+  const inicio = serie[0].data
+
+  // Meta mensal acumulada (só KR por soma).
+  const gaps = serie.slice(1).map((p, i) => mesesEntre(serie[i].data, p.data))
+  const passo = gaps.length > 0 && gaps.every((g) => g === 3) ? 3 : 1
+  let metaPeriodo: number | null = null
+  let trajetoria: { data: string; dia: number; esperado: number }[] = []
+  if (acumular && temMeta) {
+    const fimAno = `${inicio.split('-')[0]}-12-01`
+    const meses = Math.max(mesesEntre(inicio, fimAno), mesesEntre(inicio, serie[serie.length - 1].data))
+    const periodos = Math.floor(meses / passo) + 1
+    const mp = meta! / periodos
+    metaPeriodo = mp
+    trajetoria = Array.from({ length: periodos }, (_, k) => {
+      const data = somarMeses(inicio, k * passo)
+      return { data, dia: diaDoLancamento(data), esperado: mp * (k + 1) }
+    })
+  }
+
   let soma = 0
   const pontos = serie.map((p) => {
     soma += p.valor
-    return { ...p, lancado: p.valor, plotado: acumular ? soma : p.valor, dia: diaDoLancamento(p.data) }
+    const plotado = acumular ? soma : p.valor
+    const periodo = Math.floor(mesesEntre(inicio, p.data) / passo)
+    const esperado = !temMeta
+      ? null
+      : metaPeriodo !== null
+      ? metaPeriodo * Math.min(periodo + 1, trajetoria.length)
+      : meta!
+    // Cor do ponto = o mês bateu a própria meta (no KR por soma, lançado no
+    // mês × meta do mês; a posição do ponto já mostra o acumulado × esperado).
+    const alvo = metaPeriodo ?? esperado
+    const atingiu = alvo === null ? null : direcao === 'menor' ? p.valor <= alvo : p.valor >= alvo
+    return { ...p, lancado: p.valor, plotado, esperado, atingiu, dia: diaDoLancamento(p.data) }
   })
 
-  const temMeta = typeof meta === 'number' && !Number.isNaN(meta)
   const valores = pontos.map((p) => p.plotado).concat(temMeta ? [meta!] : [])
   const minimo = Math.min(0, ...valores)
   const maximo = Math.max(0, ...valores)
@@ -53,20 +103,37 @@ function MiniGrafico({
   // Percentuais do quadro (0 = topo); 8% de folga em cima e embaixo.
   const yPct = (v: number) => 8 + (1 - (v - minimo) / faixa) * 84
   const primeiroDia = pontos[0].dia
-  const faixaDias = pontos[pontos.length - 1].dia - primeiroDia
+  const fimTrajetoria = trajetoria[trajetoria.length - 1]
+  const ultimoDia = Math.max(pontos[pontos.length - 1].dia, fimTrajetoria?.dia ?? 0)
+  const faixaDias = ultimoDia - primeiroDia
   const xPct = (dia: number) => (faixaDias === 0 ? 50 : 4 + ((dia - primeiroDia) / faixaDias) * 92)
 
   const linha = pontos.map((p) => `${xPct(p.dia)},${yPct(p.plotado)}`).join(' ')
   const area = `${xPct(pontos[0].dia)},${yPct(minimo)} ${linha} ${xPct(pontos[pontos.length - 1].dia)},${yPct(minimo)}`
+  const linhaMeta = trajetoria.map((t) => `${xPct(t.dia)},${yPct(t.esperado)}`).join(' ')
 
   // Rótulos de mês: todos até 6 pontos; acima disso, primeiro, meio e último.
+  // Com a meta até dezembro, o fim do eixo também ganha rótulo.
   const indicesRotulo =
     pontos.length <= 6
       ? pontos.map((_, i) => i)
       : [0, Math.floor((pontos.length - 1) / 2), pontos.length - 1]
+  let rotulos = indicesRotulo.map((i) => ({ dia: pontos[i].dia, texto: rotuloMes(pontos[i].data) }))
+  if (fimTrajetoria && fimTrajetoria.dia > pontos[pontos.length - 1].dia) {
+    const xFim = xPct(fimTrajetoria.dia)
+    rotulos = rotulos
+      .filter((r) => xFim - xPct(r.dia) >= 12)
+      .concat({ dia: fimTrajetoria.dia, texto: rotuloMes(fimTrajetoria.data) })
+  }
 
   const destaque = ativo ?? pontos.length - 1
   const pd = pontos[destaque]
+  // Comparação do mês: no KR por soma, lançado no mês × meta do mês; nos
+  // demais, valor lançado × meta.
+  const metaDoMes = metaPeriodo ?? (temMeta ? meta! : null)
+  const atingiuMes =
+    metaDoMes === null ? null : direcao === 'menor' ? pd.lancado <= metaDoMes : pd.lancado >= metaDoMes
+  const pctMes = metaDoMes && direcao === 'maior' ? (pd.lancado / metaDoMes) * 100 : null
 
   function aoMover(e: React.MouseEvent<HTMLDivElement>) {
     const r = e.currentTarget.getBoundingClientRect()
@@ -91,6 +158,24 @@ function MiniGrafico({
           )}
         </span>
       </div>
+      {metaDoMes !== null && (
+        <div className="flex items-baseline justify-between gap-2 text-[10px] text-muted-foreground">
+          <span>
+            {metaPeriodo === null ? 'Meta' : passo === 3 ? 'Meta do trimestre' : 'Meta do mês'}{' '}
+            <span className="font-medium text-foreground tabular-nums">{formatValor(metaDoMes, tipoValor)}</span>
+            {metaPeriodo !== null && pd.esperado !== null && (
+              <> · acum. esperado <span className="tabular-nums">{formatValor(pd.esperado, tipoValor)}</span></>
+            )}
+          </span>
+          <span className={cn('shrink-0 font-semibold tabular-nums', atingiuMes ? 'text-emerald-600' : 'text-amber-600')}>
+            {pctMes !== null
+              ? `${pctMes.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}% da meta`
+              : atingiuMes
+              ? 'dentro da meta'
+              : 'acima da meta'}
+          </span>
+        </div>
+      )}
       <div
         role={onAbrir ? 'button' : undefined}
         tabIndex={onAbrir ? 0 : undefined}
@@ -108,8 +193,11 @@ function MiniGrafico({
           {minimo < 0 && (
             <line x1={0} x2={100} y1={yPct(0)} y2={yPct(0)} stroke="hsl(var(--border))" strokeWidth={1} vectorEffect="non-scaling-stroke" />
           )}
-          {temMeta && (
+          {temMeta && trajetoria.length === 0 && (
             <line x1={0} x2={100} y1={yPct(meta!)} y2={yPct(meta!)} stroke="hsl(var(--primary))" strokeOpacity={0.5} strokeDasharray="4 3" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          )}
+          {trajetoria.length > 1 && (
+            <polyline points={linhaMeta} fill="none" stroke="hsl(var(--muted-foreground))" strokeOpacity={0.7} strokeDasharray="4 3" strokeWidth={1.25} vectorEffect="non-scaling-stroke" />
           )}
           {pontos.length > 1 && (
             <>
@@ -121,12 +209,20 @@ function MiniGrafico({
             <line x1={xPct(pd.dia)} x2={xPct(pd.dia)} y1={0} y2={100} stroke="hsl(var(--muted-foreground))" strokeOpacity={0.4} strokeWidth={1} vectorEffect="non-scaling-stroke" />
           )}
         </svg>
+        {trajetoria.map((t) => (
+          <span
+            key={'meta' + t.data}
+            className="absolute w-1.5 h-1.5 rounded-full -translate-x-1/2 -translate-y-1/2 border border-muted-foreground/70 bg-card pointer-events-none"
+            style={{ left: `${xPct(t.dia)}%`, top: `${yPct(t.esperado)}%` }}
+          />
+        ))}
         {pontos.map((p, i) => (
           <span
             key={p.data + i}
             className={cn(
               'absolute rounded-full -translate-x-1/2 -translate-y-1/2 border-2 border-card pointer-events-none',
-              i === destaque ? 'w-2.5 h-2.5 bg-primary' : 'w-2 h-2 bg-primary/70'
+              i === destaque ? 'w-2.5 h-2.5' : 'w-2 h-2',
+              p.atingiu === null ? 'bg-primary' : p.atingiu ? 'bg-emerald-500' : 'bg-amber-500'
             )}
             style={{ left: `${xPct(p.dia)}%`, top: `${yPct(p.plotado)}%` }}
           />
@@ -145,13 +241,13 @@ function MiniGrafico({
         )}
       </div>
       <div className="relative h-3 text-[10px] text-muted-foreground">
-        {indicesRotulo.map((i) => (
+        {rotulos.map((r) => (
           <span
-            key={i}
+            key={r.dia}
             className="absolute -translate-x-1/2 whitespace-nowrap"
-            style={{ left: `${xPct(pontos[i].dia)}%` }}
+            style={{ left: `${xPct(r.dia)}%` }}
           >
-            {rotuloMes(pontos[i].data)}
+            {r.texto}
           </span>
         ))}
       </div>
@@ -354,6 +450,7 @@ export default function KrCard({
             serie={serie}
             meta={kr.meta}
             acumular={apuracao === 'soma'}
+            direcao={kr.direcao_efetiva ?? 'maior'}
             tipoValor={kr.tipo_valor}
             onAbrir={onVerGrafico ? () => onVerGrafico(kr) : undefined}
           />

@@ -1232,3 +1232,14 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   para reverter. `getMinhaDicaCargo` passou a devolver também o nome do cargo.
 - Bloco "Pedido original × o que foi construído" removido do Autoconhecimento a pedido do Igor
   (o histórico continua neste log e no git).
+- **Meta mensal no mini-gráfico do card de KR** (`KrCard.tsx`, ainda sem commit/push): KR por
+  soma ganhou linha tracejada da meta acumulada até dezembro (anel por mês) e linha "Meta do mês ·
+  acum. esperado · % da meta"; pontos verdes/laranja = lançamento do mês bateu ou não a meta do
+  mês. Meta do mês = meta ÷ meses do 1º lançamento até dezembro (trimestral se os lançamentos
+  forem de 3 em 3 meses) — não existe meta por mês no banco.
+- **KR "NPQ"** (planilha `Adições futuras/Planilha sem título (3).xlsx`, aba "OKR - COMERCIAL",
+  KR 9) criado no objetivo "SER UMA EMPRESA MAIS EFICIENTE…", responsável Felipe Bet Ross, número,
+  meta 1, apuração último. Lançamentos jan–set copiados da planilha a pedido do Igor
+  (0,0,1,11,0,0,0,0,0) — o 11 de abril é a fórmula da planilha somando nº de pesquisas (2) + nota
+  média (9). Os 2 sinais vitais acima dele na planilha não foram criados (decisão do Igor). Rodado
+  pelo Chrome no SQL Editor e conferido; script em `Adições futuras/OKR NPQ - carga.sql`.
