@@ -1218,4 +1218,4 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   a guardar `{nome, descricao, foco}`; texto puro antigo continua sendo lido. Textos da CTZ vindos
   do Código de Cultura 2026 (CSC não está lá: veio dos focos da Avaliação) em
   `Adições futuras/Verticais CTZ - descricoes.sql` — **rodar só DEPOIS do deploy**: o front antigo
-  quebra ao receber objetos nessa lista. Textos do tour ajustados.
+  quebra ao receber objetos nessa lista. Textos do tour ajustados. Push `7957dfd`, deploy feito e SQL rodado pelo Igor em seguida (conferido: 5 verticais com propósito e foco).
