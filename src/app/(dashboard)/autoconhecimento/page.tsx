@@ -19,7 +19,7 @@ import {
 } from '@/lib/queries/eneagrama'
 import { getTodosCargosPerfil, getMinhaDicaCargo, type FuncionarioCargoPerfil } from '@/lib/queries/cargosPerfil'
 import { TIPOS_ENEAGRAMA, NOME_INSTINTO, type Instinto } from '@/lib/eneagrama/tipos'
-import { Sparkles, Loader2, Send, ChevronDown, ChevronRight, Wand2, Crown } from 'lucide-react'
+import { Sparkles, Loader2, Send, ChevronDown, ChevronRight, Wand2 } from 'lucide-react'
 
 interface Mensagem {
   role: 'user' | 'model'
@@ -94,80 +94,295 @@ function resumirTime(resumo: ResumoTime): string {
   }`
 }
 
-// Card do Mapa 1 — extraído pra ser reaproveitado tanto no "meu perfil"
-// quanto na simulação de administrador (pedido 14/09/2026: ver como outra
-// pessoa veria a própria tela, sem precisar logar como ela).
-function CardTipoMapa1({
-  tipo,
-  subtipoSequencia,
-  dica,
-}: {
-  tipo: (typeof TIPOS_ENEAGRAMA)[number]
-  subtipoSequencia: string | null
-  dica: { texto: string; geradoEm: string } | null
-}) {
-  // Pedido (14/09/2026): o card já tem bastante informação (6 campos do
-  // tipo + sequência de instintos) — a análise de cargo, que é o texto mais
-  // longo de todos, começa OCULTA por padrão, só some/aparece no clique, em
-  // vez de empilhar tudo de uma vez.
-  const [mostrarDica, setMostrarDica] = useState(false)
+type TipoEneagramaDados = (typeof TIPOS_ENEAGRAMA)[number]
+
+// Título de cada mapa: selo pequeno + título + descrição (repaginada 29/09/2026).
+function TituloMapa({ eyebrow, titulo, descricao, cor = 'text-primary' }: { eyebrow: string; titulo: string; descricao: string; cor?: string }) {
   return (
-    <div className="bg-card border border-border rounded-2xl p-6 space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-foreground">Tipo {tipo.numero}</h3>
-        <span className="shrink-0 text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">{tipo.palavraSintese}</span>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-        <div>
-          <p className="text-xs font-medium text-muted-foreground mb-1">Mecanismo de defesa</p>
-          <p className="text-foreground">{tipo.mecanismoDefesa}</p>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-muted-foreground mb-1">Virtude a desenvolver</p>
-          <p className="text-foreground">{tipo.virtude}</p>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-muted-foreground mb-1">Suas forças</p>
-          <p className="text-foreground">{tipo.forcas}</p>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-muted-foreground mb-1">Sua sombra (fica de olho)</p>
-          <p className="text-foreground">{tipo.sombra}</p>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-muted-foreground mb-1">Talento de autoliderança</p>
-          <p className="text-foreground">{tipo.talentoAutolideranca.nome} — {tipo.talentoAutolideranca.potencial}</p>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-muted-foreground mb-1">Desafio de autoliderança</p>
-          <p className="text-foreground">{tipo.talentoAutolideranca.desafio}</p>
-        </div>
-      </div>
-      {subtipoSequencia && (
-        <p className="text-xs text-muted-foreground pt-2 border-t border-border">
-          Sequência de instintos: {formatarSequencia(subtipoSequencia)}
-        </p>
-      )}
-      {dica && (
-        <div className="pt-3 border-t border-border">
-          <button
-            type="button"
-            onClick={() => setMostrarDica((v) => !v)}
-            className="w-full flex items-center justify-between gap-2 text-left"
-          >
-            <span className="text-xs font-semibold text-foreground uppercase tracking-wide">Análise para o seu cargo</span>
-            <span className="shrink-0 flex items-center gap-1 text-xs text-muted-foreground">
-              {mostrarDica ? 'Ocultar' : 'Revelar'}
-              {mostrarDica ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-            </span>
-          </button>
-          {mostrarDica && (
-            <div className="mt-1.5 space-y-1.5">
-              <p className="text-foreground text-sm whitespace-pre-line">{dica.texto}</p>
-              <p className="text-xs text-muted-foreground">Gerada em {new Date(dica.geradoEm).toLocaleString('pt-BR')}</p>
+    <div>
+      <p className={cn('text-[10px] font-bold uppercase tracking-widest', cor)}>{eyebrow}</p>
+      <h2 className="font-display text-xl font-bold text-foreground tracking-tight mt-1">{titulo}</h2>
+      <p className="text-xs text-muted-foreground mt-1">{descricao}</p>
+    </div>
+  )
+}
+
+// Diagrama do Eneagrama: tipo em destaque, asas e as duas flechas (segurança e estresse).
+// Posição de cada número no círculo: o 9 no topo, os demais a cada 40° no sentido horário.
+function DiagramaEneagrama({ tipo }: { tipo: TipoEneagramaDados }) {
+  const pos = (n: number) => {
+    const ang = (((n % 9) * 40 - 90) * Math.PI) / 180
+    return { x: 100 + 78 * Math.cos(ang), y: 100 + 78 * Math.sin(ang) }
+  }
+  const pts = (ns: number[]) => ns.map((n) => `${pos(n).x},${pos(n).y}`).join(' ')
+  const eu = pos(tipo.numero)
+  const seg = pos(tipo.flechas.seguranca.tipo)
+  const est = pos(tipo.flechas.estresse.tipo)
+  return (
+    <svg viewBox="0 0 200 200" className="w-52 h-52" role="img" aria-label={`Diagrama do Eneagrama com o tipo ${tipo.numero} em destaque`}>
+      <circle cx={100} cy={100} r={78} fill="none" stroke="hsl(var(--border))" strokeWidth={1.2} />
+      <polygon points={pts([9, 3, 6])} fill="none" stroke="hsl(var(--border))" strokeWidth={1} />
+      <polygon points={pts([1, 4, 2, 8, 5, 7])} fill="none" stroke="hsl(var(--border))" strokeWidth={1} />
+      <line x1={eu.x} y1={eu.y} x2={seg.x} y2={seg.y} stroke="#10b981" strokeWidth={2.2} />
+      <line x1={eu.x} y1={eu.y} x2={est.x} y2={est.y} stroke="#f97316" strokeWidth={2.2} strokeDasharray="4 3" />
+      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => {
+        const p = pos(n)
+        const ehEu = n === tipo.numero
+        const ehAsa = tipo.asas.tipos.includes(n)
+        const ehSeg = n === tipo.flechas.seguranca.tipo
+        const ehEst = n === tipo.flechas.estresse.tipo
+        const fill = ehEu ? 'hsl(var(--primary))' : ehSeg ? '#ecfdf5' : ehEst ? '#fff7ed' : ehAsa ? 'hsl(var(--primary) / 0.15)' : 'hsl(var(--card))'
+        const stroke = ehEu || ehAsa ? 'none' : ehSeg ? '#10b981' : ehEst ? '#f97316' : 'hsl(var(--border))'
+        const texto = ehEu ? '#fff' : ehSeg ? '#047857' : ehEst ? '#c2410c' : ehAsa ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'
+        return (
+          <g key={n}>
+            <circle cx={p.x} cy={p.y} r={ehEu ? 12 : 9} fill={fill} stroke={stroke} />
+            <text x={p.x} y={p.y + (ehEu ? 3.8 : 3.2)} textAnchor="middle" fontSize={ehEu ? 11 : 9} fontWeight={600} fill={texto} className="font-mono">{n}</text>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
+// Abertura do Mapa 1: tipo, motivação, sequência de instintos e diagrama.
+function PerfilHero({ tipo, subtipoSequencia }: { tipo: TipoEneagramaDados; subtipoSequencia: string | null }) {
+  const instintos = (subtipoSequencia ?? '').split('/').map((i) => i.trim()).filter(Boolean) as Instinto[]
+  const dominante = tipo.subtipos.find((s) => s.instinto === instintos[0])
+  const rotulos = ['1º · dominante', '2º', '3º · menos usado']
+  return (
+    <section className="relative glass-panel rounded-3xl overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none"
+        style={{ background: 'radial-gradient(120% 90% at 0% 0%, hsl(var(--primary) / 0.12), transparent 60%)' }} />
+      <div className="relative grid grid-cols-1 md:grid-cols-[1.4fr_1fr]">
+        <div className="p-6 md:p-8">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Seu perfil · Eneagrama</p>
+          <div className="flex items-end gap-4 mt-3">
+            <span className="font-display text-7xl font-bold leading-none text-primary">{tipo.numero}</span>
+            <div className="pb-1">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Tipo {tipo.numero}</p>
+              <p className="font-display text-2xl font-bold text-foreground tracking-tight">“{tipo.motivacao}”</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-5">
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary">Palavra-síntese · {tipo.palavraSintese}</span>
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-secondary text-foreground">Centro {tipo.centro}</span>
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-700">Virtude · {tipo.virtude}</span>
+          </div>
+
+          {instintos.length > 0 && (
+            <div className="mt-6">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Sequência de instintos</p>
+              <div className="grid grid-cols-3 gap-2">
+                {instintos.map((inst, i) => (
+                  <div key={inst} className={cn(
+                    'rounded-xl px-3 py-2.5',
+                    i === 0 ? 'bg-primary text-primary-foreground' : i === 1 ? 'bg-primary/15 text-primary' : 'bg-secondary text-muted-foreground'
+                  )}>
+                    <p className="text-[10px] uppercase tracking-wider opacity-80">{rotulos[i] ?? `${i + 1}º`}</p>
+                    <p className="text-sm font-semibold">{NOME_INSTINTO[inst] ?? inst}</p>
+                    {i === 0 && dominante && <p className="text-[11px] opacity-90 mt-0.5">{dominante.palavraChave}</p>}
+                  </div>
+                ))}
+              </div>
+              {dominante && <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{dominante.comoAtua}</p>}
             </div>
           )}
         </div>
+
+        <div className="p-6 md:p-8 border-t md:border-t-0 md:border-l border-border/70 flex flex-col items-center justify-center">
+          <DiagramaEneagrama tipo={tipo} />
+          <div className="space-y-1.5 text-[11px] mt-3 w-full max-w-xs">
+            <p><span className="inline-block w-3 h-0.5 bg-emerald-500 align-middle mr-1.5" /><strong>Em segurança → {tipo.flechas.seguranca.tipo}:</strong> <span className="text-muted-foreground">{tipo.flechas.seguranca.descricao}</span></p>
+            <p><span className="inline-block w-3 h-0.5 bg-orange-500 align-middle mr-1.5" /><strong>Sob estresse → {tipo.flechas.estresse.tipo}:</strong> <span className="text-muted-foreground">{tipo.flechas.estresse.descricao}</span></p>
+            <p><span className="inline-block w-2 h-2 rounded-full bg-primary/30 align-middle mr-1.5" /><strong>Asas {tipo.asas.tipos.join(' e ')}:</strong> <span className="text-muted-foreground">{tipo.asas.desenvolver}</span></p>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+const COMPETENCIAS: { chave: keyof TipoEneagramaDados['competencias']; nome: string }[] = [
+  { chave: 'relacionamentoInterpessoal', nome: 'Relacionamento' },
+  { chave: 'tomadaDecisao', nome: 'Tomada de decisão' },
+  { chave: 'comunicacao', nome: 'Comunicação' },
+  { chave: 'feedback', nome: 'Feedback' },
+  { chave: 'gestaoConflitos', nome: 'Gestão de conflitos' },
+  { chave: 'orientacaoResultados', nome: 'Orientação a resultados' },
+]
+
+// A análise gerada pela IA vem em seções "**Título**". Separa as 3 que viram
+// cartões; a das 6 competências fica de fora (já aparece nos cartões do tipo).
+// Se o texto não tiver as seções esperadas, mostra o texto inteiro.
+function separarAnalise(texto: string) {
+  const partes: Record<'ajuda' | 'atrapalha' | 'sugestao', string> = { ajuda: '', atrapalha: '', sugestao: '' }
+  const blocos = texto.split(/\*\*(.+?)\*\*\s*\n/).slice(1)
+  for (let i = 0; i < blocos.length; i += 2) {
+    const titulo = blocos[i].toLowerCase()
+    const corpo = (blocos[i + 1] ?? '').trim()
+    if (titulo.includes('ajuda')) partes.ajuda = corpo
+    else if (titulo.includes('atrapalh')) partes.atrapalha = corpo
+    else if (titulo.includes('sugest')) partes.sugestao = corpo
+  }
+  return partes.ajuda || partes.atrapalha || partes.sugestao ? partes : null
+}
+
+function AnaliseCargo({ dica, cargo }: { dica: { texto: string; geradoEm: string }; cargo?: string | null }) {
+  // Pedido (14/09/2026): a análise é o texto mais longo da página e começa oculta.
+  const [aberta, setAberta] = useState(false)
+  const partes = separarAnalise(dica.texto)
+  const cartoes = partes
+    ? [
+        { titulo: 'O que ajuda', texto: partes.ajuda, cls: 'bg-emerald-500/5 border-emerald-500/20', cor: 'text-emerald-700' },
+        { titulo: 'O que pode atrapalhar', texto: partes.atrapalha, cls: 'bg-orange-500/5 border-orange-500/20', cor: 'text-orange-700' },
+        { titulo: 'Sugestão prática', texto: partes.sugestao, cls: 'bg-primary/5 border-primary/15', cor: 'text-primary' },
+      ].filter((c) => c.texto)
+    : []
+  return (
+    <div className="glass-panel rounded-2xl overflow-hidden">
+      <button type="button" onClick={() => setAberta((v) => !v)} className="w-full p-5 md:p-6 flex items-center justify-between gap-3 text-left">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Seu perfil × seu cargo</p>
+          <h3 className="font-display text-base font-bold text-foreground mt-1">{cargo || 'Análise para o seu cargo'}</h3>
+        </div>
+        <span className="shrink-0 flex items-center gap-1 text-xs text-muted-foreground">
+          {aberta ? 'Ocultar' : 'Revelar'}
+          <ChevronDown className={cn('w-4 h-4 transition-transform', aberta && 'rotate-180')} />
+        </span>
+      </button>
+      {aberta && (
+        <div className="px-5 md:px-6 pb-5 space-y-3">
+          {cartoes.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              {cartoes.map((c) => (
+                <div key={c.titulo} className={cn('rounded-xl border p-4', c.cls)}>
+                  <p className={cn('text-[10px] font-bold uppercase tracking-widest mb-2', c.cor)}>{c.titulo}</p>
+                  <p className="leading-relaxed text-foreground/90 whitespace-pre-line">{c.texto}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-foreground whitespace-pre-line">{dica.texto}</p>
+          )}
+          <p className="text-[11px] text-muted-foreground">Gerada em {new Date(dica.geradoEm).toLocaleDateString('pt-BR')} a partir do perfil do cargo e do seu tipo.</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Mapa 1 completo de uma pessoa — reaproveitado no "meu perfil" e na
+// simulação de administrador (ver como outra pessoa veria a própria tela).
+function PerfilMapa1({
+  tipo,
+  subtipoSequencia,
+  dica,
+  cargo,
+}: {
+  tipo: TipoEneagramaDados
+  subtipoSequencia: string | null
+  dica: { texto: string; geradoEm: string } | null
+  cargo?: string | null
+}) {
+  const cartoes = [
+    { titulo: 'Suas forças', texto: tipo.forcas, borda: 'border-t-emerald-500', cor: 'text-emerald-700' },
+    { titulo: 'Sua sombra · fique de olho', texto: tipo.sombra, borda: 'border-t-orange-500', cor: 'text-orange-700' },
+    { titulo: 'Mecanismo de defesa', texto: tipo.mecanismoDefesa, borda: 'border-t-slate-400', cor: 'text-slate-600' },
+  ]
+  return (
+    <div className="space-y-5">
+      <PerfilHero tipo={tipo} subtipoSequencia={subtipoSequencia} />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {cartoes.map((c) => (
+          <div key={c.titulo} className={cn('glass-panel rounded-2xl p-5 border-t-4', c.borda)}>
+            <p className={cn('text-[10px] font-bold uppercase tracking-widest', c.cor)}>{c.titulo}</p>
+            <p className="text-sm text-foreground mt-2 leading-relaxed">{c.texto}</p>
+          </div>
+        ))}
+        <div className="glass-panel rounded-2xl p-5 border-t-4 border-t-primary">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Talento · {tipo.talentoAutolideranca.nome}</p>
+          <p className="text-sm text-foreground mt-2 leading-relaxed">{tipo.talentoAutolideranca.potencial}</p>
+          <p className="text-xs text-muted-foreground mt-2"><strong className="text-foreground">Desafio:</strong> {tipo.talentoAutolideranca.desafio}</p>
+        </div>
+      </div>
+
+      <div className="glass-panel rounded-2xl p-5 md:p-6">
+        <div className="flex flex-wrap items-baseline justify-between gap-2 mb-4">
+          <h3 className="font-display text-base font-bold text-foreground">As 6 competências relacionais</h3>
+          <p className="text-[11px] text-muted-foreground flex items-center gap-3">
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-foreground/60" />como age</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500" />atenção</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" />desenvolver</span>
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {COMPETENCIAS.map(({ chave, nome }) => {
+            const c = tipo.competencias[chave]
+            return (
+              <div key={chave} className="rounded-xl border border-border bg-card/70 p-4">
+                <p className="text-sm font-semibold text-foreground">{nome}</p>
+                <ul className="mt-2 space-y-1.5 text-xs leading-relaxed">
+                  <li className="flex gap-2"><span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-foreground/60 shrink-0" /><span className="text-foreground">{c.comoAge}</span></li>
+                  <li className="flex gap-2"><span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0" /><span className="text-orange-800 dark:text-orange-300">{c.pontoAtencao}</span></li>
+                  <li className="flex gap-2"><span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" /><span className="text-emerald-800 dark:text-emerald-300">{c.desenvolver}</span></li>
+                </ul>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {dica && <AnaliseCargo dica={dica} cargo={cargo} />}
+    </div>
+  )
+}
+
+// Mapa 2: composição do time nos 3 centros, sempre agregada (nunca o tipo de
+// alguém). Com menos de 3 mapeados, cai no texto de resumirTime(), que explica
+// por que não mostra a divisão.
+// Descrições dos grupos: texto provisório escrito para a repaginada de
+// 29/09/2026, não vem do material da BeHive — o Igor pode pedir para reverter.
+const GRUPOS_TIME = [
+  { chave: 'emocional' as const, nome: 'Relacional', descricao: 'Movido por vínculos e reconhecimento. Engaja com propósito e feedback de valor.', barra: 'bg-rose-400', cor: 'text-rose-600' },
+  { chave: 'racional' as const, nome: 'Técnico e analítico', descricao: 'Precisa de lógica, dados e tempo para processar antes de decidir.', barra: 'bg-sky-500', cor: 'text-sky-600' },
+  { chave: 'instintivo' as const, nome: 'Ação e resultado prático', descricao: 'Direto, prefere autonomia e metas claras.', barra: 'bg-amber-500', cor: 'text-amber-600' },
+]
+
+function ComposicaoTime({ resumo }: { resumo: ResumoTime | null }) {
+  if (!resumo) return <p className="text-sm text-muted-foreground">Carregando...</p>
+  const { totalMapeados, totalLiderados } = resumo
+  if (totalMapeados < 3) return <p className="text-sm text-foreground">{resumirTime(resumo)}</p>
+  const grupos = GRUPOS_TIME
+    .map((g) => ({ ...g, pct: Math.round((resumo[g.chave] / totalMapeados) * 100) }))
+    .filter((g) => resumo[g.chave] > 0)
+    .sort((a, b) => b.pct - a.pct)
+  const naoMapeados = totalLiderados - totalMapeados
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="font-display text-base font-bold text-foreground">Composição do seu time</h3>
+        <p className="text-[11px] text-muted-foreground font-mono">{totalMapeados} de {totalLiderados} mapeados</p>
+      </div>
+      <div className="flex h-3 rounded-full overflow-hidden mt-4 bg-secondary">
+        {grupos.map((g) => <div key={g.chave} className={g.barra} style={{ width: `${g.pct}%` }} />)}
+      </div>
+      <div className="mt-4 space-y-3 text-sm">
+        {grupos.map((g) => (
+          <div key={g.chave} className="flex gap-3">
+            <span className={cn('font-mono font-medium w-11 shrink-0 tabular-nums', g.cor)}>{g.pct}%</span>
+            <div>
+              <p className="font-semibold text-foreground">{g.nome}</p>
+              <p className="text-xs text-muted-foreground">{g.descricao}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      {naoMapeados > 0 && (
+        <p className="text-[11px] text-muted-foreground mt-4">
+          {naoMapeados} {naoMapeados === 1 ? 'liderado ainda sem perfil mapeado.' : 'liderados ainda sem perfil mapeado.'}
+        </p>
       )}
     </div>
   )
@@ -194,6 +409,8 @@ function ChatMapa1Unificado({
   permiteSobreSiMesmo: boolean
 }) {
   const [alvoId, setAlvoId] = useState('')
+  // Abas "Sobre mim" / "Sobre um colega" (repaginada 29/09/2026, antes era um select só).
+  const [modoColega, setModoColega] = useState(!permiteSobreSiMesmo)
   const [texto, setTexto] = useState('')
   const [mensagens, setMensagens] = useState<Mensagem[]>([])
   const [enviando, setEnviando] = useState(false)
@@ -211,7 +428,7 @@ function ChatMapa1Unificado({
   }
 
   async function enviar(msg: string) {
-    if (!msg.trim() || enviando || (!alvoId && !permiteSobreSiMesmo)) return
+    if (!msg.trim() || enviando || (!alvoId && (modoColega || !permiteSobreSiMesmo))) return
     setErro('')
     const historicoAnterior = mensagens.slice(-8)
     setMensagens((prev) => [...prev, { role: 'user', texto: msg }])
@@ -245,21 +462,34 @@ function ChatMapa1Unificado({
   // mesmo) OU se já escolheu um colega específico — sem isso, alguém sem
   // tipo próprio via o seletor cair automaticamente em "eu mesmo" (valor
   // inicial '') sem ter escolhido nada, e a pergunta ia pro endpoint errado.
-  const podeConversar = permiteSobreSiMesmo || !!alvoId
+  const podeConversar = (permiteSobreSiMesmo && !modoColega) || !!alvoId
 
   return (
     <div className="space-y-4">
-      {colegas.length > 0 && (
+      {colegas.length > 0 && permiteSobreSiMesmo && (
+        <div className="inline-flex p-1 rounded-xl bg-secondary text-xs font-semibold">
+          {[{ colega: false, rotulo: 'Sobre mim' }, { colega: true, rotulo: 'Sobre um colega' }].map((aba) => (
+            <button
+              key={aba.rotulo}
+              type="button"
+              onClick={() => { setModoColega(aba.colega); selecionarAlvo('') }}
+              className={cn(
+                'px-3 py-1.5 rounded-lg transition-colors',
+                modoColega === aba.colega ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {aba.rotulo}
+            </button>
+          ))}
+        </div>
+      )}
+      {colegas.length > 0 && modoColega && (
         <select
           value={alvoId}
           onChange={(e) => selecionarAlvo(e.target.value)}
           className="w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         >
-          {permiteSobreSiMesmo ? (
-            <option value="">Eu mesmo (autoliderança)</option>
-          ) : (
-            <option value="" disabled>Selecione um colega...</option>
-          )}
+          <option value="" disabled>Selecione um colega...</option>
           {[...colegas]
             .sort((a, b) => a.full_name.localeCompare(b.full_name))
             .map((p) => (
@@ -504,7 +734,7 @@ export default function AutoconhecimentoPage() {
   // enquanto, pra validar o tom do texto antes de abrir geral — por isso
   // este flag é mais estreito que souAdminPiloto (que já inclui a Letícia).
   const [souVeDicaMapa1, setSouVeDicaMapa1] = useState(false)
-  const [minhaDica, setMinhaDica] = useState<{ texto: string; geradoEm: string } | null>(null)
+  const [minhaDica, setMinhaDica] = useState<{ texto: string; geradoEm: string; cargo: string | null } | null>(null)
 
   // Mapa 2 "Liderando o time": só aparece pra quem tem liderado direto no
   // organograma (funcionarios.gestor_id) — ver sou_lider_de_alguem() no
@@ -653,7 +883,7 @@ export default function AutoconhecimentoPage() {
   const tipo = tipoNumero ? TIPOS_ENEAGRAMA[tipoNumero] : null
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="max-w-6xl space-y-10">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
           <Sparkles className="w-5 h-5 text-primary" />
@@ -661,12 +891,25 @@ export default function AutoconhecimentoPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight">Autoconhecimento</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            2 mapas baseados no seu perfil de Eneagrama: Autoliderança e Relacionamento, e Liderando o time
+            Programa Foco · como você funciona, como liderar e como se relacionar melhor
           </p>
         </div>
       </div>
 
-      <details className="bg-card border border-border rounded-2xl p-6 group">
+      {/* Atalhos entre as partes da página (repaginada 29/09/2026). */}
+      <nav className="sticky top-[76px] z-30 -mx-1 px-1 py-2 bg-background/85 backdrop-blur flex gap-2 overflow-x-auto text-xs font-semibold">
+        <a href="#mapa1" className="shrink-0 px-3 py-1.5 rounded-full bg-primary text-primary-foreground">Mapa 1 · Autoliderança</a>
+        {(tipo || colegas.length > 0) && (
+          <a href="#assistente" className="shrink-0 px-3 py-1.5 rounded-full bg-card border border-border text-foreground hover:border-primary/40 transition-colors">Assistente</a>
+        )}
+        {souAdminPiloto && (
+          <a href="#mapa2" className="shrink-0 px-3 py-1.5 rounded-full bg-card border border-border text-foreground hover:border-primary/40 transition-colors">Mapa 2 · Liderando o time</a>
+        )}
+      </nav>
+
+      {/* Histórico de validação do protótipo: só para quem administra (antes aparecia pra todos). */}
+      {souAdminPiloto && (
+      <details className="glass-panel rounded-2xl p-6 group">
         <summary className="text-sm font-semibold text-foreground cursor-pointer list-none flex items-center justify-between gap-2">
           <span>Pedido original × o que foi construído (pra validação)</span>
           <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 transition-transform group-open:rotate-180" />
@@ -706,6 +949,7 @@ export default function AutoconhecimentoPage() {
           </div>
         </div>
       </details>
+      )}
 
       {erroPerfil && (
         <div className="px-4 py-3 rounded-xl text-sm font-medium bg-red-50 text-red-700 border border-red-200">
@@ -716,15 +960,11 @@ export default function AutoconhecimentoPage() {
       {/* Mapa 1 — Autoliderança e Relacionamento (todos). Desde 14/09/2026 o
           antigo Mapa 3 ("Relacionando com o time") deixou de ser seção
           própria e virou um MODO do mesmo chat (ver ChatMapa1Unificado). */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-primary" />
-          <h2 className="text-sm font-bold text-foreground uppercase tracking-wide">Mapa 1 · Autoliderança e Relacionamento</h2>
-        </div>
-        <p className="text-xs text-muted-foreground -mt-2">Como VOCÊ funciona, e como se relacionar melhor com qualquer colega mapeado — pra todo mundo com tipo mapeado.</p>
+      <section id="mapa1" className="space-y-5 scroll-mt-32">
+        <TituloMapa eyebrow="Mapa 1 · Eu" titulo="Autoliderança" descricao="Como você funciona, onde brilha e onde vale ficar de olho." />
 
         {tipo ? (
-          <CardTipoMapa1 tipo={tipo} subtipoSequencia={subtipoSequencia} dica={souVeDicaMapa1 ? minhaDica : null} />
+          <PerfilMapa1 tipo={tipo} subtipoSequencia={subtipoSequencia} dica={souVeDicaMapa1 ? minhaDica : null} cargo={minhaDica?.cargo} />
         ) : (
           <div className="rounded-2xl border border-dashed border-border bg-card/50 p-6 text-center">
             <p className="text-muted-foreground text-sm">
@@ -762,7 +1002,7 @@ export default function AutoconhecimentoPage() {
                 </p>
               </div>
               {felipeTipo ? (
-                <CardTipoMapa1 tipo={felipeTipo} subtipoSequencia={felipe!.subtipo_sequencia} dica={felipeDica} />
+                <PerfilMapa1 tipo={felipeTipo} subtipoSequencia={felipe!.subtipo_sequencia} dica={felipeDica} cargo={felipeCargo?.cargo_perfil?.cargo_base} />
               ) : (
                 <p className="text-xs text-muted-foreground">
                   Felipe Marques Santos não apareceu nos perfis carregados — confira "Perfis da equipe" mais abaixo.
@@ -779,10 +1019,11 @@ export default function AutoconhecimentoPage() {
             (`{tipo && (...)}`) fazia o card sumir inteiro pra esses casos —
             agora aparece se há tipo próprio OU colega pra conversar. */}
         {(tipo || colegas.length > 0) && (
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+          <div id="assistente" className="glass-panel rounded-2xl p-5 md:p-6 space-y-4 scroll-mt-32">
             <div>
-              <h3 className="text-sm font-semibold text-foreground">Pergunte ao assistente</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-violet-600">Assistente</p>
+              <h3 className="font-display text-base font-bold text-foreground mt-1">Pergunte ao assistente</h3>
+              <p className="text-xs text-muted-foreground mt-1">
                 {tipo
                   ? 'Sobre você mesmo (padrão) ou, se disponível, escolha um colega pra saber a melhor forma de conduzir uma conversa com ele — sem nunca revelar o tipo comportamental dele.'
                   : 'Você não tem tipo próprio mapeado, mas pode escolher um colega abaixo pra saber a melhor forma de conduzir uma conversa com ele — sem nunca revelar o tipo comportamental dele.'}
@@ -791,7 +1032,7 @@ export default function AutoconhecimentoPage() {
             <ChatMapa1Unificado colegas={colegas} permiteSobreSiMesmo={!!tipo} />
           </div>
         )}
-      </div>
+      </section>
 
       {/* Mapa 2 — Liderando o time. Fala do tipo de OUTRA pessoa (o
           liderado), por isso o Igor pediu (10/09/2026) pra manter restrito a
@@ -804,25 +1045,20 @@ export default function AutoconhecimentoPage() {
           aviso explicando o motivo. Ganhou (14/09/2026) o resumo do time e um
           segundo chat mais livre — ver comentários abaixo. */}
       {souAdminPiloto && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Crown className="w-4 h-4 text-amber-600" />
-            <h2 className="text-sm font-bold text-foreground uppercase tracking-wide">Mapa 2 · Liderando o time</h2>
-          </div>
-          <p className="text-xs text-muted-foreground -mt-2">Como orientar quem lidera pra VOCÊ — delegação, feedback, desenvolvimento — pra quem tem liderado direto no organograma.</p>
+        <section id="mapa2" className="space-y-5 scroll-mt-32">
+          <TituloMapa eyebrow="Mapa 2 · Nós" titulo="Liderando o time" cor="text-amber-600" descricao="Seu time em conjunto (nunca o tipo de cada pessoa) e orientação para cada liderado direto." />
           {souLider ? (
-            <>
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.3fr] gap-4 items-start">
               {/* Resumo do time (pedido 14/09/2026) — agregado, nunca tipo
                   individual (ver resumirTime() e resumo_time_liderado()). */}
-              <div className="bg-card border border-border rounded-2xl p-4">
-                <p className="text-xs font-semibold text-foreground uppercase tracking-wide mb-1">Resumo do seu time</p>
-                <p className="text-sm text-foreground">{resumoTime ? resumirTime(resumoTime) : 'Carregando...'}</p>
+              <div className="glass-panel rounded-2xl p-5 md:p-6">
+                <ComposicaoTime resumo={resumoTime} />
               </div>
 
-              <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+              <div className="glass-panel rounded-2xl p-5 md:p-6 space-y-4">
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground">Pergunte ao assistente</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <h3 className="font-display text-base font-bold text-foreground">Conversar sobre um liderado</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
                     Escolha um dos seus liderados diretos e descreva a situação — a resposta orienta como delegar,
                     dar feedback, desenvolver ou conduzir um conflito com essa pessoa (considerando também o seu
                     próprio jeito de liderar), sem nunca revelar o tipo comportamental dela.
@@ -839,7 +1075,7 @@ export default function AutoconhecimentoPage() {
                   />
                 )}
               </div>
-            </>
+            </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-border bg-card/50 p-6 text-center">
               <p className="text-muted-foreground text-sm">
@@ -891,7 +1127,7 @@ export default function AutoconhecimentoPage() {
                     do time e o chat de verdade, sem precisar logar como ele.
                   </p>
                 </div>
-                <p className="text-sm text-foreground">{resumirTime(resumoSimulado)}</p>
+                <ComposicaoTime resumo={resumoSimulado} />
                 {/* Chat de verdade (não só o resumo em texto) — pedido
                     14/09/2026: sem isso, só o Mapa 1 tinha chat testável pra
                     quem não lidera ninguém de verdade (Igor/Priscila). Usa
@@ -911,15 +1147,15 @@ export default function AutoconhecimentoPage() {
               </div>
             )
           })()}
-        </div>
+        </section>
       )}
 
       {/* Visão de administrador do protótipo — só Igor/Priscila, ver
           souAdminPiloto acima. Não faz parte dos 3 mapas do pedido, é a
           ferramenta de conferência de mapeamento que já existia. */}
       {souAdminPiloto && todosPerfis.length > 0 && (
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Perfis da equipe (visão de administrador)</h2>
+        <div className="glass-panel rounded-2xl p-6 space-y-3">
+          <h2 className="font-display text-base font-bold text-foreground">Perfis da equipe (visão de administrador)</h2>
           <p className="text-xs text-muted-foreground">
             Clique numa linha pra ver o cruzamento com o perfil de cargo (competências exigidas e o que o Eneagrama ajuda/atrapalha).
           </p>

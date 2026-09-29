@@ -94,20 +94,22 @@ export async function deleteCargoPerfil(id: string): Promise<{ error: { code?: s
 // visão de admin. Só busca dicas_texto/dicas_gerado_em — não o cargo_perfil
 // embutido (cargos_perfil tem RLS própria, restrita a admin/piloto, então o
 // embed voltaria null pra usuário comum; o texto da dica já é autocontido).
-export async function getMinhaDicaCargo(): Promise<{ dicas: { texto: string; geradoEm: string } | null; error: string | null }> {
+export async function getMinhaDicaCargo(): Promise<{ dicas: { texto: string; geradoEm: string; cargo: string | null } | null; error: string | null }> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { dicas: null, error: 'Usuário não autenticado.' }
 
   const { data, error } = await supabase
     .from('funcionarios_cargo_perfil')
-    .select('dicas_texto, dicas_gerado_em')
+    .select('dicas_texto, dicas_gerado_em, cargos_perfil(cargo_base)')
     .eq('user_id', user.id)
     .maybeSingle()
 
   if (error) return { dicas: null, error: error.message }
   if (!data?.dicas_texto || !data.dicas_gerado_em) return { dicas: null, error: null }
-  return { dicas: { texto: data.dicas_texto, geradoEm: data.dicas_gerado_em }, error: null }
+  const cp = (data as any).cargos_perfil
+  const cargo = (Array.isArray(cp) ? cp[0]?.cargo_base : cp?.cargo_base) ?? null
+  return { dicas: { texto: data.dicas_texto, geradoEm: data.dicas_gerado_em, cargo }, error: null }
 }
 
 export async function getTodosCargosPerfil(clientId: string): Promise<{ mapa: Record<string, FuncionarioCargoPerfil>; error: string | null }> {

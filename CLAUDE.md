@@ -1219,3 +1219,14 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   do Código de Cultura 2026 (CSC não está lá: veio dos focos da Avaliação) em
   `Adições futuras/Verticais CTZ - descricoes.sql` — **rodar só DEPOIS do deploy**: o front antigo
   quebra ao receber objetos nessa lista. Textos do tour ajustados. Push `7957dfd`, deploy feito e SQL rodado pelo Igor em seguida (conferido: 5 verticais com propósito e foco).
+- **Autoconhecimento repaginado** (prévia aprovada: `Adições futuras/Previa Autoconhecimento -
+  Felipe Marques.html`, local, fora do Git porque tem o perfil real dele): abertura com tipo,
+  motivação, sequência de instintos e diagrama do Eneagrama (asas e flechas); forças/sombra/
+  mecanismo/talento em cartões; as 6 competências relacionais (já existiam em `tipos.ts`, nunca
+  apareciam); análise do cargo separada em "ajuda / atrapalha / sugestão" (`separarAnalise`, cai
+  no texto inteiro se a IA não usar essas seções) e ainda oculta por padrão; Mapa 2 com barra de
+  composição do time; chat com abas "Sobre mim / Sobre um colega"; atalhos fixos entre as partes.
+  **Travas de acesso NÃO mudaram** (pedido do Igor: Mapa 2, chat sobre colega e análise de cargo
+  seguem só Igor/Priscila). O bloco "Pedido original × construído" passou a aparecer só pra eles.
+  Descrições dos 3 grupos do time (`GRUPOS_TIME`) são texto meu, provisório — o Igor pode pedir
+  para reverter. `getMinhaDicaCargo` passou a devolver também o nome do cargo.
