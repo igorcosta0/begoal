@@ -6,7 +6,7 @@ export async function getSinaisVitais(clientId: string) {
     .from('sinais_vitais')
     .select(`
       id, titulo, valor_inicial, valor_atual, meta, tipo_valor,
-      objetivo_id, kr_id, responsavel_id, setor_id, client_id, created_at,
+      objetivo_id, kr_id, responsavel_id, setor_id, client_id, created_at, removido_em,
       funcionarios!responsavel_id(full_name),
       setores!setor_id(name),
       objetivos!objetivo_id(titulo),
@@ -56,6 +56,16 @@ export async function getKrsParaVinculo(clientId: string) {
     .select('id, titulo, objetivo_id, concluido')
     .eq('client_id', clientId)
     .order('titulo', { ascending: true })
+}
+
+// Removidos (aguardando validação): null restaura o sinal vital.
+export async function marcarSinalVitalRemovido(id: string, removido: boolean) {
+  const supabase = createClient()
+  return supabase
+    .from('sinais_vitais')
+    .update({ removido_em: removido ? new Date().toISOString() : null })
+    .eq('id', id)
+    .select('id')
 }
 
 export async function deleteSinalVital(id: string) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
-import { getSinaisVitais, deleteSinalVital, getKrsParaVinculo } from '@/lib/queries/sinais-vitais'
+import { getSinaisVitais, deleteSinalVital, getKrsParaVinculo, marcarSinalVitalRemovido } from '@/lib/queries/sinais-vitais'
 import { getSetoresByEmpresa, getObjetivos, getFuncionariosByEmpresa } from '@/lib/queries/okr'
 import SvCard from '@/components/sinais-vitais/SvCard'
 import ModalCriarSv from '@/components/sinais-vitais/ModalCriarSv'
@@ -10,8 +10,8 @@ import ModalEditarSv from '@/components/sinais-vitais/ModalEditarSv'
 import ModalLancarSv from '@/components/sinais-vitais/ModalLancarSv'
 import ModalHistoricoSv from '@/components/sinais-vitais/ModalHistoricoSv'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
-import { Activity, Plus } from 'lucide-react'
-import { mensagemErroExclusao } from '@/lib/utils'
+import { Activity, Plus, Archive, ChevronDown, RotateCcw } from 'lucide-react'
+import { mensagemErroExclusao, mensagemErroGravacao, formatValor } from '@/lib/utils'
 
 export default function SinaisVitaisPage() {
   const { empresa } = useEmpresaStore()
@@ -27,6 +27,9 @@ export default function SinaisVitaisPage() {
   const [objetivoId, setObjetivoId] = useState<string | null>(null)
   const [krId, setKrId] = useState<string | null>(null)
   const [responsavelId, setResponsavelId] = useState<string | null>(null)
+  const [removidosAberto, setRemovidosAberto] = useState(false)
+  const [movendoId, setMovendoId] = useState<string | null>(null)
+  const [erroRemovidos, setErroRemovidos] = useState<string | null>(null)
 
   const [modalCriar, setModalCriar] = useState(false)
   const [modalEditar, setModalEditar] = useState<{ open: boolean; sv: any | null }>({ open: false, sv: null })
@@ -56,7 +59,13 @@ export default function SinaisVitaisPage() {
     fetchData()
   }, [fetchData])
 
+  // Removidos (aguardando validação) ficam fora da lista principal e dos filtros.
+  const svsRemovidos = svs
+    .filter((sv) => sv.removido_em)
+    .sort((a, b) => a.titulo.localeCompare(b.titulo, 'pt-BR'))
+
   const svsFiltrados = svs
+    .filter((sv) => !sv.removido_em)
     .filter((sv) => !busca || sv.titulo.toLowerCase().includes(busca.toLowerCase()))
     .filter((sv) => !setorId || sv.setor_id === setorId)
     .filter((sv) => !objetivoId || sv.objetivo_id === objetivoId)
@@ -90,6 +99,19 @@ export default function SinaisVitaisPage() {
       return
     }
     setModalExcluir({ open: false, sv: null, loading: false, erro: null })
+    fetchData()
+  }
+
+  async function handleMarcarRemovido(sv: any, removido: boolean) {
+    setMovendoId(sv.id)
+    setErroRemovidos(null)
+    const { data, error } = await marcarSinalVitalRemovido(sv.id, removido)
+    const erro = mensagemErroGravacao(error, data?.length)
+    setMovendoId(null)
+    if (erro) {
+      setErroRemovidos(erro)
+      return
+    }
     fetchData()
   }
 
@@ -205,11 +227,69 @@ export default function SinaisVitaisPage() {
               sv={sv}
               onLancar={(sv) => setModalLancar({ open: true, sv })}
               onEditar={(sv) => setModalEditar({ open: true, sv })}
+              onRemover={(sv) => handleMarcarRemovido(sv, true)}
               onExcluir={(sv) => setModalExcluir({ open: true, sv, loading: false, erro: null })}
               onVerHistorico={(sv) => setModalHistorico({ open: true, sv })}
             />
           ))}
         </div>
+      )}
+
+      {/* Removidos: aguardando validação antes de excluir de vez */}
+      {!loading && svsRemovidos.length > 0 && (
+        <section className="rounded-2xl border border-dashed border-border bg-card/50">
+          <button
+            onClick={() => setRemovidosAberto((v) => !v)}
+            className="w-full flex items-center gap-3 px-5 py-4 text-left"
+          >
+            <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+              <Archive className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground">
+                Removidos <span className="text-muted-foreground font-normal">· {svsRemovidos.length}</span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Aguardando validação. Não aparecem na lista nem na Início; os lançamentos continuam guardados.
+              </p>
+            </div>
+            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${removidosAberto ? 'rotate-180' : ''}`} />
+          </button>
+          {removidosAberto && (
+            <div className="border-t border-border">
+              {erroRemovidos && <p className="px-5 pt-3 text-xs text-destructive">{erroRemovidos}</p>}
+              <ul className="divide-y divide-border">
+                {svsRemovidos.map((sv) => (
+                  <li key={sv.id} className="flex items-center gap-3 px-5 py-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-foreground truncate">{sv.titulo}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {[
+                          sv.funcionarios?.full_name,
+                          sv.objetivos?.titulo ?? 'Sem objetivo',
+                          sv.valor_atual != null ? 'Atual: ' + formatValor(sv.valor_atual, sv.tipo_valor) : null,
+                        ].filter(Boolean).join(' · ')}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setModalHistorico({ open: true, sv })}
+                      className="px-3 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:bg-accent transition-colors"
+                    >
+                      Histórico
+                    </button>
+                    <button
+                      onClick={() => handleMarcarRemovido(sv, false)}
+                      disabled={movendoId === sv.id}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg border border-border text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+                    >
+                      <RotateCcw className="w-3 h-3" /> Restaurar
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
       )}
 
       {/* Modais */}

@@ -20,6 +20,7 @@ interface SvCardProps {
   }
   onLancar?: (sv: any) => void
   onEditar?: (sv: any) => void
+  onRemover?: (sv: any) => void
   onExcluir?: (sv: any) => void
   onVerHistorico?: (sv: any) => void
 }
@@ -28,6 +29,7 @@ export default function SvCard({
   sv,
   onLancar,
   onEditar,
+  onRemover,
   onExcluir,
   onVerHistorico,
 }: SvCardProps) {
@@ -74,6 +76,14 @@ export default function SvCard({
               >
                 Editar
               </button>
+              {onRemover && (
+                <button
+                  onClick={() => { onRemover(sv); setMenuOpen(false) }}
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors"
+                >
+                  Mover para Removidos
+                </button>
+              )}
               <button
                 onClick={() => { onExcluir?.(sv); setMenuOpen(false) }}
                 className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-destructive"

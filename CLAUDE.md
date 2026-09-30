@@ -1351,3 +1351,15 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   barras por pilar e por critério já marcam a maior e a menor.
   Conferido no navegador com uma rota de prévia temporária e dados fictícios (apagada depois). Sem
   migration.
+- **Sinais vitais antigos → "Removidos"** (pedido do Igor: na CTZ só devem ficar os sinais vitais
+  das planilhas; os antigos vão para validação antes de serem apagados). Coluna nova
+  `sinais_vitais.removido_em` (migration `PENDENTE_20260930010000_sinais_vitais_removidos.sql`, já
+  rodada pelo Chrome). Removido some da lista, dos filtros e da contagem da Início, mas continua no
+  banco com os lançamentos. A página ganhou uma seção recolhível "Removidos" no fim, com Histórico e
+  Restaurar, e o menu do card ganhou "Mover para Removidos". Marcados 24 (conferido: 24 removidos,
+  20 ativos): os 19 da carga inicial de 26/05 que não estão em nenhuma planilha (Terceiros ×3,
+  Urbanismo, Infraestrutura, Demanda Nova/Retrabalho e variações de Legalização/Agrimensura, Funil,
+  os 3 "Nº de…" de corretores/terrenos) e os 5 que só aparecem na aba antiga "OKR - Mensal_v1"
+  (Agrimensura, Legalização, Faturamento de parcelas/entradas, Entrega de projetos). Ficaram os 9 da
+  Loteadora e os 11 do Comercial. **Depois da validação**: apagar de vez só os confirmados
+  (`delete from sinais_vitais where removido_em is not null and ...`), os lançamentos vão junto.
