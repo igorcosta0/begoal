@@ -1329,5 +1329,4 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
 - Lançamentos da aba antiga da Concretize ("OKR - Mensal_v1", jan–mar) preparados em
   `Adições futuras/OKR Concretize v1 - sinais vitais - lancamentos.sql`: cria "Entrega de projetos"
   (meta 220 mil, jan–mar), lança Faturamento de parcelas/entradas (março) e grava metas onde estavam
-  0 (Agrimensura 20 mil, Legalização 80 mil = "Aprovação de projetos"). **Não rodado**: o auto mode
-  barrou a gravação pelo Chrome; o Igor roda no SQL Editor.
+  0 (Agrimensura 20 mil, Legalização 80 mil = "Aprovação de projetos"). O auto mode barrou a gravação  pelo Chrome; o Igor rodou migration + carga no SQL Editor, conferido (coluna kr_id e 5 sinais vitais).
