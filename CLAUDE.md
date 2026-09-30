@@ -1303,3 +1303,20 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   Feita, lista, detalhe, nova tática, mover para travada, celular). Próximos módulos: Sinais vitais,
   Avaliação, Biblioteca.
 - Para retomar uma conversa que fechou: `claude --continue` (ou `--resume`) dentro de `C:\dev\begoal`.
+
+### 2026-09-30
+- Sinais vitais que faltavam, conferidos em todas as planilhas de OKR de `Adições futuras/`
+  (Loteadora: os 9 da aba atual já existiam; Novos Negócios e `OKR Concretize.jpeg`: só KRs).
+  Faltavam os 11 da aba "OKR - COMERCIAL" (`Planilha sem título (3).xlsx`), criados com o Ross como
+  responsável e com o realizado de jan a set: Cliente recompra/novo, Orçamento (valor e qtd),
+  Orçamentos perdidos (valor e qtd), Nº de clientes e de não clientes SC e SP (objetivo "SER
+  ECONOMICAMENTE SUSTENTÁVEL.") e Média das notas (pesquisa com clientes), no objetivo "SER UMA
+  EMPRESA MAIS EFICIENTE…", com meta 9 (a mesma do NPQ, porque a planilha não tem meta). Meta = meta
+  de setembro, porque o sinal vital guarda uma meta só. Ficaram de fora, porque já são KRs: recompra
+  em 12 meses e quantidade de pesquisas. Script `Adições futuras/OKR Comercial - sinais vitais -
+  carga.sql`, rodado pelo Chrome e conferido.
+  - Atenção: "Orçamentos perdidos" é do tipo quanto menor, melhor, mas o sinal vital não tem direção:
+    a leitura de progresso fica invertida.
+  - A aba antiga "OKR - Mensal_v1" da planilha da Loteadora tem valores de jan a mar para sinais
+    vitais parecidos com os antigos sem objetivo (Entrega de projetos, Pagamentos parcelados etc.).
+    Não foram lançados.
