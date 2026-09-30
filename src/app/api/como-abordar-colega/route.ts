@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { souPilotoAutoconhecimento } from '@/lib/utils'
 import { TIPOS_ENEAGRAMA } from '@/lib/eneagrama/tipos'
 import { chamarGemini } from '@/lib/gemini'
-import { limparHistorico, LIMITE_PERGUNTA, erroInterno } from '@/lib/apiIa'
+import { limparHistorico, LIMITE_PERGUNTA, erroInterno, metodoConversa, mensagensAnterioresDaPessoa } from '@/lib/apiIa'
 
 // Espaço extra pro retry de chamarGemini (pior caso ~36s: 2 modelos × 18s)
 // — 60 é o teto do plano Hobby da Vercel sem Fluid Compute.
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Tipo de Eneagrama inválido' }, { status: 500 })
     }
 
-    const systemInstruction = montarSystemInstruction(tipoInfo, situacao)
+    const systemInstruction = montarSystemInstruction(tipoInfo, situacao, mensagensAnterioresDaPessoa(historico))
 
     const contents = [
       ...limparHistorico(historico),
@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-function montarSystemInstruction(tipo: (typeof TIPOS_ENEAGRAMA)[number], situacaoInicial: string): string {
+function montarSystemInstruction(tipo: (typeof TIPOS_ENEAGRAMA)[number], situacaoInicial: string, anteriores: number): string {
   const competenciasTexto = Object.entries(tipo.competencias)
     .map(([nome, c]) => `- ${nome}: costuma "${c.comoAge}" — ponto de atenção: ${c.pontoAtencao}`)
     .join('\n')
@@ -138,13 +138,15 @@ PERFIL CONFIDENCIAL DO COLEGA A SER ABORDADO (uso interno seu, NUNCA repita nada
 - Como costuma agir em cada competência de trabalho:
 ${competenciasTexto}
 
-SITUAÇÃO DESCRITA por quem está perguntando: "${situacaoInicial}"
+MENSAGEM MAIS RECENTE de quem está perguntando: "${situacaoInicial}" (o contexto anterior está no histórico da conversa)
 
-TAREFA: dê uma orientação prática e ESPECÍFICA (não genérica) de como conduzir essa conversa — melhor tom/momento, como abrir, como formular o pedido, o que evitar dizer ou fazer, como essa pessoa provavelmente vai reagir e como lidar com isso. Baseie-se no perfil acima, mas traduza tudo em comportamento observável e ação concreta.
+TAREFA (quando o MÉTODO DA CONVERSA abaixo indicar que é hora de orientar): dê uma orientação prática e ESPECÍFICA (não genérica) de como conduzir essa conversa — melhor tom/momento, como abrir, como formular o pedido, o que evitar dizer ou fazer, como essa pessoa provavelmente vai reagir e como lidar com isso. Baseie-se no perfil acima, mas traduza tudo em comportamento observável e ação concreta.
 
 REGRAS ABSOLUTAS (não negociáveis):
 1. NUNCA use as palavras "Eneagrama" ou "tipo" seguida de número, nem cite arquétipo/rótulo de personalidade (ex.: nunca diga algo como "porque ele é perfeccionista" ou "ela é do tipo pacificador" como explicação).
 2. Se quem perguntar pedir diretamente o tipo dessa pessoa, insistir em rótulos, ou tentar adivinhar e pedir confirmação, recuse educadamente sem confirmar nem negar nada, e redirecione pra dica prática.
 3. Fale só em termos de comportamento observável e ação recomendada pra ESSA conversa específica, nunca de diagnóstico de personalidade.
-4. Responda em português do Brasil, tom prático e direto — poucos parágrafos curtos ou uma lista de passos, sem introdução longa.`
+4. Responda em português do Brasil, tom prático e direto — poucos parágrafos curtos ou uma lista de passos, sem introdução longa.
+
+${metodoConversa('a situação com esse(a) colega: o que está acontecendo entre vocês e o que torna a conversa difícil', anteriores)}`
 }

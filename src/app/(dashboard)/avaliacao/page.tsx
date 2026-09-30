@@ -251,11 +251,10 @@ export default function AvaliacaoPage() {
   // não tem volta). Começa true (bloqueado) até a checagem confirmar que
   // está tudo pronto — default seguro enquanto ainda não carregou.
   const [calibragemPendente, setCalibragemPendente] = useState(true)
-  // Aba dentro do painel expandido do ciclo: lista de avaliações (padrão,
-  // sempre existiu) ou gráficos (pedido 11/09/2026) — reseta pra
-  // "avaliacoes" toda vez que troca/fecha o ciclo expandido, senão trocar de
-  // ciclo com "Gráficos" selecionado mantinha a aba errada aberta.
-  const [abaCiclo, setAbaCiclo] = useState<'avaliacoes' | 'graficos'>('avaliacoes')
+  // Aba dentro do painel expandido do ciclo: "Visão geral" (dashboard, padrão
+  // desde 30/09/2026, chave 'graficos') ou a lista de avaliações. Volta pra
+  // visão geral toda vez que troca/fecha o ciclo expandido.
+  const [abaCiclo, setAbaCiclo] = useState<'avaliacoes' | 'graficos'>('graficos')
 
   const [modalCriarCiclo, setModalCriarCiclo] = useState<{ open: boolean; ciclo: Ciclo | null }>({ open: false, ciclo: null })
   const [modalAvaliacao, setModalAvaliacao] = useState<{
@@ -1108,7 +1107,7 @@ export default function AvaliacaoPage() {
                 )}
                 onClick={() => {
                   setCicloAtivo(cicloAtivo?.id === ciclo.id ? null : ciclo)
-                  setAbaCiclo('avaliacoes')
+                  setAbaCiclo('graficos')
                 }}
               >
                 <div className="flex items-center gap-3">
@@ -1260,6 +1259,18 @@ export default function AvaliacaoPage() {
                       média cultural/performance). */}
                   <div className="flex items-center gap-1 border-b border-border">
                     <button
+                      onClick={() => setAbaCiclo('graficos')}
+                      className={cn(
+                        'flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 -mb-px transition-colors',
+                        abaCiclo === 'graficos'
+                          ? 'border-primary text-foreground'
+                          : 'border-transparent text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      <BarChart3 className="w-3.5 h-3.5" />
+                      Visão geral
+                    </button>
+                    <button
                       onClick={() => setAbaCiclo('avaliacoes')}
                       className={cn(
                         'flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 -mb-px transition-colors',
@@ -1270,18 +1281,6 @@ export default function AvaliacaoPage() {
                     >
                       <ListChecks className="w-3.5 h-3.5" />
                       Avaliações
-                    </button>
-                    <button
-                      onClick={() => setAbaCiclo('graficos')}
-                      className={cn(
-                        'flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 -mb-px transition-colors',
-                        abaCiclo === 'graficos'
-                          ? 'border-primary text-foreground'
-                          : 'border-transparent text-muted-foreground hover:text-foreground'
-                      )}
-                    >
-                      <BarChart3 className="w-3.5 h-3.5" />
-                      Gráficos
                     </button>
                   </div>
 

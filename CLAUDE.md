@@ -1330,3 +1330,24 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   `Adições futuras/OKR Concretize v1 - sinais vitais - lancamentos.sql`: cria "Entrega de projetos"
   (meta 220 mil, jan–mar), lança Faturamento de parcelas/entradas (março) e grava metas onde estavam
   0 (Agrimensura 20 mil, Legalização 80 mil = "Aprovação de projetos"). O auto mode barrou a gravação  pelo Chrome; o Igor rodou migration + carga no SQL Editor, conferido (coluna kr_id e 5 sinais vitais).
+- **Autoconhecimento: design dos mapas e IA que pergunta antes** (pedido do Igor, mesmo dia).
+  - Mapas renomeados para **Mapa de si** (antes "Autoliderança") e **Mapa do time** (antes
+    "Liderando o time"). Visual saiu de `autoconhecimento/page.tsx` para
+    `src/components/autoconhecimento/Mapas.tsx` (perfil, forças × sombra, competências, composição
+    do time) e `Conversa.tsx` (janela do chat). As 6 competências viraram uma de cada vez (pílulas),
+    em vez de 6 cartões com 3 itens cada. O time ganhou cartões por grupo com "Como engajar" (texto
+    meu, provisório, igual às descrições dos grupos de 29/09), e os liderados são escolhidos em
+    pílulas. Travas de acesso não mudaram.
+  - IA: `metodoConversa()` em `src/lib/apiIa.ts`, aplicado nas 4 rotas de chat (assistente, colega,
+    liderado, simulação). Ela investiga primeiro (exemplo concreto, o que já tentou, o que incomoda, o
+    que quer que mude), com até 3 perguntas por vez e no máximo 2 rodadas, e só então orienta, ligando
+    cada sugestão ao que a pessoa contou e com uma frase de exemplo. O histórico enviado subiu de 8
+    para 12 mensagens. Pergunta de conceito ("o que é minha sombra?") continua sendo respondida direto.
+- **Avaliação: aba "Visão geral"** (substitui "Gráficos" e passa a ser a aba que abre primeiro no
+  ciclo). Empresa toda: média dos valores (pilares) e do desempenho (critérios técnicos),
+  participantes, % concluídas, média por pilar e valores × desempenho por área. Com uma área
+  filtrada: os mesmos números da área e o desempenho por critério. Só a avaliação comum entra (antes
+  a de pares entrava nas médias do gráfico). O cartão "maior e menor nota por vertical" saiu: as
+  barras por pilar e por critério já marcam a maior e a menor.
+  Conferido no navegador com uma rota de prévia temporária e dados fictícios (apagada depois). Sem
+  migration.

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { TIPOS_ENEAGRAMA, NOME_INSTINTO, type Instinto } from '@/lib/eneagrama/tipos'
 import { chamarGemini } from '@/lib/gemini'
-import { limparHistorico, LIMITE_PERGUNTA, erroInterno } from '@/lib/apiIa'
+import { limparHistorico, LIMITE_PERGUNTA, erroInterno, metodoConversa, mensagensAnterioresDaPessoa } from '@/lib/apiIa'
 
 // Espaço extra pro retry de chamarGemini (pior caso ~36s: 2 modelos × 18s)
 // — 60 é o teto do plano Hobby da Vercel sem Fluid Compute.
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Texto muito longo (máximo ${LIMITE_PERGUNTA} caracteres)` }, { status: 400 })
     }
 
-    const systemInstruction = montarSystemInstruction(tipoInfo, perfil.subtipo_sequencia)
+    const systemInstruction = montarSystemInstruction(tipoInfo, perfil.subtipo_sequencia, mensagensAnterioresDaPessoa(historico))
 
     const contents = [
       ...limparHistorico(historico),
@@ -102,7 +102,8 @@ export async function POST(req: NextRequest) {
 
 function montarSystemInstruction(
   tipo: (typeof TIPOS_ENEAGRAMA)[number],
-  subtipoSequencia: string | null
+  subtipoSequencia: string | null,
+  anteriores: number
 ): string {
   const competenciasTexto = Object.entries(tipo.competencias)
     .map(([nome, c]) => `- ${nome}: costuma "${c.comoAge}" — ponto de atenção: ${c.pontoAtencao} — desenvolver: ${c.desenvolver}`)
@@ -141,5 +142,8 @@ REGRAS IMPORTANTES:
 - Foque em orientação prática pro dia a dia de trabalho (comunicação, decisão, feedback, conflito, resultados) — está tudo listado acima, use como referência.
 - Nunca fale sobre o tipo de outras pessoas (colegas, líderes) — você só tem acesso ao perfil de quem está te perguntando.
 - Se a pergunta não tiver relação com autoconhecimento/comportamento no trabalho, responda normalmente mas breve, sem forçar conexão com Eneagrama.
-- Respostas curtas e diretas (poucos parágrafos), não escreva um ensaio.`
+- Se a pessoa só quer entender um conceito (ex.: "o que é minha sombra?"), explique direto, ligando ao perfil dela, sem precisar investigar; o método abaixo vale quando ela traz uma dificuldade ou pede ajuda com uma situação.
+- Respostas curtas e diretas (poucos parágrafos), não escreva um ensaio.
+
+${metodoConversa('a dificuldade que a pessoa está vivendo e como o jeito dela de funcionar aparece nisso', anteriores)}`
 }

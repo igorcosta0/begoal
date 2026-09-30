@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { souPilotoAutoconhecimento } from '@/lib/utils'
 import { TIPOS_ENEAGRAMA } from '@/lib/eneagrama/tipos'
 import { chamarGemini } from '@/lib/gemini'
-import { limparHistorico, LIMITE_PERGUNTA, erroInterno } from '@/lib/apiIa'
+import { limparHistorico, LIMITE_PERGUNTA, erroInterno, metodoConversa, mensagensAnterioresDaPessoa } from '@/lib/apiIa'
 
 // Espaço extra pro retry de chamarGemini (pior caso ~36s: 2 modelos × 18s)
 // — 60 é o teto do plano Hobby da Vercel sem Fluid Compute.
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     }
     const meuTipoInfo = meuPerfil ? TIPOS_ENEAGRAMA[meuPerfil.tipo] : null
 
-    const systemInstruction = montarSystemInstruction(tipoInfo, situacao, meuTipoInfo)
+    const systemInstruction = montarSystemInstruction(tipoInfo, situacao, meuTipoInfo, mensagensAnterioresDaPessoa(historico))
 
     const contents = [
       ...limparHistorico(historico),
@@ -129,7 +129,8 @@ export async function POST(req: NextRequest) {
 function montarSystemInstruction(
   tipo: (typeof TIPOS_ENEAGRAMA)[number],
   situacaoInicial: string,
-  meuTipo: (typeof TIPOS_ENEAGRAMA)[number] | null
+  meuTipo: (typeof TIPOS_ENEAGRAMA)[number] | null,
+  anteriores: number
 ): string {
   const competenciasTexto = Object.entries(tipo.competencias)
     .map(([nome, c]) => `- ${nome}: costuma "${c.comoAge}" — ponto de atenção: ${c.pontoAtencao} — o que ajuda essa pessoa a desenvolver: ${c.desenvolver}`)
@@ -158,13 +159,15 @@ PERFIL CONFIDENCIAL DO LIDERADO (uso interno seu, NUNCA repita nada disto na res
 - Como costuma agir em cada competência de trabalho (e o que ajuda essa pessoa a desenvolver em cada uma):
 ${competenciasTexto}
 ${blocoMeuPerfil}
-SITUAÇÃO DESCRITA pelo líder: "${situacaoInicial}"
+MENSAGEM MAIS RECENTE do líder: "${situacaoInicial}" (o contexto anterior está no histórico da conversa)
 
-TAREFA: dê uma orientação prática e ESPECÍFICA (não genérica) de liderança pra essa situação — como delegar essa tarefa/decisão pra essa pessoa, como dar o feedback ou conduzir a conversa, o que essa pessoa provavelmente precisa pra se desenvolver nesse ponto, como ela tende a reagir sob pressão ou num conflito, e o que evitar dizer ou fazer.${meuTipo ? ' Considere também COMO O PRÓPRIO ESTILO DO LÍDER tende a interagir com o estilo dessa pessoa (onde os dois tendem a se encaixar bem, e onde o líder precisa se adaptar pra ser bem recebido) — pode falar abertamente do estilo do líder, só nunca do liderado.' : ''} Fale sempre da perspectiva de quem LIDERA (delegação, desenvolvimento, decisão), não de um colega no mesmo nível. Baseie-se no perfil acima, mas traduza tudo em comportamento observável e ação concreta de liderança.
+TAREFA (quando o MÉTODO DA CONVERSA abaixo indicar que é hora de orientar): dê uma orientação prática e ESPECÍFICA (não genérica) de liderança pra essa situação — como delegar essa tarefa/decisão pra essa pessoa, como dar o feedback ou conduzir a conversa, o que essa pessoa provavelmente precisa pra se desenvolver nesse ponto, como ela tende a reagir sob pressão ou num conflito, e o que evitar dizer ou fazer.${meuTipo ? ' Considere também COMO O PRÓPRIO ESTILO DO LÍDER tende a interagir com o estilo dessa pessoa (onde os dois tendem a se encaixar bem, e onde o líder precisa se adaptar pra ser bem recebido) — pode falar abertamente do estilo do líder, só nunca do liderado.' : ''} Fale sempre da perspectiva de quem LIDERA (delegação, desenvolvimento, decisão), não de um colega no mesmo nível. Baseie-se no perfil acima, mas traduza tudo em comportamento observável e ação concreta de liderança.
 
 REGRAS ABSOLUTAS (não negociáveis):
 1. NUNCA use as palavras "Eneagrama" ou "tipo" seguida de número, nem cite arquétipo/rótulo de personalidade (ex.: nunca diga algo como "porque ele é perfeccionista" ou "ela é do tipo pacificador" como explicação) — vale pro liderado; sobre o PRÓPRIO líder você pode ser mais direto, mas ainda evite o rótulo "tipo N"/"Eneagrama" literal, prefira descrever o comportamento.
 2. Se o líder pedir diretamente o tipo do LIDERADO, insistir em rótulos, ou tentar adivinhar e pedir confirmação, recuse educadamente sem confirmar nem negar nada, e redirecione pra orientação prática de liderança.
 3. Fale só em termos de comportamento observável e ação recomendada de liderança pra ESSA situação específica, nunca de diagnóstico de personalidade do liderado.
-4. Responda em português do Brasil, tom prático e direto — poucos parágrafos curtos ou uma lista de passos, sem introdução longa.`
+4. Responda em português do Brasil, tom prático e direto — poucos parágrafos curtos ou uma lista de passos, sem introdução longa.
+
+${metodoConversa('a dificuldade do líder com esse liderado: o que está acontecendo, desde quando e o que já foi conversado entre os dois', anteriores)}`
 }
