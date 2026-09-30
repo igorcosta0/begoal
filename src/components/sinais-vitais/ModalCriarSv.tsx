@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import { createSinalVital } from '@/lib/queries/sinais-vitais'
 import { getSetoresByEmpresa, getFuncionariosByEmpresa } from '@/lib/queries/okr'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
+import CamposVinculoSv from '@/components/sinais-vitais/CamposVinculoSv'
 
 interface ModalCriarSvProps {
   open: boolean
@@ -26,6 +27,8 @@ export default function ModalCriarSv({ open, onClose, onSuccess }: ModalCriarSvP
     valor_inicial: '0',
     meta: '',
     tipo_valor: '',
+    objetivo_id: '',
+    kr_id: '',
   })
 
   useEffect(() => {
@@ -45,6 +48,8 @@ export default function ModalCriarSv({ open, onClose, onSuccess }: ModalCriarSvP
       client_id: empresa.id,
       responsavel_id: form.responsavel_id || undefined,
       setor_id: form.setor_id || undefined,
+      objetivo_id: form.objetivo_id || undefined,
+      kr_id: form.kr_id || undefined,
       valor_inicial: parseFloat(form.valor_inicial) || 0,
       meta: parseFloat(form.meta) || 0,
       tipo_valor: form.tipo_valor || undefined,
@@ -56,7 +61,7 @@ export default function ModalCriarSv({ open, onClose, onSuccess }: ModalCriarSvP
       return
     }
 
-    setForm({ titulo: '', responsavel_id: '', setor_id: '', valor_inicial: '0', meta: '', tipo_valor: '' })
+    setForm({ titulo: '', responsavel_id: '', setor_id: '', valor_inicial: '0', meta: '', tipo_valor: '', objetivo_id: '', kr_id: '' })
     onSuccess()
     onClose()
     setLoading(false)
@@ -111,6 +116,14 @@ export default function ModalCriarSv({ open, onClose, onSuccess }: ModalCriarSvP
               </select>
             </div>
           </div>
+
+          <CamposVinculoSv
+            open={open}
+            clientId={empresa?.id}
+            objetivoId={form.objetivo_id}
+            krId={form.kr_id}
+            onChange={(v) => setForm({ ...form, ...v })}
+          />
 
           <div className="grid grid-cols-3 gap-3">
             <div>

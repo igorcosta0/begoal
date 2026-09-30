@@ -6,10 +6,11 @@ export async function getSinaisVitais(clientId: string) {
     .from('sinais_vitais')
     .select(`
       id, titulo, valor_inicial, valor_atual, meta, tipo_valor,
-      objetivo_id, responsavel_id, setor_id, client_id, created_at,
+      objetivo_id, kr_id, responsavel_id, setor_id, client_id, created_at,
       funcionarios!responsavel_id(full_name),
       setores!setor_id(name),
-      objetivos!objetivo_id(titulo)
+      objetivos!objetivo_id(titulo),
+      krs!kr_id(titulo)
     `)
     .eq('client_id', clientId)
     .order('created_at', { ascending: false })
@@ -19,6 +20,7 @@ export async function createSinalVital(payload: {
   titulo: string
   client_id: string
   objetivo_id?: string
+  kr_id?: string
   responsavel_id?: string
   setor_id?: string
   valor_inicial?: number
@@ -34,6 +36,7 @@ export async function updateSinalVital(
   payload: {
     titulo?: string
     objetivo_id?: string | null
+    kr_id?: string | null
     responsavel_id?: string | null
     setor_id?: string | null
     valor_inicial?: number
@@ -43,6 +46,16 @@ export async function updateSinalVital(
 ) {
   const supabase = createClient()
   return supabase.from('sinais_vitais').update(payload).eq('id', id).select().single()
+}
+
+// Lista enxuta de KRs para vincular/filtrar sinais vitais.
+export async function getKrsParaVinculo(clientId: string) {
+  const supabase = createClient()
+  return supabase
+    .from('krs')
+    .select('id, titulo, objetivo_id, concluido')
+    .eq('client_id', clientId)
+    .order('titulo', { ascending: true })
 }
 
 export async function deleteSinalVital(id: string) {

@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import { updateSinalVital } from '@/lib/queries/sinais-vitais'
 import { getSetoresByEmpresa, getFuncionariosByEmpresa } from '@/lib/queries/okr'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
+import CamposVinculoSv from '@/components/sinais-vitais/CamposVinculoSv'
 
 interface ModalEditarSvProps {
   open: boolean
@@ -27,6 +28,8 @@ export default function ModalEditarSv({ open, sv, onClose, onSuccess }: ModalEdi
     valor_inicial: '0',
     meta: '',
     tipo_valor: '',
+    objetivo_id: '',
+    kr_id: '',
   })
 
   useEffect(() => {
@@ -44,6 +47,8 @@ export default function ModalEditarSv({ open, sv, onClose, onSuccess }: ModalEdi
       valor_inicial: String(sv.valor_inicial ?? 0),
       meta: String(sv.meta ?? ''),
       tipo_valor: sv.tipo_valor ?? '',
+      objetivo_id: sv.objetivo_id ?? '',
+      kr_id: sv.kr_id ?? '',
     })
   }, [sv])
 
@@ -58,6 +63,8 @@ export default function ModalEditarSv({ open, sv, onClose, onSuccess }: ModalEdi
       // Pente fino (A8): null apaga de verdade (undefined era ignorado).
       responsavel_id: form.responsavel_id || null,
       setor_id: form.setor_id || null,
+      objetivo_id: form.objetivo_id || null,
+      kr_id: form.kr_id || null,
       valor_inicial: parseFloat(form.valor_inicial) || 0,
       meta: parseFloat(form.meta) || 0,
       tipo_valor: form.tipo_valor || undefined,
@@ -122,6 +129,14 @@ export default function ModalEditarSv({ open, sv, onClose, onSuccess }: ModalEdi
               </select>
             </div>
           </div>
+
+          <CamposVinculoSv
+            open={open}
+            clientId={empresa?.id}
+            objetivoId={form.objetivo_id}
+            krId={form.kr_id}
+            onChange={(v) => setForm({ ...form, ...v })}
+          />
 
           <div className="grid grid-cols-3 gap-3">
             <div>

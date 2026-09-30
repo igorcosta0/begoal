@@ -1320,3 +1320,14 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   - A aba antiga "OKR - Mensal_v1" da planilha da Loteadora tem valores de jan a mar para sinais
     vitais parecidos com os antigos sem objetivo (Entrega de projetos, Pagamentos parcelados etc.).
     Não foram lançados.
+- **Sinais Vitais: filtros, edição com vínculo e KR** (mesmo dia). Filtros iguais aos de OKRs
+  (objetivo, responsável, setor) + filtro de KR (só os do objetivo escolhido) e a busca que já existia.
+  Criar/Editar ganharam Objetivo e KR (`CamposVinculoSv.tsx`): escolher KR acerta o objetivo, trocar
+  o objetivo solta KR de outro objetivo. Card mostra o KR. Coluna nova `sinais_vitais.kr_id` (FK
+  para `krs`, `on delete set null`), migration `PENDENTE_20260930000000_sinais_vitais_kr.sql` —
+  **rodar ANTES do push** (a página lê `krs!kr_id`). Commit local, sem push.
+- Lançamentos da aba antiga da Concretize ("OKR - Mensal_v1", jan–mar) preparados em
+  `Adições futuras/OKR Concretize v1 - sinais vitais - lancamentos.sql`: cria "Entrega de projetos"
+  (meta 220 mil, jan–mar), lança Faturamento de parcelas/entradas (março) e grava metas onde estavam
+  0 (Agrimensura 20 mil, Legalização 80 mil = "Aprovação de projetos"). **Não rodado**: o auto mode
+  barrou a gravação pelo Chrome; o Igor roda no SQL Editor.

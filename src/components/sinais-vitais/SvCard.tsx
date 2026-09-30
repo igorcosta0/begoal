@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { cn, formatPercent, formatNumber, formatValor, getProgressColor } from '@/lib/utils'
-import { MoreHorizontal, TrendingUp, User, Building2, Target } from 'lucide-react'
+import { MoreHorizontal, TrendingUp, User, Building2, Target, Flag } from 'lucide-react'
 import { progressoSinalVital } from '@/lib/okrProgresso'
 
 interface SvCardProps {
@@ -16,6 +16,7 @@ interface SvCardProps {
     responsavel?: { full_name: string }
     setor?: { name?: string; nome?: string }
     objetivo?: { titulo: string }
+    kr?: { titulo: string }
   }
   onLancar?: (sv: any) => void
   onEditar?: (sv: any) => void
@@ -138,6 +139,12 @@ export default function SvCard({
           <span className="flex items-center gap-1">
             <Target className="w-3 h-3 shrink-0" />
             {sv.objetivo.titulo}
+          </span>
+        )}
+        {sv.kr && (
+          <span className="flex items-center gap-1">
+            <Flag className="w-3 h-3 shrink-0" />
+            {sv.kr.titulo}
           </span>
         )}
       </div>

@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
-import { getSinaisVitais, deleteSinalVital } from '@/lib/queries/sinais-vitais'
-import { getSetoresByEmpresa } from '@/lib/queries/okr'
+import { getSinaisVitais, deleteSinalVital, getKrsParaVinculo } from '@/lib/queries/sinais-vitais'
+import { getSetoresByEmpresa, getObjetivos, getFuncionariosByEmpresa } from '@/lib/queries/okr'
 import SvCard from '@/components/sinais-vitais/SvCard'
 import ModalCriarSv from '@/components/sinais-vitais/ModalCriarSv'
 import ModalEditarSv from '@/components/sinais-vitais/ModalEditarSv'
@@ -18,9 +18,15 @@ export default function SinaisVitaisPage() {
 
   const [svs, setSvs] = useState<any[]>([])
   const [setores, setSetores] = useState<any[]>([])
+  const [objetivos, setObjetivos] = useState<any[]>([])
+  const [krs, setKrs] = useState<any[]>([])
+  const [funcionarios, setFuncionarios] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState('')
   const [setorId, setSetorId] = useState<string | null>(null)
+  const [objetivoId, setObjetivoId] = useState<string | null>(null)
+  const [krId, setKrId] = useState<string | null>(null)
+  const [responsavelId, setResponsavelId] = useState<string | null>(null)
 
   const [modalCriar, setModalCriar] = useState(false)
   const [modalEditar, setModalEditar] = useState<{ open: boolean; sv: any | null }>({ open: false, sv: null })
@@ -31,12 +37,18 @@ export default function SinaisVitaisPage() {
   const fetchData = useCallback(async () => {
     if (!empresa) return
     setLoading(true)
-    const [{ data: svData }, { data: setoresData }] = await Promise.all([
+    const [{ data: svData }, { data: setoresData }, { data: objsData }, { data: krsData }, { data: funcsData }] = await Promise.all([
       getSinaisVitais(empresa.id),
       getSetoresByEmpresa(empresa.id),
+      getObjetivos(empresa.id),
+      getKrsParaVinculo(empresa.id),
+      getFuncionariosByEmpresa(empresa.id),
     ])
     setSvs(svData ?? [])
     setSetores(setoresData ?? [])
+    setObjetivos(objsData ?? [])
+    setKrs(krsData ?? [])
+    setFuncionarios(funcsData ?? [])
     setLoading(false)
   }, [empresa])
 
@@ -47,12 +59,27 @@ export default function SinaisVitaisPage() {
   const svsFiltrados = svs
     .filter((sv) => !busca || sv.titulo.toLowerCase().includes(busca.toLowerCase()))
     .filter((sv) => !setorId || sv.setor_id === setorId)
+    .filter((sv) => !objetivoId || sv.objetivo_id === objetivoId)
+    .filter((sv) => !krId || sv.kr_id === krId)
+    .filter((sv) => !responsavelId || sv.responsavel_id === responsavelId)
     .map((sv) => ({
       ...sv,
       responsavel: sv.funcionarios,
       setor: sv.setores ? { name: sv.setores.name } : null,
       objetivo: sv.objetivos ? { titulo: sv.objetivos.titulo } : null,
+      kr: sv.krs ? { titulo: sv.krs.titulo } : null,
     }))
+
+  // Só KRs ativos do objetivo filtrado (ou de todos, sem filtro de objetivo).
+  const krsDoFiltro = krs.filter((k) => !k.concluido && (!objetivoId || k.objetivo_id === objetivoId))
+
+  function limparFiltros() {
+    setBusca('')
+    setSetorId(null)
+    setObjetivoId(null)
+    setKrId(null)
+    setResponsavelId(null)
+  }
 
   async function handleExcluir() {
     if (!modalExcluir.sv) return
@@ -66,7 +93,9 @@ export default function SinaisVitaisPage() {
     fetchData()
   }
 
-  const temFiltros = busca || setorId
+  const temFiltros = busca || setorId || objetivoId || krId || responsavelId
+  const classeFiltro =
+    'px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring'
 
   return (
     <div className="space-y-6">
@@ -102,10 +131,33 @@ export default function SinaisVitaisPage() {
           className="w-full max-w-sm px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         />
         <select
-          value={setorId ?? ''}
-          onChange={(e) => setSetorId(e.target.value || null)}
-          className="px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          value={objetivoId ?? ''}
+          onChange={(e) => {
+            const id = e.target.value || null
+            setObjetivoId(id)
+            // KR filtrado precisa ser do objetivo escolhido.
+            if (id && krId && krs.find((k) => k.id === krId)?.objetivo_id !== id) setKrId(null)
+          }}
+          className={classeFiltro}
         >
+          <option value="">Todos os objetivos</option>
+          {objetivos.filter((o) => !o.concluido).map((o) => (
+            <option key={o.id} value={o.id}>{o.titulo}</option>
+          ))}
+        </select>
+        <select value={krId ?? ''} onChange={(e) => setKrId(e.target.value || null)} className={classeFiltro}>
+          <option value="">Todos os KRs</option>
+          {krsDoFiltro.map((k) => (
+            <option key={k.id} value={k.id}>{k.titulo}</option>
+          ))}
+        </select>
+        <select value={responsavelId ?? ''} onChange={(e) => setResponsavelId(e.target.value || null)} className={classeFiltro}>
+          <option value="">Todos os responsáveis</option>
+          {funcionarios.map((f) => (
+            <option key={f.id} value={f.id}>{f.full_name}</option>
+          ))}
+        </select>
+        <select value={setorId ?? ''} onChange={(e) => setSetorId(e.target.value || null)} className={classeFiltro}>
           <option value="">Todos os setores</option>
           {setores.map((s) => (
             <option key={s.id} value={s.id}>{s.name}</option>
@@ -113,7 +165,7 @@ export default function SinaisVitaisPage() {
         </select>
         {temFiltros && (
           <button
-            onClick={() => { setBusca(''); setSetorId(null) }}
+            onClick={limparFiltros}
             className="px-3 py-2 text-sm rounded-md border border-border text-muted-foreground hover:bg-accent transition-colors"
           >
             Limpar filtros
