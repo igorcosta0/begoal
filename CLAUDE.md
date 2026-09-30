@@ -1289,3 +1289,17 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   → soma com 1,25 mi/mês (metas da Giva são anuais). Os 2 KRs de contagem da Giva (empreendimentos,
   investidores ativos) continuam "último" com a meta anual. Corretagem/repasse (Finato): sem resposta
   ainda sobre anual × mensal.
+
+### 2026-09-29/30 (v2)
+- **v2, design tela a tela** (detalhes na memória `begoal-v2-decisoes.md` e no Diário do Notion,
+  entradas 29/09 e 30/09). Revisão no navegador de ~40 telas para alinhamento perfeito. Aprovados:
+  Lançar resultado (5 telas, com regras da planilha), Configurações da empresa (9) e Meu perfil (6),
+  o que fecha as 6 telas essenciais (onboarding, Pessoas, criar objetivo/KR, lançar, configurações,
+  meu perfil). 62 telas aprovadas no canvas até aqui.
+- **Estratégia deixada de lado** até o Igor retomar (nem na v1 foi usada): sai do menu, do bloco
+  "Estratégia resumida" do Início e do passo do onboarding — aplicar em todas as telas depois que
+  Táticas for validada.
+- **Táticas**: 6 telas publicadas e aguardando validação (quadro com A fazer · Fazendo · Travada ·
+  Feita, lista, detalhe, nova tática, mover para travada, celular). Próximos módulos: Sinais vitais,
+  Avaliação, Biblioteca.
+- Para retomar uma conversa que fechou: `claude --continue` (ou `--resume`) dentro de `C:\dev\begoal`.
