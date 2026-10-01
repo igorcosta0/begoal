@@ -1442,3 +1442,5 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
 - O atalho "Conversar com o assistente", no topo do Autoconhecimento, agora também abre a conversa:
   dispara o evento `autoconhecimento:abrir-bloco` com o id do bloco. Entrar na página com `#assistente`
   no endereço também abre.
+- "Perfis da equipe (visão de administrador)", no Autoconhecimento: a lista fica fechada até
+  "Revelar". O título mostra quantas pessoas há na lista. Continua só para Igor e Priscila.

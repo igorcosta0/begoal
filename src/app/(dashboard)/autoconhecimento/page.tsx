@@ -257,6 +257,7 @@ export default function AutoconhecimentoPage() {
   const [todosPerfis, setTodosPerfis] = useState<PerfilEneagramaComNome[]>([])
   const [cargosPerfil, setCargosPerfil] = useState<Record<string, FuncionarioCargoPerfil>>({})
   const [expandidoId, setExpandidoId] = useState<string | null>(null)
+  const [perfisAbertos, setPerfisAbertos] = useState(false)
   const [gerandoId, setGerandoId] = useState<string | null>(null)
   const [erroGeracao, setErroGeracao] = useState<string | null>(null)
 
@@ -548,10 +549,28 @@ export default function AutoconhecimentoPage() {
           ferramenta de conferência de mapeamento que já existia. */}
       {souAdminPiloto && todosPerfis.length > 0 && (
         <div className="glass-panel rounded-2xl p-6 space-y-3">
-          <h2 className="font-display text-base font-bold text-foreground">Perfis da equipe (visão de administrador)</h2>
-          <p className="text-xs text-muted-foreground">
-            Clique numa linha pra ver o cruzamento com o perfil de cargo (competências exigidas e o que o Eneagrama ajuda/atrapalha).
-          </p>
+          {/* Lista fechada até abrir (mesmo padrão do resto da página). */}
+          <button
+            type="button"
+            onClick={() => setPerfisAbertos((v) => !v)}
+            aria-expanded={perfisAbertos}
+            className="w-full flex items-start justify-between gap-3 text-left"
+          >
+            <div>
+              <h2 className="font-display text-base font-bold text-foreground">
+                Perfis da equipe (visão de administrador)
+                <span className="ml-2 text-xs font-normal text-muted-foreground">{todosPerfis.length} pessoas</span>
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Clique numa linha pra ver o cruzamento com o perfil de cargo (competências exigidas e o que o Eneagrama ajuda/atrapalha).
+              </p>
+            </div>
+            <span className="shrink-0 flex items-center gap-1 text-xs text-muted-foreground mt-1">
+              {perfisAbertos ? 'Ocultar' : 'Revelar'}
+              <ChevronDown className={cn('w-4 h-4 transition-transform', perfisAbertos && 'rotate-180')} />
+            </span>
+          </button>
+          {perfisAbertos && (<>
           {erroGeracao && (
             <div className="px-4 py-3 rounded-xl text-sm font-medium bg-red-50 text-red-700 border border-red-200">
               {erroGeracao}
@@ -656,6 +675,7 @@ export default function AutoconhecimentoPage() {
               )
             })}
           </div>
+          </>)}
         </div>
       )}
     </div>
