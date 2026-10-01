@@ -1363,3 +1363,17 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   (Agrimensura, Legalização, Faturamento de parcelas/entradas, Entrega de projetos). Ficaram os 9 da
   Loteadora e os 11 do Comercial. **Depois da validação**: apagar de vez só os confirmados
   (`delete from sinais_vitais where removido_em is not null and ...`), os lançamentos vão junto.
+
+### 2026-10-01
+- **Gráfico nos sinais vitais e sinais vitais por KR** (pedido do Igor). O mini-gráfico do card de KR
+  saiu de `KrCard.tsx` para `src/components/okr/MiniGrafico.tsx` (junto com `Tendencia`, a seta de
+  variação). O card de sinal vital (`SvCard.tsx`) passou a usar o mesmo gráfico: meta como linha
+  reta, valor mês a mês, variação e "Gráfico completo" (abre o histórico de sempre). A direção segue a
+  regra do progresso: meta abaixo do valor inicial = quanto menor, melhor. As séries vêm de
+  `getSeriesSinaisVitais(ids)`, numa consulta só (`.in`, sem depender de FK para embed).
+  O card de KR ganhou o botão "Sinais vitais (N)", que só aparece quando há sinal vital ligado (também
+  está no menu ⋯), e abre `ModalSinaisVitaisKr.tsx` (resumo + um cartão por sinal vital com gráfico,
+  só leitura, com link para a página de Sinais Vitais). A página de OKRs carrega os sinais vitais
+  com `kr_id` e sem `removido_em`. Os sinais sem KR continuam só na página dedicada. Sem migration.
+  `npm run type-check` e lint limpos. Não deu para conferir a tela: o localhost pede login.
+  Commit local, sem push.

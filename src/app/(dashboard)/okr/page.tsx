@@ -23,6 +23,8 @@ import ModalDetalhesKr from '@/components/okr/ModalDetalhesKr'
 import ModalCriarObjetivo from '@/components/okr/ModalCriarObjetivo'
 import ModalEditarObjetivo from '@/components/okr/ModalEditarObjetivo'
 import ModalTaticasKr from '@/components/okr/ModalTaticasKr'
+import ModalSinaisVitaisKr from '@/components/okr/ModalSinaisVitaisKr'
+import { getSinaisVitais, getSeriesSinaisVitais } from '@/lib/queries/sinais-vitais'
 import ModalEditarLancamentos from '@/components/okr/ModalEditarLancamentos'
 import { Archive, ArchiveRestore, Target, ChevronDown, ChevronUp, Plus } from 'lucide-react'
 import { formatPercent, cn, mensagemErroExclusao } from '@/lib/utils'
@@ -48,6 +50,9 @@ export default function OkrPage() {
   const [modalFinalizarKr, setModalFinalizarKr] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
   const [modalDetalhesKr, setModalDetalhesKr] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
   const [modalTaticasKr, setModalTaticasKr] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
+  const [modalSinaisVitaisKr, setModalSinaisVitaisKr] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
+  // Sinais vitais ativos (sem os removidos) agrupados pelo KR a que estão ligados.
+  const [svsPorKr, setSvsPorKr] = useState<Record<string, any[]>>({})
   const [modalEditarLancamentos, setModalEditarLancamentos] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
   const [modalExcluirKr, setModalExcluirKr] = useState<{ open: boolean; kr: any | null; loading: boolean; erro: string | null }>({ open: false, kr: null, loading: false, erro: null })
   const [modalExcluirObjetivo, setModalExcluirObjetivo] = useState<{ open: boolean; objetivo: any | null; loading: boolean; erro: string | null }>({ open: false, objetivo: null, loading: false, erro: null })
@@ -55,12 +60,19 @@ export default function OkrPage() {
   const fetchData = useCallback(async () => {
     if (!empresa) return
     setLoading(true)
-    const [{ data: objs }, { data: krsData }] = await Promise.all([
+    const [{ data: objs }, { data: krsData }, { data: svsData }] = await Promise.all([
       getObjetivos(empresa.id),
       getKrsByEmpresa(empresa.id),
+      getSinaisVitais(empresa.id),
     ])
+    // Só os ligados a um KR entram aqui; os sem KR ficam só na página de Sinais Vitais.
+    const svsLigados = (svsData ?? []).filter((sv: any) => sv.kr_id && !sv.removido_em)
+    const series = await getSeriesSinaisVitais(svsLigados.map((sv: any) => sv.id))
+    const agrupados: Record<string, any[]> = {}
+    for (const sv of svsLigados) (agrupados[sv.kr_id] ??= []).push({ ...sv, serie: series[sv.id] ?? [] })
     setObjetivos(objs ?? [])
     setKrs(krsData ?? [])
+    setSvsPorKr(agrupados)
     setLoading(false)
   }, [empresa])
 
@@ -84,6 +96,7 @@ export default function OkrPage() {
       binario: resultado.binario,
       direcao_efetiva: resultado.direcao,
       serie: resultado.serie,
+      sinais_vitais_count: svsPorKr[kr.id]?.length ?? 0,
     }
   }
 
@@ -189,6 +202,7 @@ export default function OkrPage() {
     onVerGraficoKr: (kr: any) => setModalDetalhesKr({ open: true, kr }),
     onReativarKr: handleReativarKr,
     onVerTaticasKr: (kr: any) => setModalTaticasKr({ open: true, kr }),
+    onVerSinaisVitaisKr: (kr: any) => setModalSinaisVitaisKr({ open: true, kr }),
     onEditarLancamentosKr: (kr: any) => setModalEditarLancamentos({ open: true, kr }),
   }
 
@@ -423,6 +437,7 @@ export default function OkrPage() {
       <ModalFinalizarKr open={modalFinalizarKr.open} kr={modalFinalizarKr.kr} onClose={() => setModalFinalizarKr({ open: false, kr: null })} onSuccess={fetchData} />
       <ModalDetalhesKr open={modalDetalhesKr.open} kr={modalDetalhesKr.kr} onClose={() => setModalDetalhesKr({ open: false, kr: null })} onLancar={(kr) => setModalLancarKr({ open: true, kr })} />
       <ModalTaticasKr open={modalTaticasKr.open} kr={modalTaticasKr.kr} onClose={() => setModalTaticasKr({ open: false, kr: null })} />
+      <ModalSinaisVitaisKr open={modalSinaisVitaisKr.open} kr={modalSinaisVitaisKr.kr} sinaisVitais={modalSinaisVitaisKr.kr ? svsPorKr[modalSinaisVitaisKr.kr.id] ?? [] : []} onClose={() => setModalSinaisVitaisKr({ open: false, kr: null })} />
       <ModalEditarLancamentos open={modalEditarLancamentos.open} kr={modalEditarLancamentos.kr} onClose={() => setModalEditarLancamentos({ open: false, kr: null })} onSuccess={fetchData} />
       <ModalConfirmarExclusao open={modalExcluirKr.open} titulo="Excluir Key Result" descricao="Todos os lançamentos deste KR também serão excluídos." loading={modalExcluirKr.loading} erro={modalExcluirKr.erro} onConfirmar={handleExcluirKr} onClose={() => setModalExcluirKr({ open: false, kr: null, loading: false, erro: null })} />
       <ModalConfirmarExclusao open={modalExcluirObjetivo.open} titulo="Excluir Objetivo" descricao="Todos os KRs e táticas vinculados também serão excluídos." loading={modalExcluirObjetivo.loading} erro={modalExcluirObjetivo.erro} onConfirmar={handleExcluirObjetivo} onClose={() => setModalExcluirObjetivo({ open: false, objetivo: null, loading: false, erro: null })} />

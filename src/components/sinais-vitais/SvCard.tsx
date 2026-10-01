@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { cn, formatPercent, formatNumber, formatValor, getProgressColor } from '@/lib/utils'
 import { MoreHorizontal, TrendingUp, User, Building2, Target, Flag } from 'lucide-react'
-import { progressoSinalVital } from '@/lib/okrProgresso'
+import { progressoSinalVital, type PontoSerie } from '@/lib/okrProgresso'
+import MiniGrafico, { Tendencia } from '@/components/okr/MiniGrafico'
 
 interface SvCardProps {
   sv: {
@@ -16,7 +17,8 @@ interface SvCardProps {
     responsavel?: { full_name: string }
     setor?: { name?: string; nome?: string }
     objetivo?: { titulo: string }
-    kr?: { titulo: string }
+    kr?: { titulo: string } | null
+    serie?: PontoSerie[]
   }
   onLancar?: (sv: any) => void
   onEditar?: (sv: any) => void
@@ -44,6 +46,9 @@ export default function SvCard({
     : 'bg-red-500'
 
   const setorNome = sv.setor?.nome ?? sv.setor?.name
+  const serie = sv.serie ?? []
+  // Sinal vital não tem coluna de direção: meta abaixo do inicial = quanto menor, melhor (mesma regra do progresso).
+  const direcao = Number(sv.meta ?? 0) < Number(sv.valor_inicial ?? 0) ? 'menor' : 'maior'
 
   return (
     <div className="relative bg-card border border-border rounded-xl p-4 hover:shadow-md transition-shadow flex flex-col gap-3">
@@ -130,6 +135,32 @@ export default function SvCard({
           </p>
         </div>
       </div>
+
+      {/* Evolução dos lançamentos (mesmo gráfico dos KRs) */}
+      {serie.length >= 1 && (
+        <div className="space-y-1.5">
+          <MiniGrafico
+            serie={serie}
+            meta={sv.meta}
+            acumular={false}
+            direcao={direcao}
+            tipoValor={sv.tipo_valor}
+            onAbrir={onVerHistorico ? () => onVerHistorico(sv) : undefined}
+          />
+          <div className="flex items-center justify-between gap-2">
+            <Tendencia serie={serie} direcao={direcao} tipoValor={sv.tipo_valor} />
+            {onVerHistorico && (
+              <button
+                onClick={() => onVerHistorico(sv)}
+                className="shrink-0 flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+              >
+                <TrendingUp className="w-3 h-3" />
+                Gráfico completo
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Responsável, Setor e Objetivo */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">

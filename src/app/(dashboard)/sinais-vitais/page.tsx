@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
-import { getSinaisVitais, deleteSinalVital, getKrsParaVinculo, marcarSinalVitalRemovido } from '@/lib/queries/sinais-vitais'
+import { getSinaisVitais, deleteSinalVital, getKrsParaVinculo, marcarSinalVitalRemovido, getSeriesSinaisVitais } from '@/lib/queries/sinais-vitais'
 import { getSetoresByEmpresa, getObjetivos, getFuncionariosByEmpresa } from '@/lib/queries/okr'
 import SvCard from '@/components/sinais-vitais/SvCard'
 import ModalCriarSv from '@/components/sinais-vitais/ModalCriarSv'
@@ -47,7 +47,8 @@ export default function SinaisVitaisPage() {
       getKrsParaVinculo(empresa.id),
       getFuncionariosByEmpresa(empresa.id),
     ])
-    setSvs(svData ?? [])
+    const series = await getSeriesSinaisVitais((svData ?? []).map((sv: any) => sv.id))
+    setSvs((svData ?? []).map((sv: any) => ({ ...sv, serie: series[sv.id] ?? [] })))
     setSetores(setoresData ?? [])
     setObjetivos(objsData ?? [])
     setKrs(krsData ?? [])

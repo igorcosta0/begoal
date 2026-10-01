@@ -131,3 +131,21 @@ export async function recalcularValorAtualSv(sinalVitalId: string) {
     .update({ valor_atual: ultimo?.valor ?? sv?.valor_inicial ?? null })
     .eq('id', sinalVitalId)
 }
+// Série de lançamentos (ordem cronológica) de vários sinais vitais numa
+// consulta só, para os mini-gráficos dos cards.
+export async function getSeriesSinaisVitais(ids: string[]): Promise<Record<string, { data: string; valor: number }[]>> {
+  const series: Record<string, { data: string; valor: number }[]> = {}
+  if (ids.length === 0) return series
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('sinais_vitais_lancamentos')
+    .select('sinal_vital_id, valor, data_lancamento, created_at')
+    .in('sinal_vital_id', ids)
+    .order('data_lancamento', { ascending: true })
+    .order('created_at', { ascending: true })
+  for (const l of (data ?? []) as any[]) {
+    if (l.valor === null || l.valor === undefined || !l.data_lancamento) continue
+    ;(series[l.sinal_vital_id] ??= []).push({ data: l.data_lancamento, valor: Number(l.valor) })
+  }
+  return series
+}
