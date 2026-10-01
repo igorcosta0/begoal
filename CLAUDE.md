@@ -1426,3 +1426,7 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   médio) com o botão "Ver todos"; os cards ficam escondidos até ele ser clicado. Com qualquer filtro,
   os cards aparecem direto, sem agrupamento. O filtro de objetivo continua existindo, e o card do
   sinal vital ainda mostra o objetivo na linha de baixo.
+- **Verticais recolhíveis** ("Nosso jeito de ser", pedido do Igor: igual aos valores). O card de cada
+  vertical mostra só o número e o nome. O link "Propósito e foco do ano" abre o propósito e o foco.
+  Vertical sem nenhum dos dois continua com "+ Descrever o propósito desta vertical" à vista. A grade
+  ganhou `items-start`, para um card aberto não esticar os vizinhos.

@@ -139,6 +139,7 @@ function FormVertical({ inicial, onSalvar, onCancelar }: {
 
 function Verticais({ itens, onSalvar }: { itens: Vertical[]; onSalvar: (itens: Vertical[]) => Promise<boolean> }) {
   const [editando, setEditando] = useState<number | 'nova' | null>(null)
+  const [abertas, setAbertas] = useState<Record<number, boolean>>({})
 
   async function salvar(idx: number | 'nova', v: Vertical) {
     const novos = idx === 'nova' ? [...itens, v] : itens.map((item, i) => (i === idx ? v : item))
@@ -146,7 +147,7 @@ function Verticais({ itens, onSalvar }: { itens: Vertical[]; onSalvar: (itens: V
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
       {itens.map((v, idx) => {
         const tom = TONS_VERTICAL[idx % TONS_VERTICAL.length]
         return (
@@ -172,21 +173,39 @@ function Verticais({ itens, onSalvar }: { itens: Vertical[]; onSalvar: (itens: V
                     </div>
                   </div>
 
-                  {v.descricao ? (
-                    <p className="text-sm text-foreground/80 leading-relaxed mt-3">{v.descricao}</p>
-                  ) : (
+                  {!v.descricao && !v.foco ? (
                     <button onClick={() => setEditando(idx)} className="text-xs text-muted-foreground/60 italic mt-3 text-left hover:text-primary transition-colors">
                       + Descrever o propósito desta vertical
                     </button>
-                  )}
-
-                  {v.foco && (
-                    <div className="mt-auto pt-4">
-                      <div className="rounded-xl bg-secondary/60 px-3 py-2.5">
-                        <p className={cn('text-[10px] font-bold uppercase tracking-widest', tom.texto)}>Foco do ano</p>
-                        <p className="text-xs text-foreground/80 leading-relaxed mt-1">{v.foco}</p>
-                      </div>
-                    </div>
+                  ) : (
+                    <>
+                      {/* Propósito e foco do ano: fechados até a pessoa abrir. */}
+                      <button
+                        onClick={() => setAbertas((prev) => ({ ...prev, [idx]: !prev[idx] }))}
+                        aria-expanded={!!abertas[idx]}
+                        className="mt-3 self-start flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                      >
+                        {abertas[idx] ? 'Ocultar' : 'Propósito e foco do ano'}
+                        <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', abertas[idx] && 'rotate-180')} />
+                      </button>
+                      {abertas[idx] && (
+                        <div className="mt-3 border-t border-border/60 pt-3 space-y-3">
+                          {v.descricao ? (
+                            <p className="text-sm text-foreground/80 leading-relaxed">{v.descricao}</p>
+                          ) : (
+                            <button onClick={() => setEditando(idx)} className="text-xs text-muted-foreground/60 italic text-left hover:text-primary transition-colors">
+                              + Descrever o propósito desta vertical
+                            </button>
+                          )}
+                          {v.foco && (
+                            <div className="rounded-xl bg-secondary/60 px-3 py-2.5">
+                              <p className={cn('text-[10px] font-bold uppercase tracking-widest', tom.texto)}>Foco do ano</p>
+                              <p className="text-xs text-foreground/80 leading-relaxed mt-1">{v.foco}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
                   )}
                 </>
               )}
@@ -201,7 +220,7 @@ function Verticais({ itens, onSalvar }: { itens: Vertical[]; onSalvar: (itens: V
         </div>
       ) : (
         <button onClick={() => setEditando('nova')}
-          className="min-h-[140px] rounded-2xl border border-dashed border-border flex flex-col items-center justify-center gap-1.5 text-xs font-semibold text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors">
+          className="min-h-[104px] rounded-2xl border border-dashed border-border flex flex-col items-center justify-center gap-1.5 text-xs font-semibold text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors">
           <Plus className="w-4 h-4" /> Adicionar vertical
         </button>
       )}
