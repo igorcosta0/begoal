@@ -1444,3 +1444,16 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   no endereço também abre.
 - "Perfis da equipe (visão de administrador)", no Autoconhecimento: a lista fica fechada até
   "Revelar". O título mostra quantas pessoas há na lista. Continua só para Igor e Priscila.
+- **Autoconhecimento aberto aos líderes** (pedido do Igor). Quem tem liderado direto no
+  organograma (`sou_lider_de_alguem()`) passa a ver o **Mapa do time** (resumo do time + conversa
+  sobre um liderado, `/api/liderar-liderado` sem a trava de piloto, que continua conferindo
+  `obter_tipo_liderado`) e a própria **análise do cargo** no Mapa de si (só se ela já tiver sido
+  gerada). Quem não lidera ninguém continua só com o Mapa de si, como antes.
+  - Igor/Priscila: a página inteira virou a **simulação do Felipe Marques Santos** (faixa no topo
+    avisando). O perfil, a análise do cargo (com botão de gerar/atualizar), a conversa e o Mapa do
+    time são os dele. A conversa "sobre mim" usa `/api/assistente-eneagrama` com
+    `simularFuncionarioId`, aceito só com `pode_ver_todos_eneagrama_ctz()`.
+  - A lista **"Perfis da equipe"** (tipo de todos) saiu da página. Ninguém deve ver esse
+    mapeamento. O código está no commit `38172fc` (memória `perfis-equipe-removido.md`).
+  - A conversa "sobre um colega" continua só para o piloto (Letícia/Eduardo). Na simulação, ela
+    some. Sem migration. `npm run type-check` limpo. Sem teste visual (o localhost pede login).

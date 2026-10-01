@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { souPilotoAutoconhecimento } from '@/lib/utils'
 import { TIPOS_ENEAGRAMA } from '@/lib/eneagrama/tipos'
 import { chamarGemini } from '@/lib/gemini'
 import { limparHistorico, LIMITE_PERGUNTA, erroInterno, metodoConversa, mensagensAnterioresDaPessoa } from '@/lib/apiIa'
@@ -17,15 +16,11 @@ export const maxDuration = 60
 // a /api/como-abordar-colega — mesma regra central: quem pergunta NUNCA sabe
 // o tipo do liderado, só recebe orientação de liderança calibrada por ele.
 //
-// Acesso: igual ao Mapa 3, o Igor pediu pra manter restrito a Igor/Priscila
-// por enquanto (mesmo raciocínio — filtro de "nunca mencionar Eneagrama/tipo
-// N" é rede de segurança, não garantia, e ainda não foi testado com uso
-// real). Em cima disso, o alvo AINDA precisa ser um liderado direto de quem
-// pergunta (organograma, funcionarios.gestor_id) — checado no servidor pela
-// RPC obter_tipo_liderado (que por baixo usa e_gestor_do_funcionario), não só
-// confiando que o dropdown do front-end já filtrou certo. As duas checagens
-// são independentes: tirar a trava de piloto no futuro não vai depender de
-// mexer nesta linha aqui embaixo.
+// Acesso: aberto aos líderes da CTZ em 01/10/2026 (antes só Igor/Priscila).
+// A trava é o alvo ser liderado direto de quem pergunta (organograma,
+// funcionarios.gestor_id) — checado no servidor pela RPC obter_tipo_liderado
+// (que por baixo usa e_gestor_do_funcionario), não só confiando que o
+// seletor do front-end já filtrou certo.
 export async function POST(req: NextRequest) {
   try {
     const apiKey = process.env.GEMINI_API_KEY
@@ -38,9 +33,6 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
-    if (!souPilotoAutoconhecimento(user.email)) {
-      return NextResponse.json({ error: 'Módulo ainda não disponível' }, { status: 403 })
     }
 
     const { funcionarioAlvoId, situacao, historico } = await req.json() as {

@@ -10,8 +10,8 @@ export const maxDuration = 60
 
 // Diferente de /api/sugerir-icp (que não autentica ninguém), esta rota devolve
 // conteúdo pessoal — por isso PRECISA confirmar sessão, e o tipo da pessoa é
-// sempre resolvido aqui no servidor a partir do user_id da sessão, nunca
-// aceito vindo do corpo da requisição. A RLS de funcionarios_eneagrama
+// sempre resolvido aqui no servidor a partir do user_id da sessão (exceção:
+// simulação de administrador, ver abaixo). A RLS de funcionarios_eneagrama
 // (user_id = auth.uid()) é a segunda camada de proteção, não a única.
 export async function POST(req: NextRequest) {
   try {
@@ -27,19 +27,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
-    // Graduação do protótipo (10/09/2026): o Mapa 1 "Autoliderança" agora é
-    // pra qualquer um com tipo mapeado, não só Igor/Priscila — a trava real
-    // já era (e continua sendo) "seu perfil precisa existir" logo abaixo
-    // (404 se não tiver linha em funcionarios_eneagrama), então o gate de
-    // souPilotoAutoconhecimento aqui virou redundante e foi removido. A
-    // visão "Perfis da equipe"/cruzamento cargo x Eneagrama continua
-    // restrita a Igor/Priscila, mas por RLS (pode_ver_todos_eneagrama_ctz),
-    // não por esta rota.
-    const { data: perfil, error: perfilError } = await supabase
-      .from('funcionarios_eneagrama')
-      .select('tipo, subtipo_sequencia')
-      .eq('user_id', user.id)
-      .maybeSingle()
+    const { pergunta, historico, simularFuncionarioId } = await req.json() as {
+      pergunta: string
+      historico?: { role: 'user' | 'model'; texto: string }[]
+      simularFuncionarioId?: string
+    }
+    if (!pergunta || typeof pergunta !== 'string') {
+      return NextResponse.json({ error: 'Pergunta ausente' }, { status: 400 })
+    }
+    if (pergunta.length > LIMITE_PERGUNTA) {
+      return NextResponse.json({ error: `Texto muito longo (máximo ${LIMITE_PERGUNTA} caracteres)` }, { status: 400 })
+    }
+
+    // Aberto pra qualquer um com tipo mapeado (10/09/2026): a trava é o
+    // próprio perfil existir (404 logo abaixo). Simulação (01/10/2026): Igor/
+    // Priscila veem a página como o Felipe Marques e mandam o funcionário
+    // simulado — só aceito pra quem já enxerga todos os tipos
+    // (pode_ver_todos_eneagrama_ctz). Qualquer outra pessoa fica presa ao
+    // user_id da sessão.
+    let consultaPerfil = supabase.from('funcionarios_eneagrama').select('tipo, subtipo_sequencia')
+    if (simularFuncionarioId) {
+      const { data: podeVerTodos, error: erroPermissao } = await supabase.rpc('pode_ver_todos_eneagrama_ctz')
+      if (typeof simularFuncionarioId !== 'string' || erroPermissao || !podeVerTodos) {
+        return NextResponse.json({ error: 'Simulação não permitida' }, { status: 403 })
+      }
+      consultaPerfil = consultaPerfil.eq('funcionario_id', simularFuncionarioId)
+    } else {
+      consultaPerfil = consultaPerfil.eq('user_id', user.id)
+    }
+    const { data: perfil, error: perfilError } = await consultaPerfil.maybeSingle()
 
     if (perfilError) {
       console.error('Erro ao buscar perfil de eneagrama:', perfilError)
@@ -52,17 +68,6 @@ export async function POST(req: NextRequest) {
     const tipoInfo = TIPOS_ENEAGRAMA[perfil.tipo]
     if (!tipoInfo) {
       return NextResponse.json({ error: 'Tipo de Eneagrama inválido' }, { status: 500 })
-    }
-
-    const { pergunta, historico } = await req.json() as {
-      pergunta: string
-      historico?: { role: 'user' | 'model'; texto: string }[]
-    }
-    if (!pergunta || typeof pergunta !== 'string') {
-      return NextResponse.json({ error: 'Pergunta ausente' }, { status: 400 })
-    }
-    if (pergunta.length > LIMITE_PERGUNTA) {
-      return NextResponse.json({ error: `Texto muito longo (máximo ${LIMITE_PERGUNTA} caracteres)` }, { status: 400 })
     }
 
     const systemInstruction = montarSystemInstruction(tipoInfo, perfil.subtipo_sequencia, mensagensAnterioresDaPessoa(historico))

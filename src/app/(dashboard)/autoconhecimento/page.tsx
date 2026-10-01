@@ -19,14 +19,13 @@ import {
 } from '@/lib/queries/eneagrama'
 import { getTodosCargosPerfil, getMinhaDicaCargo, type FuncionarioCargoPerfil } from '@/lib/queries/cargosPerfil'
 import { TIPOS_ENEAGRAMA } from '@/lib/eneagrama/tipos'
-import { Sparkles, Loader2, ChevronDown, ChevronRight, Wand2, MessageCircle } from 'lucide-react'
+import { Sparkles, Loader2, ChevronDown, Wand2, MessageCircle } from 'lucide-react'
 import Conversa from '@/components/autoconhecimento/Conversa'
 import {
   CabecalhoMapa,
   PerfilMapaDeSi,
   ComposicaoTime,
   SeletorPessoas,
-  formatarSequencia,
 } from '@/components/autoconhecimento/Mapas'
 
 const PERGUNTAS_SUGERIDAS = [
@@ -191,21 +190,6 @@ function BlocoAssistente({ titulo, descricao, children, id }: { titulo: string; 
   )
 }
 
-// Bloco da simulação de administrador (só Igor/Priscila veem).
-function BlocoSimulacao({ descricao, children }: { descricao: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-amber-500/50 bg-amber-500/5 p-4 space-y-3">
-      <div>
-        <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide">
-          Simulação (visão de administrador) — só você/Priscila veem este bloco
-        </p>
-        <p className="text-xs text-muted-foreground mt-0.5">{descricao}</p>
-      </div>
-      {children}
-    </div>
-  )
-}
-
 export default function AutoconhecimentoPage() {
   const { empresa } = useEmpresaStore()
   const ctz = isEmpresaCTZ(empresa?.company_name)
@@ -214,21 +198,15 @@ export default function AutoconhecimentoPage() {
   const [tipoNumero, setTipoNumero] = useState<number | null>(null)
   const [subtipoSequencia, setSubtipoSequencia] = useState<string | null>(null)
   const [erroPerfil, setErroPerfil] = useState<string | null>(null)
-  // Mapa 1 (pedido 14/09/2026): a análise cargo x Eneagrama que o admin
-  // piloto gera em "Perfis da equipe" (dicas_texto) também vai aparecer pra
-  // cada pessoa sobre si mesma aqui — a RLS já libera a própria linha pra
-  // QUALQUER usuário desde 01/09 (não é trava técnica). Mas o Igor pediu
-  // (mesmo dia) pra manter a EXIBIÇÃO restrita só a ele/Priscila por
-  // enquanto, pra validar o tom do texto antes de abrir geral — por isso
-  // este flag é mais estreito que souAdminPiloto (que já inclui a Letícia).
+  // Igor/Priscila: a página inteira vira a simulação do Felipe Marques
+  // (01/10/2026). A análise de cargo própria (minhaDica) aparece pros líderes.
   const [souVeDicaMapa1, setSouVeDicaMapa1] = useState(false)
   const [minhaDica, setMinhaDica] = useState<{ texto: string; geradoEm: string; cargo: string | null } | null>(null)
 
   // Mapa 2 "Liderando o time": só aparece pra quem tem liderado direto no
   // organograma (funcionarios.gestor_id) — ver sou_lider_de_alguem() no
-  // banco (migration PENDENTE_20260910010000). Fala do tipo de OUTRA
-  // pessoa (o liderado), então só é carregado/mostrado pra quem também é
-  // souAdminPiloto (ver decisão abaixo).
+  // banco (migration PENDENTE_20260910010000). Aberto aos líderes em
+  // 01/10/2026; o tipo do liderado nunca chega ao navegador.
   const [souLider, setSouLider] = useState(false)
   const [liderados, setLiderados] = useState<ColegaComPerfilMapeado[]>([])
   // Resumo do time (pedido 14/09/2026) — agregado, nunca tipo individual
@@ -245,19 +223,11 @@ export default function AutoconhecimentoPage() {
   // `funcionarios` já libera qualquer membro da mesma empresa).
   const [organograma, setOrganograma] = useState<FuncionarioOrganograma[]>([])
 
-  // Visão de administrador do PROTÓTIPO — controla 2 coisas diferentes desde
-  // 10/09/2026: (1) a tabela "Perfis da equipe"/cruzamento cargo x Eneagrama
-  // de sempre, e (2) agora também os Mapas 2 e 3 (que falam do tipo de OUTRA
-  // pessoa, não só de quem pergunta). O Mapa 1 já graduou pra CTZ inteira —
-  // só ele não depende desta flag. Decisão do Igor: mesmo com a trava técnica
-  // funcionando (o tipo de terceiros nunca é devolvido ao navegador), abrir
-  // 2 e 3 geral ainda não foi testado com uso real de mais gente, então
-  // ficam junto do piloto por enquanto.
+  // Piloto do protótipo (Igor/Priscila/Letícia/Eduardo): só a conversa sobre
+  // um colega. A lista "Perfis da equipe" saiu da página em 01/10/2026.
   const [souAdminPiloto, setSouAdminPiloto] = useState(false)
   const [todosPerfis, setTodosPerfis] = useState<PerfilEneagramaComNome[]>([])
   const [cargosPerfil, setCargosPerfil] = useState<Record<string, FuncionarioCargoPerfil>>({})
-  const [expandidoId, setExpandidoId] = useState<string | null>(null)
-  const [perfisAbertos, setPerfisAbertos] = useState(false)
   const [gerandoId, setGerandoId] = useState<string | null>(null)
   const [erroGeracao, setErroGeracao] = useState<string | null>(null)
 
@@ -286,36 +256,33 @@ export default function AutoconhecimentoPage() {
         setSubtipoSequencia(perfil.subtipo_sequencia)
       }
 
-      if (veDicaMapa1) {
+      // Líderes (01/10/2026): quem tem liderado direto no organograma vê o
+      // Mapa do time e a própria análise de cargo, como na simulação do Felipe.
+      const { souLider: liderDeAlguem } = await getSouLiderDeAlguem()
+      setSouLider(liderDeAlguem)
+      if (liderDeAlguem) {
+        getMeusLideradosComPerfilMapeado().then(({ liderados: l }) => setLiderados(l))
+        getResumoTimeLiderado().then(({ resumo }) => setResumoTime(resumo))
         getMinhaDicaCargo().then(({ dicas }) => setMinhaDica(dicas))
       }
 
-      // Mapas 2 e 3 falam do tipo de OUTRA pessoa (não só de quem pergunta,
-      // como o Mapa 1) — pedido explícito do Igor (10/09/2026) pra manter
-      // isso restrito a Igor/Priscila por enquanto, mesmo com a trava
-      // técnica funcionando (a rede de segurança do prompt nunca foi testada
-      // com uso real de mais gente). Por isso só busca colegas/liderados
-      // quando é piloto — pra qualquer outra pessoa nem vale disparar a
-      // chamada, já que as rotas de API dos Mapas 2/3 também recusam
-      // (403) quem não é piloto.
+      // Conversa sobre um colega continua só do piloto (10/09/2026).
       if (piloto) {
-        const [{ souLider: liderDeAlguem }, { colegas: colegasMapeados }, { perfis, error: erroTodos }, { mapa }] = await Promise.all([
-          getSouLiderDeAlguem(),
-          getColegasComPerfilMapeado(empresa.id),
+        getColegasComPerfilMapeado(empresa.id).then(({ colegas: c }) => setColegas(c))
+      }
+
+      // Simulação do Felipe Marques (Igor/Priscila): perfis, cargos e
+      // organograma ficam só em memória pra montar a simulação — a lista de
+      // perfis da equipe saiu da página em 01/10/2026 e ninguém mais a vê.
+      if (veDicaMapa1) {
+        const [{ perfis, error: erroTodos }, { mapa }, { organograma: o }] = await Promise.all([
           getTodosPerfisEneagrama(empresa.id),
           getTodosCargosPerfil(empresa.id),
+          getOrganogramaEmpresa(empresa.id),
         ])
-        setSouLider(liderDeAlguem)
-        setColegas(colegasMapeados)
-        if (liderDeAlguem) {
-          getMeusLideradosComPerfilMapeado().then(({ liderados: l }) => setLiderados(l))
-          getResumoTimeLiderado().then(({ resumo }) => setResumoTime(resumo))
-        }
         if (!erroTodos) setTodosPerfis(perfis)
         setCargosPerfil(mapa)
-        if (veDicaMapa1) {
-          getOrganogramaEmpresa(empresa.id).then(({ organograma: o }) => setOrganograma(o))
-        }
+        setOrganograma(o)
       }
       setLoading(false)
     }
@@ -371,10 +338,41 @@ export default function AutoconhecimentoPage() {
 
   const tipo = tipoNumero ? TIPOS_ENEAGRAMA[tipoNumero] : null
 
-  // Simulação de administrador (pedido 14/09/2026): como os mapas apareceriam
-  // pro Felipe Marques Santos, sem logar como ele — só com os dados que a
-  // visão de admin ("Perfis da equipe") já carregou, nenhuma query nova.
+  // Igor/Priscila (souVeDicaMapa1) veem a página inteira como o Felipe Marques
+  // Santos veria (pedido 01/10/2026) — eles não têm tipo nem liderados
+  // próprios. Usa os dados que já foram carregados pra isso, nenhuma query nova.
   const felipe = souVeDicaMapa1 ? todosPerfis.find((p) => p.full_name === 'Felipe Marques Santos') : undefined
+  const simulando = !!felipe
+  const felipeCargo = felipe ? cargosPerfil[felipe.funcionario_id] : undefined
+
+  const tipoExibido = felipe ? TIPOS_ENEAGRAMA[felipe.tipo] ?? null : tipo
+  const subtipoExibido = felipe ? felipe.subtipo_sequencia : subtipoSequencia
+  const dicaExibida = felipe
+    ? (felipeCargo?.dicas_texto && felipeCargo.dicas_gerado_em ? { texto: felipeCargo.dicas_texto, geradoEm: felipeCargo.dicas_gerado_em } : null)
+    : minhaDica
+  const cargoExibido = felipe ? felipeCargo?.cargo_perfil?.cargo_base ?? null : minhaDica?.cargo
+
+  // Time do Felipe na simulação: organograma + perfis já carregados.
+  const idsLideradosFelipe = felipe ? organograma.filter((o) => o.gestor_id === felipe.funcionario_id).map((o) => o.funcionario_id) : []
+  const perfisLideradosFelipe = todosPerfis.filter((p) => idsLideradosFelipe.includes(p.funcionario_id))
+  const resumoExibido: ResumoTime | null = felipe
+    ? {
+        instintivo: perfisLideradosFelipe.filter((p) => [8, 9, 1].includes(p.tipo)).length,
+        emocional: perfisLideradosFelipe.filter((p) => [2, 3, 4].includes(p.tipo)).length,
+        racional: perfisLideradosFelipe.filter((p) => [5, 6, 7].includes(p.tipo)).length,
+        totalLiderados: idsLideradosFelipe.length,
+        totalMapeados: perfisLideradosFelipe.length,
+      }
+    : resumoTime
+  const lideradosExibidos: ColegaComPerfilMapeado[] = felipe ? perfisLideradosFelipe : liderados
+  const lideraExibido = felipe ? idsLideradosFelipe.length > 0 : souLider
+
+  // Mapa do time: líderes (01/10/2026), a simulação e o piloto (Letícia/
+  // Eduardo veem o motivo de estar vazio).
+  const mostraMapaDoTime = simulando || souLider || souAdminPiloto
+  // Conversa sobre colega continua só do piloto; na simulação some, porque o
+  // Felipe não teria essa opção.
+  const colegasConversa = simulando ? [] : colegas
 
   return (
     <div className="max-w-6xl space-y-12">
@@ -390,21 +388,32 @@ export default function AutoconhecimentoPage() {
         </div>
       </div>
 
+      {simulando && (
+        <div className="-mt-6 rounded-2xl border border-dashed border-amber-500/50 bg-amber-500/5 px-4 py-3">
+          <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide">
+            Simulação · você está vendo a página como Felipe Marques Santos
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Cada líder vê a própria página, com o próprio perfil e o próprio time. Só você e a Priscila veem esta simulação.
+          </p>
+        </div>
+      )}
+
       {/* Atalhos entre as partes da página. */}
       <nav className="sticky top-[76px] z-30 -mx-1 px-1 py-2 bg-background/85 backdrop-blur flex gap-2 overflow-x-auto text-xs font-semibold -mt-6">
         <a href="#mapa-de-si" className="shrink-0 px-3 py-1.5 rounded-full bg-primary text-primary-foreground">1 · Mapa de si</a>
-        {(tipo || colegas.length > 0) && (
+        {(tipoExibido || colegasConversa.length > 0) && (
           <a
             href="#assistente"
             onClick={() => window.dispatchEvent(new CustomEvent(EVENTO_ABRIR_BLOCO, { detail: 'assistente' }))}
             className="shrink-0 px-3 py-1.5 rounded-full bg-card border border-border text-foreground hover:border-primary/40 transition-colors">Conversar com o assistente</a>
         )}
-        {souAdminPiloto && (
+        {mostraMapaDoTime && (
           <a href="#mapa-do-time" className="shrink-0 px-3 py-1.5 rounded-full bg-card border border-border text-foreground hover:border-amber-500/50 transition-colors">2 · Mapa do time</a>
         )}
       </nav>
 
-      {erroPerfil && (
+      {erroPerfil && !simulando && (
         <div className="px-4 py-3 rounded-xl text-sm font-medium bg-red-50 text-red-700 border border-red-200">
           {erroPerfil}
         </div>
@@ -419,59 +428,63 @@ export default function AutoconhecimentoPage() {
           descricao="Como você funciona, onde brilha e onde vale ficar de olho."
         />
 
-        {tipo ? (
-          <PerfilMapaDeSi tipo={tipo} subtipoSequencia={subtipoSequencia} dica={souVeDicaMapa1 ? minhaDica : null} cargo={minhaDica?.cargo} />
+        {tipoExibido ? (
+          <PerfilMapaDeSi tipo={tipoExibido} subtipoSequencia={subtipoExibido} dica={dicaExibida} cargo={cargoExibido} />
         ) : (
           <div className="rounded-2xl border border-dashed border-border bg-card/50 p-6 text-center">
             <p className="text-muted-foreground text-sm">
               {souAdminPiloto
-                ? 'Você não tem um perfil de Eneagrama próprio mapeado — normal pra quem administra o sistema. Confira abaixo o perfil de toda a equipe.'
+                ? 'Você não tem um perfil de Eneagrama próprio mapeado — normal pra quem administra o sistema.'
                 : 'Seu perfil de Eneagrama ainda não foi mapeado. Fale com a liderança/RH pra ser incluído no Programa Foco — assim que seu tipo for cadastrado, este mapa e o assistente abaixo aparecem automaticamente.'}
             </p>
           </div>
         )}
 
-        {/* Aparece se há tipo próprio OU colega pra conversar (achado 14/09/2026). */}
-        {(tipo || colegas.length > 0) && (
+        {/* Simulação: gerar/atualizar a análise de cargo do Felipe (antes isso
+            ficava na lista "Perfis da equipe", removida em 01/10/2026). */}
+        {felipe && felipeCargo?.cargo_perfil && (
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => gerarDica(felipe.funcionario_id)}
+              disabled={gerandoId === felipe.funcionario_id}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border border-amber-500/50 text-foreground hover:bg-amber-500/10 transition-colors disabled:opacity-50"
+            >
+              {gerandoId === felipe.funcionario_id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+              {dicaExibida ? 'Atualizar análise do cargo (simulação)' : 'Gerar análise do cargo (simulação)'}
+            </button>
+            {erroGeracao && <span className="text-xs text-red-600">{erroGeracao}</span>}
+          </div>
+        )}
+
+        {(tipoExibido || colegasConversa.length > 0) && (
           <BlocoAssistente
             id="assistente"
             titulo="Conversar com o assistente"
             descricao={
-              tipo
+              tipoExibido
                 ? 'Traga uma dificuldade real. O assistente pergunta primeiro para entender a situação e só depois sugere, a partir do seu jeito de funcionar.'
                 : 'Você não tem tipo próprio mapeado, mas pode escolher um colega para saber a melhor forma de conduzir uma conversa com ele, sem nunca revelar o tipo comportamental dele.'
             }
           >
-            <ConversaMapaDeSi colegas={colegas} permiteSobreSiMesmo={!!tipo} />
+            {felipe ? (
+              <Conversa
+                endpoint="/api/assistente-eneagrama"
+                montarCorpo={(msg, historico) => ({ pergunta: msg, historico, simularFuncionarioId: felipe.funcionario_id })}
+                sugestoes={PERGUNTAS_SUGERIDAS}
+                placeholder="O que está difícil para você agora?"
+              />
+            ) : (
+              <ConversaMapaDeSi colegas={colegasConversa} permiteSobreSiMesmo={!!tipo} />
+            )}
           </BlocoAssistente>
         )}
-
-        {/* Simulação (pedido 14/09/2026): a análise de cargo x Eneagrama ainda é
-            restrita a Igor/Priscila (souVeDicaMapa1); este bloco mostra como a
-            tela ficaria pro Felipe Marques Santos. */}
-        {souVeDicaMapa1 && (() => {
-          const felipeTipo = felipe ? TIPOS_ENEAGRAMA[felipe.tipo] : null
-          const felipeCargo = felipe ? cargosPerfil[felipe.funcionario_id] : undefined
-          const felipeDica = felipeCargo?.dicas_texto && felipeCargo.dicas_gerado_em
-            ? { texto: felipeCargo.dicas_texto, geradoEm: felipeCargo.dicas_gerado_em }
-            : null
-          return (
-            <BlocoSimulacao descricao="Como o Mapa de si apareceria pro Felipe Marques Santos, se ele abrisse a própria tela agora — pra validar o tom da análise antes de abrir esse recurso pra CTZ inteira.">
-              {felipeTipo ? (
-                <PerfilMapaDeSi tipo={felipeTipo} subtipoSequencia={felipe!.subtipo_sequencia} dica={felipeDica} cargo={felipeCargo?.cargo_perfil?.cargo_base} />
-              ) : (
-                <p className="text-xs text-muted-foreground">Felipe Marques Santos não apareceu nos perfis carregados — confira &quot;Perfis da equipe&quot; mais abaixo.</p>
-              )}
-            </BlocoSimulacao>
-          )
-        })()}
       </section>
 
-      {/* Mapa do time. Fala do tipo de OUTRA pessoa (o liderado), por isso o
-          Igor pediu (10/09/2026) pra manter restrito a Igor/Priscila por
-          enquanto, além de exigir liderado. O cabeçalho sempre aparece pra
-          piloto; sem liderado, só o conteúdo some, com o motivo (14/09/2026). */}
-      {souAdminPiloto && (
+      {/* Mapa do time. Aberto aos líderes (quem tem liderado direto no
+          organograma) em 01/10/2026 — antes só Igor/Priscila. O tipo de cada
+          liderado nunca é mostrado, só o resumo do time. */}
+      {mostraMapaDoTime && (
         <section id="mapa-do-time" className="space-y-5 scroll-mt-32">
           <CabecalhoMapa
             numero={2}
@@ -479,19 +492,25 @@ export default function AutoconhecimentoPage() {
             titulo="Mapa do time"
             descricao="Seu time em conjunto (nunca o tipo de cada pessoa) e orientação para liderar cada liderado direto."
           />
-          {souLider ? (
+          {lideraExibido ? (
             <>
               <div className="glass-panel rounded-2xl p-5 md:p-6">
-                <ComposicaoTime resumo={resumoTime} />
+                <ComposicaoTime resumo={resumoExibido} />
               </div>
               <BlocoAssistente
                 titulo="Conversar sobre um liderado"
                 descricao="Escolha um liderado direto e conte a situação. O assistente pergunta primeiro e depois orienta como delegar, dar feedback, desenvolver ou conduzir um conflito com essa pessoa, considerando também o seu jeito de liderar. O tipo dela nunca é revelado."
               >
-                {liderados.length === 0 ? (
+                {lideradosExibidos.length === 0 ? (
                   <p className="text-xs text-muted-foreground">Nenhum dos seus liderados diretos tem tipo mapeado ainda.</p>
+                ) : felipe ? (
+                  <ConversaLiderado
+                    pessoas={lideradosExibidos}
+                    endpoint="/api/simular-liderar-liderado"
+                    corpoExtra={{ liderFuncionarioId: felipe.funcionario_id }}
+                  />
                 ) : (
-                  <ConversaLiderado pessoas={liderados} endpoint="/api/liderar-liderado" />
+                  <ConversaLiderado pessoas={lideradosExibidos} endpoint="/api/liderar-liderado" />
                 )}
               </BlocoAssistente>
             </>
@@ -499,184 +518,11 @@ export default function AutoconhecimentoPage() {
             <div className="rounded-2xl border border-dashed border-border bg-card/50 p-6 text-center">
               <p className="text-muted-foreground text-sm">
                 Este mapa só aparece pra quem tem pelo menos 1 liderado direto no organograma — você não lidera
-                ninguém em nenhuma empresa hoje, por isso não há nada pra mostrar aqui.
+                ninguém hoje, por isso não há nada pra mostrar aqui.
               </p>
             </div>
           )}
-
-          {/* Simulação (pedido 14/09/2026): organograma + todosPerfis (já
-              carregados) pra achar os liderados do Felipe Marques e montar o
-              mesmo resumo agregado — nenhuma RPC nova. */}
-          {souVeDicaMapa1 && (() => {
-            if (!felipe) {
-              return (
-                <BlocoSimulacao descricao="Felipe Marques Santos não apareceu nos perfis carregados — confira &quot;Perfis da equipe&quot; mais abaixo.">
-                  {null}
-                </BlocoSimulacao>
-              )
-            }
-            const idsLiderados = organograma.filter((o) => o.gestor_id === felipe.funcionario_id).map((o) => o.funcionario_id)
-            const perfisLiderados = todosPerfis.filter((p) => idsLiderados.includes(p.funcionario_id))
-            const resumoSimulado: ResumoTime = {
-              instintivo: perfisLiderados.filter((p) => [8, 9, 1].includes(p.tipo)).length,
-              emocional: perfisLiderados.filter((p) => [2, 3, 4].includes(p.tipo)).length,
-              racional: perfisLiderados.filter((p) => [5, 6, 7].includes(p.tipo)).length,
-              totalLiderados: idsLiderados.length,
-              totalMapeados: perfisLiderados.length,
-            }
-            return (
-              <BlocoSimulacao descricao="Como o Mapa do time apareceria pro Felipe Marques Santos — resumo do time e a conversa de verdade, sem precisar logar como ele.">
-                <div className="space-y-4">
-                  <ComposicaoTime resumo={resumoSimulado} />
-                  {perfisLiderados.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">Nenhum liderado do Felipe Marques tem tipo mapeado ainda.</p>
-                  ) : (
-                    <ConversaLiderado
-                      pessoas={perfisLiderados}
-                      endpoint="/api/simular-liderar-liderado"
-                      corpoExtra={{ liderFuncionarioId: felipe.funcionario_id }}
-                    />
-                  )}
-                </div>
-              </BlocoSimulacao>
-            )
-          })()}
         </section>
-      )}
-
-      {/* Visão de administrador do protótipo — só Igor/Priscila, ver
-          souAdminPiloto acima. Não faz parte dos 3 mapas do pedido, é a
-          ferramenta de conferência de mapeamento que já existia. */}
-      {souAdminPiloto && todosPerfis.length > 0 && (
-        <div className="glass-panel rounded-2xl p-6 space-y-3">
-          {/* Lista fechada até abrir (mesmo padrão do resto da página). */}
-          <button
-            type="button"
-            onClick={() => setPerfisAbertos((v) => !v)}
-            aria-expanded={perfisAbertos}
-            className="w-full flex items-start justify-between gap-3 text-left"
-          >
-            <div>
-              <h2 className="font-display text-base font-bold text-foreground">
-                Perfis da equipe (visão de administrador)
-                <span className="ml-2 text-xs font-normal text-muted-foreground">{todosPerfis.length} pessoas</span>
-              </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Clique numa linha pra ver o cruzamento com o perfil de cargo (competências exigidas e o que o Eneagrama ajuda/atrapalha).
-              </p>
-            </div>
-            <span className="shrink-0 flex items-center gap-1 text-xs text-muted-foreground mt-1">
-              {perfisAbertos ? 'Ocultar' : 'Revelar'}
-              <ChevronDown className={cn('w-4 h-4 transition-transform', perfisAbertos && 'rotate-180')} />
-            </span>
-          </button>
-          {perfisAbertos && (<>
-          {erroGeracao && (
-            <div className="px-4 py-3 rounded-xl text-sm font-medium bg-red-50 text-red-700 border border-red-200">
-              {erroGeracao}
-            </div>
-          )}
-          {/* Lista em vez de tabela (achado 14/09/2026): com 4 colunas de
-              texto (nome/tipo/sequência de instintos/cargo), uma tabela
-              exigia rolagem horizontal pra ler em qualquer tela mais estreita
-              que o conteúdo — aqui os campos quebram linha naturalmente
-              (flex-wrap) em vez de forçar nowrap. */}
-          <div className="divide-y divide-border/50">
-            {todosPerfis.map((p) => {
-              const cargoInfo = cargosPerfil[p.funcionario_id]
-              const cp = cargoInfo?.cargo_perfil
-              const aberto = expandidoId === p.funcionario_id
-              return (
-                <div key={p.funcionario_id}>
-                  <button
-                    type="button"
-                    onClick={() => setExpandidoId(aberto ? null : p.funcionario_id)}
-                    className="w-full flex items-start gap-2 py-2.5 text-left hover:bg-accent/50 rounded-lg px-1.5 -mx-1.5 transition-colors"
-                  >
-                    <span className="text-muted-foreground mt-0.5 shrink-0">
-                      {aberto ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                        <span className="text-sm text-foreground font-medium">{p.full_name}</span>
-                        <span className="text-xs text-muted-foreground">Tipo {p.tipo}</span>
-                      </span>
-                      <span className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-xs text-muted-foreground">
-                        <span>{p.subtipo_sequencia ? formatarSequencia(p.subtipo_sequencia) : '—'}</span>
-                        <span>{cp ? `${cp.cargo_base}${cp.nivel ? ` (${cp.nivel})` : ''}` : 'sem perfil de cargo mapeado'}</span>
-                      </span>
-                    </span>
-                  </button>
-                  {aberto && (
-                    <div className="pb-4 px-1.5">
-                      <div className="bg-secondary/30 rounded-xl p-4">
-                        {!cp ? (
-                              <p className="text-xs text-muted-foreground">
-                                Essa pessoa ainda não tem perfil de cargo mapeado (cargo dela não bate com nenhuma linha
-                                preenchida na planilha de cargos, ou é um cargo composto de sócio/CEO) — só o tipo de
-                                Eneagrama está disponível.
-                              </p>
-                            ) : (
-                              <div className="space-y-3 text-sm">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                  <div>
-                                    <p className="text-xs font-medium text-muted-foreground mb-1">Sumário do cargo</p>
-                                    <p className="text-foreground">{cp.sumario}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs font-medium text-muted-foreground mb-1">Autonomia esperada</p>
-                                    <p className="text-foreground">{cp.autonomia ?? '—'}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs font-medium text-muted-foreground mb-1">Competências técnicas</p>
-                                    <p className="text-foreground whitespace-pre-line">{cp.competencias_tecnicas ?? '—'}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs font-medium text-muted-foreground mb-1">Competências comportamentais</p>
-                                    <p className="text-foreground whitespace-pre-line">{cp.competencias_comportamentais ?? '—'}</p>
-                                  </div>
-                                </div>
-
-                                <div className="pt-3 border-t border-border/50">
-                                  <div className="flex items-center justify-between gap-2 mb-2">
-                                    <p className="text-xs font-semibold text-foreground uppercase tracking-wide">
-                                      Análise do Eneagrama para este cargo
-                                    </p>
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); gerarDica(p.funcionario_id) }}
-                                      disabled={gerandoId === p.funcionario_id}
-                                      className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border border-border text-foreground hover:bg-accent transition-colors disabled:opacity-50"
-                                    >
-                                      {gerandoId === p.funcionario_id
-                                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                        : <Wand2 className="w-3.5 h-3.5" />}
-                                      {cargoInfo?.dicas_texto ? 'Atualizar análise' : 'Gerar análise'}
-                                    </button>
-                                  </div>
-                                  {cargoInfo?.dicas_texto ? (
-                                    <>
-                                      <p className="text-foreground whitespace-pre-line">{cargoInfo.dicas_texto}</p>
-                                      {cargoInfo.dicas_gerado_em && (
-                                        <p className="text-xs text-muted-foreground mt-2">
-                                          Gerado em {new Date(cargoInfo.dicas_gerado_em).toLocaleString('pt-BR')}
-                                        </p>
-                                      )}
-                                    </>
-                                  ) : (
-                                    <p className="text-xs text-muted-foreground">Ainda não gerada — clique em "Gerar análise".</p>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-          </>)}
-        </div>
       )}
     </div>
   )
