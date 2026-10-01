@@ -1397,3 +1397,9 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   Sem filtro, todos ficam fechados. Com qualquer filtro (busca, objetivo, KR, responsável, setor), os
   grupos com resultado abrem sozinhos. O clique abre e fecha à mão, e trocar o filtro desfaz esses
   cliques. Só front-end (`sinais-vitais/page.tsx`), sem migration.
+- O Igor rodou `PENDENTE_20261001000000_krs_ordem.sql` e o script `Adições futuras/Setores por
+  responsável - KRs e sinais vitais.sql`. Conferido via SQL: 65 KRs, nenhum sem `ordem` e nenhuma
+  posição repetida no mesmo objetivo. Setores: Ross e Marques → Concretize, Finato → "Novos negocios",
+  Guilherme → Loteamentos (KRs e sinais vitais, inclusive os removidos). Ficaram de fora porque o
+  responsável não estava no pedido: 1 KR do Ezequiel sem setor ("Número de projetos sem retrabalho"),
+  e os KRs do Filippe Réus (Investimento) e da Graciela (Concretize). Push de `cbaadae` e `720ef51`.
