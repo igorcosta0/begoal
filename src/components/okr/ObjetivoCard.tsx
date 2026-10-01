@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { cn, formatPercent, getProgressColor } from '@/lib/utils'
-import { ChevronDown, ChevronUp, MoreHorizontal, Target, Archive } from 'lucide-react'
+import { ChevronDown, ChevronUp, MoreHorizontal, Target, Archive, Activity } from 'lucide-react'
 import KrCard from './KrCard'
 
 interface ObjetivoCardProps {
@@ -11,6 +11,7 @@ interface ObjetivoCardProps {
     titulo: string
     progresso?: number | null // null = nenhum KR com lançamento ainda
     krs?: any[]
+    sinais_vitais_count?: number
   }
   onCriarKr?: (objetivo: any) => void
   onEditarObjetivo?: (objetivo: any) => void
@@ -25,6 +26,7 @@ interface ObjetivoCardProps {
   onVerTaticasKr?: (kr: any) => void
   onEditarLancamentosKr?: (kr: any) => void
   onVerSinaisVitaisKr?: (kr: any) => void
+  onVerSinaisVitaisObjetivo?: (objetivo: any) => void
 }
 
 export default function ObjetivoCard({
@@ -42,6 +44,7 @@ export default function ObjetivoCard({
   onVerTaticasKr,
   onEditarLancamentosKr,
   onVerSinaisVitaisKr,
+  onVerSinaisVitaisObjetivo,
 }: ObjetivoCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -72,6 +75,19 @@ export default function ObjetivoCard({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {/* Sinais vitais ligados ao objetivo (só aparece quando há algum) */}
+            {onVerSinaisVitaisObjetivo && (objetivo.sinais_vitais_count ?? 0) > 0 && (
+              <button
+                onClick={() => onVerSinaisVitaisObjetivo(objetivo)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 border border-border rounded-md text-xs font-medium text-foreground hover:bg-accent transition-colors"
+              >
+                <Activity className="w-3.5 h-3.5 text-primary" />
+                <span className="hidden sm:inline">Sinais vitais</span>
+                <span className="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold tabular-nums">
+                  {objetivo.sinais_vitais_count}
+                </span>
+              </button>
+            )}
             <div className="relative">
               <button
                 onClick={() => setMenuOpen(!menuOpen)}

@@ -1377,3 +1377,8 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   com `kr_id` e sem `removido_em`. Os sinais sem KR continuam só na página dedicada. Sem migration.
   `npm run type-check` e lint limpos. Não deu para conferir a tela: o localhost pede login.
   Commit local, sem push.
+- Mesmo dia: os sinais vitais da CTZ estão ligados ao **objetivo**, não ao KR, então o botão do KR
+  não aparecia em nenhum card. O card do objetivo (`ObjetivoCard.tsx`, cabeçalho, ao lado do ⋯) ganhou
+  o mesmo botão "Sinais vitais (N)" que abre o mesmo popup (`ModalSinaisVitaisKr`, com `doObjetivo`):
+  lista todos os sinais vitais ativos com aquele `objetivo_id`, com ou sem KR, e mostra o KR quando
+  houver. Os sinais sem objetivo nem KR continuam só na página de Sinais Vitais.
