@@ -1421,3 +1421,8 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   lançamentos dele. O erro veio só do select de conferência no fim. **Lição**: no SQL Editor do
   Supabase, não usar `create temp table ... on commit drop` para passar dados entre comandos. Usar um
   comando só, com CTEs, ou buscar o registro pelo título.
+- **Sinais Vitais sem os blocos por objetivo** (pedido do Igor: "não deve aparecer os objetivos" na
+  página). Sem filtro, aparece um resumo geral (total, na meta, abaixo, sem lançamentos, progresso
+  médio) com o botão "Ver todos"; os cards ficam escondidos até ele ser clicado. Com qualquer filtro,
+  os cards aparecem direto, sem agrupamento. O filtro de objetivo continua existindo, e o card do
+  sinal vital ainda mostra o objetivo na linha de baixo.
