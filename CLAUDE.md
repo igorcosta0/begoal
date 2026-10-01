@@ -1457,3 +1457,9 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
     mapeamento. O código está no commit `38172fc` (memória `perfis-equipe-removido.md`).
   - A conversa "sobre um colega" continua só para o piloto (Letícia/Eduardo). Na simulação, ela
     some. Sem migration. `npm run type-check` limpo. Sem teste visual (o localhost pede login).
+- Análises de cargo dos líderes geradas pelo Igor em produção (01/10): Ross, Finato e Jean, além
+  de Felipe Marques e Graciela, que já tinham. Guilherme ligado a "Líder de Vertical"
+  (`funcionarios_cargo_perfil`, update pelo Chrome), **mas a análise dele ainda não foi gerada**.
+  Jean e Guilherme não têm liderado no organograma, então a página também mostra a análise de
+  cargo a quem tem "Líder" no `funcionarios.cargo`. Camila Leal e Leiliane Raddatz têm análise
+  gravada (testes antigos) e continuam sem vê-la.

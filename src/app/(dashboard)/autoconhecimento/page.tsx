@@ -257,12 +257,21 @@ export default function AutoconhecimentoPage() {
       }
 
       // Líderes (01/10/2026): quem tem liderado direto no organograma vê o
-      // Mapa do time e a própria análise de cargo, como na simulação do Felipe.
-      const { souLider: liderDeAlguem } = await getSouLiderDeAlguem()
+      // Mapa do time. A análise de cargo aparece pra eles e também pra quem
+      // tem "Líder" no cargo do cadastro (Jean, Guilherme: líderes sem
+      // liderado no organograma). Outras pessoas com análise gravada (testes
+      // antigos) continuam sem vê-la.
+      const [{ souLider: liderDeAlguem }, { data: meuCadastro }] = await Promise.all([
+        getSouLiderDeAlguem(),
+        supabase.from('funcionarios').select('cargo').eq('user_id', user.id).eq('client_id', empresa.id).maybeSingle(),
+      ])
       setSouLider(liderDeAlguem)
+      const liderPeloCargo = /l[ií]der/i.test(meuCadastro?.cargo ?? '')
       if (liderDeAlguem) {
         getMeusLideradosComPerfilMapeado().then(({ liderados: l }) => setLiderados(l))
         getResumoTimeLiderado().then(({ resumo }) => setResumoTime(resumo))
+      }
+      if (liderDeAlguem || liderPeloCargo) {
         getMinhaDicaCargo().then(({ dicas }) => setMinhaDica(dicas))
       }
 
