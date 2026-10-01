@@ -1480,3 +1480,8 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   `ModalEditarLancamentos` agora usa `.select('id')` + `mensagemErroGravacao` e mostra o erro.
   Não conferi Sinais Vitais nem Táticas: os nomes das tabelas não apareceram na consulta de
   policies (`sv_lancamentos`?).
+- Eneagramas que faltavam (`Adições futuras/Eneagramas Gabriel e Anna.jpeg`, `Eneagrama Réus.jpeg`,
+  fora do Git): Gabriel Rodrigues Lodetti gravado em `funcionarios_eneagrama` (tipo 6, SO/AP/SX)
+  pelo Chrome e conferido. O Réus já estava igual à imagem (3, AP/SO/SX). **Anna Laura Lopes (tipo
+  2, SO/AP/SX) ficou pendente**: ela não existe em `funcionarios` de nenhuma empresa, e a tabela exige
+  `funcionario_id` e `user_id`.
