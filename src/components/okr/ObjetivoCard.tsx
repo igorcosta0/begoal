@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { cn, formatPercent, getProgressColor } from '@/lib/utils'
-import { ChevronDown, ChevronUp, MoreHorizontal, Target, Archive, Activity } from 'lucide-react'
+import { ChevronDown, ChevronUp, MoreHorizontal, Target, Archive, Activity, GripVertical } from 'lucide-react'
 import KrCard from './KrCard'
 
 interface ObjetivoCardProps {
@@ -27,6 +27,8 @@ interface ObjetivoCardProps {
   onEditarLancamentosKr?: (kr: any) => void
   onVerSinaisVitaisKr?: (kr: any) => void
   onVerSinaisVitaisObjetivo?: (objetivo: any) => void
+  // Move o KR arrastado para antes (ou depois) do KR alvo.
+  onMoverKr?: (objetivoId: string, krId: string, alvoId: string, depois: boolean) => void
 }
 
 export default function ObjetivoCard({
@@ -45,9 +47,23 @@ export default function ObjetivoCard({
   onEditarLancamentosKr,
   onVerSinaisVitaisKr,
   onVerSinaisVitaisObjetivo,
+  onMoverKr,
 }: ObjetivoCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  // Arrastar KR: pegandoId = alça pressionada (libera o draggable), arrastandoId = em movimento,
+  // sobre = card sob o cursor e de que lado ele vai entrar.
+  const [pegandoId, setPegandoId] = useState<string | null>(null)
+  const [arrastandoId, setArrastandoId] = useState<string | null>(null)
+  const [sobre, setSobre] = useState<{ id: string; depois: boolean } | null>(null)
+
+  // Grade com várias colunas: metade direita do card = entra depois. Uma coluna só (celular): metade de baixo.
+  function soltarDepois(e: React.DragEvent<HTMLDivElement>) {
+    const r = e.currentTarget.getBoundingClientRect()
+    const grade = e.currentTarget.parentElement?.getBoundingClientRect()
+    const umaColuna = !grade || r.width > grade.width * 0.6
+    return umaColuna ? e.clientY > r.top + r.height / 2 : e.clientX > r.left + r.width / 2
+  }
 
   const semDados = objetivo.progresso === null || objetivo.progresso === undefined
   const progresso = objetivo.progresso ?? 0
@@ -167,20 +183,79 @@ export default function ObjetivoCard({
             </div>
           ) : (
             <div className="p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {krs.map((kr) => (
-                <KrCard
+              {krs.map((kr, i) => (
+                <div
                   key={kr.id}
-                  kr={kr}
-                  onLancar={onLancarKr}
-                  onEditar={onEditarKr}
-                  onFinalizar={onFinalizarKr}
-                  onExcluir={onExcluirKr}
-                  onVerGrafico={onVerGraficoKr}
-                  onReativar={onReativarKr}
-                  onVerTaticas={onVerTaticasKr}
-                  onEditarLancamentos={onEditarLancamentosKr}
-                  onVerSinaisVitais={onVerSinaisVitaisKr}
-                />
+                  // Só arrasta pela alça: assim clicar/selecionar texto no card continua normal.
+                  draggable={!!onMoverKr && pegandoId === kr.id}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', kr.id)
+                    e.dataTransfer.effectAllowed = 'move'
+                    setArrastandoId(kr.id)
+                  }}
+                  onDragEnd={() => { setArrastandoId(null); setPegandoId(null); setSobre(null) }}
+                  onDragOver={(e) => {
+                    if (!arrastandoId || arrastandoId === kr.id) return
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = 'move'
+                    const depois = soltarDepois(e)
+                    if (!sobre || sobre.id !== kr.id || sobre.depois !== depois) setSobre({ id: kr.id, depois })
+                  }}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) setSobre((s) => (s?.id === kr.id ? null : s))
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    const id = e.dataTransfer.getData('text/plain')
+                    const depois = soltarDepois(e)
+                    setArrastandoId(null); setPegandoId(null); setSobre(null)
+                    if (id && id !== kr.id) onMoverKr?.(objetivo.id, id, kr.id, depois)
+                  }}
+                  className={cn(
+                    'relative rounded-xl transition-opacity',
+                    arrastandoId === kr.id && 'opacity-40'
+                  )}
+                >
+                  {/* Linha que mostra onde o KR vai entrar */}
+                  {sobre?.id === kr.id && (
+                    <span
+                      className={cn(
+                        'absolute z-10 bg-primary rounded-full pointer-events-none',
+                        'max-md:inset-x-0 max-md:h-1',
+                        sobre?.depois ? 'max-md:-bottom-2 md:-right-2' : 'max-md:-top-2 md:-left-2',
+                        'md:inset-y-0 md:w-1'
+                      )}
+                    />
+                  )}
+                  <KrCard
+                    kr={kr}
+                    onLancar={onLancarKr}
+                    onEditar={onEditarKr}
+                    onFinalizar={onFinalizarKr}
+                    onExcluir={onExcluirKr}
+                    onVerGrafico={onVerGraficoKr}
+                    onReativar={onReativarKr}
+                    onVerTaticas={onVerTaticasKr}
+                    onEditarLancamentos={onEditarLancamentosKr}
+                    onVerSinaisVitais={onVerSinaisVitaisKr}
+                    onMoverAntes={onMoverKr && i > 0 ? () => onMoverKr(objetivo.id, kr.id, krs[i - 1].id, false) : undefined}
+                    onMoverDepois={onMoverKr && i < krs.length - 1 ? () => onMoverKr(objetivo.id, kr.id, krs[i + 1].id, true) : undefined}
+                    alca={
+                      onMoverKr && krs.length > 1 ? (
+                        <button
+                          type="button"
+                          aria-label="Arrastar para mudar a posição do KR"
+                          title="Arraste para mudar a posição"
+                          onMouseDown={() => setPegandoId(kr.id)}
+                          onMouseUp={() => setPegandoId(null)}
+                          className="-ml-1 p-0.5 rounded text-muted-foreground/60 hover:text-foreground hover:bg-accent cursor-grab active:cursor-grabbing"
+                        >
+                          <GripVertical className="w-4 h-4" />
+                        </button>
+                      ) : undefined
+                    }
+                  />
+                </div>
               ))}
             </div>
           )}

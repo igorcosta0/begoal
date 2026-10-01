@@ -11,6 +11,7 @@ import {
   getSetoresByEmpresa,
   getFuncionariosByEmpresa,
   reativarKr,
+  salvarOrdemKrs,
 } from '@/lib/queries/okr'
 import { createClient } from '@/lib/supabase/client'
 import ObjetivoCard from '@/components/okr/ObjetivoCard'
@@ -55,6 +56,7 @@ export default function OkrPage() {
   // Sinais vitais ativos (sem os removidos) agrupados pelo KR e pelo objetivo a que estão ligados.
   const [svsPorKr, setSvsPorKr] = useState<Record<string, any[]>>({})
   const [svsPorObjetivo, setSvsPorObjetivo] = useState<Record<string, any[]>>({})
+  const [erroOrdem, setErroOrdem] = useState<string | null>(null)
   const [modalEditarLancamentos, setModalEditarLancamentos] = useState<{ open: boolean; kr: any | null }>({ open: false, kr: null })
   const [modalExcluirKr, setModalExcluirKr] = useState<{ open: boolean; kr: any | null; loading: boolean; erro: string | null }>({ open: false, kr: null, loading: false, erro: null })
   const [modalExcluirObjetivo, setModalExcluirObjetivo] = useState<{ open: boolean; objetivo: any | null; loading: boolean; erro: string | null }>({ open: false, objetivo: null, loading: false, erro: null })
@@ -177,6 +179,28 @@ export default function OkrPage() {
     fetchData()
   }
 
+  // Move o KR para antes (ou depois) do KR alvo dentro do objetivo. A tela muda
+  // na hora; se a gravação falhar, recarrega do banco e mostra o erro.
+  // Usa todos os KRs do objetivo (inclusive os escondidos por filtro ou já
+  // finalizados), para a ordem continuar certa quando o filtro sair.
+  async function handleMoverKr(objetivoId: string, krId: string, alvoId: string, depois: boolean) {
+    const ids = krs.filter((k) => k.objetivo_id === objetivoId).map((k) => k.id).filter((id) => id !== krId)
+    const posAlvo = ids.indexOf(alvoId)
+    if (posAlvo < 0) return
+    ids.splice(depois ? posAlvo + 1 : posAlvo, 0, krId)
+
+    const porId = new Map(krs.map((k) => [k.id, k]))
+    let proximo = 0
+    setKrs(krs.map((k) => (k.objetivo_id === objetivoId ? { ...porId.get(ids[proximo++]), ordem: proximo } : k)))
+    setErroOrdem(null)
+
+    const erro = await salvarOrdemKrs(ids)
+    if (erro) {
+      setErroOrdem(`Não foi possível salvar a nova ordem dos KRs. ${erro}`)
+      fetchData()
+    }
+  }
+
   async function handleReativarKr(kr: any) {
     await reativarKr(kr.id)
     fetchData()
@@ -213,6 +237,7 @@ export default function OkrPage() {
     onVerSinaisVitaisKr: (kr: any) => setModalSinaisVitaisKr({ open: true, kr }),
     onVerSinaisVitaisObjetivo: (obj: any) => setModalSinaisVitaisObjetivo({ open: true, objetivo: obj }),
     onEditarLancamentosKr: (kr: any) => setModalEditarLancamentos({ open: true, kr }),
+    onMoverKr: handleMoverKr,
   }
 
   return (
@@ -285,6 +310,13 @@ export default function OkrPage() {
               </button>
             )}
           </div>
+
+          {erroOrdem && (
+            <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border border-destructive/30 bg-destructive/5 text-xs text-destructive">
+              <span>{erroOrdem}</span>
+              <button onClick={() => setErroOrdem(null)} className="shrink-0 underline">Fechar</button>
+            </div>
+          )}
 
           {loading ? (
             <div className="space-y-4">

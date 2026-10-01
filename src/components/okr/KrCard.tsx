@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { cn, formatPercent, formatNumber, formatValor, getProgressColor, getProgressStatus, paraData } from '@/lib/utils'
-import { MoreHorizontal, TrendingUp, User, Building2, Calendar, Zap, ClipboardList, CheckCircle2, Activity } from 'lucide-react'
+import { MoreHorizontal, TrendingUp, User, Building2, Calendar, Zap, ClipboardList, CheckCircle2, Activity, ArrowLeft, ArrowRight } from 'lucide-react'
 import { ROTULO_APURACAO, type ApuracaoKr, type DirecaoKr, type MetaMensalKr, type PontoSerie } from '@/lib/okrProgresso'
 import MiniGrafico, { Tendencia } from './MiniGrafico'
 
@@ -38,6 +38,10 @@ interface KrCardProps {
   onVerTaticas?: (kr: any) => void
   onEditarLancamentos?: (kr: any) => void
   onVerSinaisVitais?: (kr: any) => void
+  // Alça de arrastar (vem do ObjetivoCard) e mover pelo menu, sem arrastar (ex.: celular).
+  alca?: React.ReactNode
+  onMoverAntes?: () => void
+  onMoverDepois?: () => void
 }
 
 export default function KrCard({
@@ -51,6 +55,9 @@ export default function KrCard({
   onVerTaticas,
   onEditarLancamentos,
   onVerSinaisVitais,
+  alca,
+  onMoverAntes,
+  onMoverDepois,
 }: KrCardProps) {
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -81,6 +88,7 @@ export default function KrCard({
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
+        {alca && <div className="shrink-0 -mt-0.5">{alca}</div>}
         <p className="text-sm font-semibold text-foreground leading-snug flex-1">
           {kr.titulo}
         </p>
@@ -130,6 +138,30 @@ export default function KrCard({
               >
                 Editar KR
               </button>
+              {(onMoverAntes || onMoverDepois) && (
+                <>
+                  <div className="my-1 border-t border-border" />
+                  {onMoverAntes && (
+                    <button
+                      onClick={() => { onMoverAntes(); setMenuOpen(false) }}
+                      className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors flex items-center gap-2"
+                    >
+                      <ArrowLeft className="w-3 h-3" />
+                      Mover para antes
+                    </button>
+                  )}
+                  {onMoverDepois && (
+                    <button
+                      onClick={() => { onMoverDepois(); setMenuOpen(false) }}
+                      className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors flex items-center gap-2"
+                    >
+                      <ArrowRight className="w-3 h-3" />
+                      Mover para depois
+                    </button>
+                  )}
+                  <div className="my-1 border-t border-border" />
+                </>
+              )}
               {!kr.concluido ? (
                 <button
                   onClick={() => { onFinalizar?.(kr); setMenuOpen(false) }}

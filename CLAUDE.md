@@ -1382,3 +1382,12 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   o mesmo botão "Sinais vitais (N)" que abre o mesmo popup (`ModalSinaisVitaisKr`, com `doObjetivo`):
   lista todos os sinais vitais ativos com aquele `objetivo_id`, com ou sem KR, e mostra o KR quando
   houver. Os sinais sem objetivo nem KR continuam só na página de Sinais Vitais.
+- **Ordem dos KRs dentro do objetivo** (pedido do Igor: arrastar o card para trocar a posição). Coluna
+  nova `krs.ordem` (migration `PENDENTE_20261001000000_krs_ordem.sql`, preenchida com a ordem que já
+  aparecia, mais recente primeiro; **rodar ANTES do push**, porque OKRs e Início passam a ordenar por ela).
+  `getKrsByEmpresa` ordena por `ordem` (null primeiro, então KR novo continua aparecendo no topo) e
+  depois por `created_at`. Arrasta-se pela alça (⋮⋮) à esquerda do título; uma linha mostra onde o KR
+  vai entrar. O menu ⋯ ganhou "Mover para antes/depois" (para o celular, onde arrastar não funciona). A
+  tela muda na hora e `salvarOrdemKrs` grava a ordem do objetivo inteiro, incluindo os KRs escondidos
+  por filtro e os finalizados. Se a gravação falhar (RLS devolve 0 linhas), aparece um aviso e a tela
+  recarrega do banco.

@@ -69,13 +69,15 @@ export async function getKrsByEmpresa(clientId: string) {
     .from('krs')
     .select(`
       id, titulo, valor_inicial, valor_atual, meta, tipo_valor,
-      direcao, apuracao,
+      direcao, apuracao, ordem,
       concluido, objetivo_id, responsavel_id, setor_id, client_id,
       funcionarios!responsavel_id(full_name),
 
       objetivos!objetivo_id(titulo)
     `)
     .eq('client_id', clientId)
+    // Ordem escolhida arrastando os cards; KR novo (ordem null) vai para o topo.
+    .order('ordem', { ascending: true, nullsFirst: true })
     .order('created_at', { ascending: false })
 
   if (error || !data) return { data: [], error }
@@ -156,6 +158,21 @@ export async function updateKr(
 ) {
   const supabase = createClient()
   return supabase.from('krs').update(payload).eq('id', id).select().single()
+}
+
+// Grava a ordem dos KRs de um objetivo (ids na ordem nova, 1 = primeiro).
+// Devolve a mensagem de erro, ou null se tudo foi gravado (RLS que bloqueia
+// devolve 0 linhas sem erro, por isso o .select('id')).
+export async function salvarOrdemKrs(idsEmOrdem: string[]): Promise<string | null> {
+  const supabase = createClient()
+  const resultados = await Promise.all(
+    idsEmOrdem.map((id, i) => supabase.from('krs').update({ ordem: i + 1 }).eq('id', id).select('id'))
+  )
+  for (const { data, error } of resultados) {
+    const erro = mensagemErroGravacao(error, data?.length ?? 0)
+    if (erro) return erro
+  }
+  return null
 }
 
 // Substitui as metas mensais do KR no ano: apaga as do ano e grava as
