@@ -10,8 +10,11 @@ import ModalEditarSv from '@/components/sinais-vitais/ModalEditarSv'
 import ModalLancarSv from '@/components/sinais-vitais/ModalLancarSv'
 import ModalHistoricoSv from '@/components/sinais-vitais/ModalHistoricoSv'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
-import { Activity, Plus, Archive, ChevronDown, RotateCcw } from 'lucide-react'
-import { mensagemErroExclusao, mensagemErroGravacao, formatValor } from '@/lib/utils'
+import { Activity, Plus, Archive, ChevronDown, ChevronUp, RotateCcw, Target } from 'lucide-react'
+import { mensagemErroExclusao, mensagemErroGravacao, formatValor, formatPercent, getProgressColor, cn } from '@/lib/utils'
+import { progressoSinalVital } from '@/lib/okrProgresso'
+
+const SEM_OBJETIVO = 'sem-objetivo'
 
 export default function SinaisVitaisPage() {
   const { empresa } = useEmpresaStore()
@@ -30,6 +33,8 @@ export default function SinaisVitaisPage() {
   const [removidosAberto, setRemovidosAberto] = useState(false)
   const [movendoId, setMovendoId] = useState<string | null>(null)
   const [erroRemovidos, setErroRemovidos] = useState<string | null>(null)
+  // Grupo (objetivo) aberto ou fechado pelo clique. Sem clique: fechado sem filtro, aberto com filtro.
+  const [abertos, setAbertos] = useState<Record<string, boolean>>({})
 
   const [modalCriar, setModalCriar] = useState(false)
   const [modalEditar, setModalEditar] = useState<{ open: boolean; sv: any | null }>({ open: false, sv: null })
@@ -60,6 +65,11 @@ export default function SinaisVitaisPage() {
     fetchData()
   }, [fetchData])
 
+  // Filtro novo: os grupos voltam a seguir o filtro (abrem os que têm resultado).
+  useEffect(() => {
+    setAbertos({})
+  }, [busca, setorId, objetivoId, krId, responsavelId])
+
   // Removidos (aguardando validação) ficam fora da lista principal e dos filtros.
   const svsRemovidos = svs
     .filter((sv) => sv.removido_em)
@@ -79,6 +89,16 @@ export default function SinaisVitaisPage() {
       objetivo: sv.objetivos ? { titulo: sv.objetivos.titulo } : null,
       kr: sv.krs ? { titulo: sv.krs.titulo } : null,
     }))
+
+  // Agrupados por objetivo, na ordem dos objetivos; os sem objetivo vão por último.
+  const grupos: { id: string; titulo: string; svs: any[] }[] = []
+  for (const obj of objetivos) {
+    const svsDoObjetivo = svsFiltrados.filter((sv) => sv.objetivo_id === obj.id)
+    if (svsDoObjetivo.length) grupos.push({ id: obj.id, titulo: obj.titulo, svs: svsDoObjetivo })
+  }
+  const idsComGrupo = new Set(grupos.map((g) => g.id))
+  const semGrupo = svsFiltrados.filter((sv) => !sv.objetivo_id || !idsComGrupo.has(sv.objetivo_id))
+  if (semGrupo.length) grupos.push({ id: SEM_OBJETIVO, titulo: 'Sem objetivo', svs: semGrupo })
 
   // Só KRs ativos do objetivo filtrado (ou de todos, sem filtro de objetivo).
   const krsDoFiltro = krs.filter((k) => !k.concluido && (!objetivoId || k.objetivo_id === objetivoId))
@@ -221,18 +241,76 @@ export default function SinaisVitaisPage() {
           )}
         </div>
       ) : (
-        <div data-tour="tour-sv-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {svsFiltrados.map((sv) => (
-            <SvCard
-              key={sv.id}
-              sv={sv}
-              onLancar={(sv) => setModalLancar({ open: true, sv })}
-              onEditar={(sv) => setModalEditar({ open: true, sv })}
-              onRemover={(sv) => handleMarcarRemovido(sv, true)}
-              onExcluir={(sv) => setModalExcluir({ open: true, sv, loading: false, erro: null })}
-              onVerHistorico={(sv) => setModalHistorico({ open: true, sv })}
-            />
-          ))}
+        <div data-tour="tour-sv-grid" className="space-y-4">
+          {grupos.map((g) => {
+            const aberto = abertos[g.id] ?? !!temFiltros
+            const comLancamento = g.svs.filter((sv: any) => (sv.serie ?? []).length > 0)
+            const naMeta = comLancamento.filter((sv: any) => progressoSinalVital(sv) >= 100).length
+            const media = comLancamento.length
+              ? comLancamento.reduce((a: number, sv: any) => a + progressoSinalVital(sv), 0) / comLancamento.length
+              : null
+            return (
+              <section key={g.id} className="bg-card border border-border rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setAbertos((prev) => ({ ...prev, [g.id]: !aberto }))}
+                  aria-expanded={aberto}
+                  className="w-full p-4 text-left hover:bg-accent/40 transition-colors"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                      {g.id === SEM_OBJETIVO ? <Activity className="w-4 h-4 text-primary" /> : <Target className="w-4 h-4 text-primary" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-semibold text-foreground leading-snug">{g.titulo}</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {g.svs.length} sina{g.svs.length !== 1 ? 'is' : 'l'} vita{g.svs.length !== 1 ? 'is' : 'l'}
+                        {comLancamento.length > 0 && (
+                          <>
+                            {' · '}<span className="text-emerald-600 font-medium">{naMeta} na meta</span>
+                            {comLancamento.length - naMeta > 0 && (
+                              <>{' · '}<span className="text-amber-600 font-medium">{comLancamento.length - naMeta} abaixo da meta</span></>
+                            )}
+                          </>
+                        )}
+                        {g.svs.length - comLancamento.length > 0 && ` · ${g.svs.length - comLancamento.length} sem lançamentos`}
+                      </p>
+                    </div>
+                    <span className="p-1.5 text-muted-foreground shrink-0">
+                      {aberto ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </span>
+                  </div>
+                  <div className="mt-3 space-y-1">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Progresso médio</span>
+                      <span className="font-medium text-foreground">{media === null ? 'Sem lançamentos' : formatPercent(media)}</span>
+                    </div>
+                    <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                      <div
+                        className={cn('h-full rounded-full transition-all', media === null ? 'bg-muted' : getProgressColor(media))}
+                        style={{ width: `${Math.min(media ?? 0, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                </button>
+
+                {aberto && (
+                  <div className="border-t border-border p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {g.svs.map((sv: any) => (
+                      <SvCard
+                        key={sv.id}
+                        sv={sv}
+                        onLancar={(sv) => setModalLancar({ open: true, sv })}
+                        onEditar={(sv) => setModalEditar({ open: true, sv })}
+                        onRemover={(sv) => handleMarcarRemovido(sv, true)}
+                        onExcluir={(sv) => setModalExcluir({ open: true, sv, loading: false, erro: null })}
+                        onVerHistorico={(sv) => setModalHistorico({ open: true, sv })}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            )
+          })}
         </div>
       )}
 

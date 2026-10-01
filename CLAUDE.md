@@ -1391,3 +1391,9 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   tela muda na hora e `salvarOrdemKrs` grava a ordem do objetivo inteiro, incluindo os KRs escondidos
   por filtro e os finalizados. Se a gravação falhar (RLS devolve 0 linhas), aparece um aviso e a tela
   recarrega do banco.
+- **Sinais Vitais agrupados por objetivo, fechados por padrão** (pedido do Igor: "mesma lógica dos
+  KRs"). A página mostra um bloco por objetivo (na ordem dos objetivos, "Sem objetivo" por último),
+  com a contagem, quantos estão na meta ou abaixo, quantos estão sem lançamentos e o progresso médio.
+  Sem filtro, todos ficam fechados. Com qualquer filtro (busca, objetivo, KR, responsável, setor), os
+  grupos com resultado abrem sozinhos. O clique abre e fecha à mão, e trocar o filtro desfaz esses
+  cliques. Só front-end (`sinais-vitais/page.tsx`), sem migration.
