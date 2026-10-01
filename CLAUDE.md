@@ -1430,3 +1430,12 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   vertical mostra só o número e o nome. O link "Propósito e foco do ano" abre o propósito e o foco.
   Vertical sem nenhum dos dois continua com "+ Descrever o propósito desta vertical" à vista. A grade
   ganhou `items-start`, para um card aberto não esticar os vizinhos.
+- **Autoconhecimento recolhível** (pedido do Igor: o mesmo "encolhimento" dos valores e das
+  verticais). O topo do perfil (tipo, motivação, instintos, diagrama) continua à vista.
+  - Forças, sombra, mecanismo de defesa e talento: cada card mostra o rótulo e o título, e o texto
+    abre em "Ver mais" (`CardRecolhivel` + `LinkRevelar` em `Mapas.tsx`).
+  - As 6 competências: o bloco inteiro fica fechado, igual à análise do cargo.
+  - Mapa do time: os percentuais ficam à vista; a descrição e o "Como engajar" abrem por grupo.
+  - Conversas com o assistente (`BlocoAssistente`): fechadas até "Abrir conversa". Fechar usa
+    `hidden`, então a conversa em andamento não se perde.
+  Travas de acesso não mudaram.

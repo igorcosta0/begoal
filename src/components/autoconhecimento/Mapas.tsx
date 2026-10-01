@@ -193,33 +193,60 @@ function PerfilHero({ tipo, subtipoSequencia }: { tipo: TipoEneagramaDados; subt
   )
 }
 
+// Link "Ver mais / Ocultar" dos textos recolhidos (mesmo padrão dos valores e
+// das verticais em "Nosso jeito de ser": fechado até a pessoa abrir).
+export function LinkRevelar({ aberto, onClick, rotulo = 'Ver mais' }: { aberto: boolean; onClick: () => void; rotulo?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={aberto}
+      className="mt-2 flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+    >
+      {aberto ? 'Ocultar' : rotulo}
+      <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', aberto && 'rotate-180')} />
+    </button>
+  )
+}
+
+// Card com rótulo e título à vista e o texto recolhido.
+function CardRecolhivel({ classe, rotulo, corRotulo, titulo, children }: {
+  classe: string
+  rotulo: string
+  corRotulo: string
+  titulo: string
+  children: React.ReactNode
+}) {
+  const [aberto, setAberto] = useState(false)
+  return (
+    <div className={cn('rounded-2xl border p-5', classe)}>
+      <p className={cn('text-[10px] font-bold uppercase tracking-widest', corRotulo)}>{rotulo}</p>
+      <h3 className="font-display text-base font-bold text-foreground mt-1">{titulo}</h3>
+      <LinkRevelar aberto={aberto} onClick={() => setAberto((v) => !v)} />
+      {aberto && <div className="mt-2">{children}</div>}
+    </div>
+  )
+}
+
 // Luz e sombra lado a lado, com mecanismo de defesa e talento embaixo.
 function LuzESombra({ tipo }: { tipo: TipoEneagramaDados }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-5">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">Quando você está bem</p>
-        <h3 className="font-display text-base font-bold text-foreground mt-1">Suas forças</h3>
-        <p className="text-sm text-foreground/90 mt-2 leading-relaxed">{tipo.forcas}</p>
-      </div>
-      <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-5">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-orange-700 dark:text-orange-400">Fique de olho</p>
-        <h3 className="font-display text-base font-bold text-foreground mt-1">Sua sombra</h3>
-        <p className="text-sm text-foreground/90 mt-2 leading-relaxed">{tipo.sombra}</p>
-      </div>
-      <div className="rounded-2xl border border-border bg-card/70 p-5">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">No automático</p>
-        <h3 className="font-display text-base font-bold text-foreground mt-1">Mecanismo de defesa</h3>
-        <p className="text-sm text-foreground/90 mt-2 leading-relaxed">{tipo.mecanismoDefesa}</p>
-      </div>
-      <div className="rounded-2xl border border-primary/20 bg-primary/[0.05] p-5">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Seu talento</p>
-        <h3 className="font-display text-base font-bold text-foreground mt-1">{tipo.talentoAutolideranca.nome}</h3>
-        <p className="text-sm text-foreground/90 mt-2 leading-relaxed">{tipo.talentoAutolideranca.potencial}</p>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+      <CardRecolhivel classe="border-emerald-500/25 bg-emerald-500/[0.06]" rotulo="Quando você está bem" corRotulo="text-emerald-700 dark:text-emerald-400" titulo="Suas forças">
+        <p className="text-sm text-foreground/90 leading-relaxed">{tipo.forcas}</p>
+      </CardRecolhivel>
+      <CardRecolhivel classe="border-orange-500/25 bg-orange-500/[0.06]" rotulo="Fique de olho" corRotulo="text-orange-700 dark:text-orange-400" titulo="Sua sombra">
+        <p className="text-sm text-foreground/90 leading-relaxed">{tipo.sombra}</p>
+      </CardRecolhivel>
+      <CardRecolhivel classe="border-border bg-card/70" rotulo="No automático" corRotulo="text-muted-foreground" titulo="Mecanismo de defesa">
+        <p className="text-sm text-foreground/90 leading-relaxed">{tipo.mecanismoDefesa}</p>
+      </CardRecolhivel>
+      <CardRecolhivel classe="border-primary/20 bg-primary/[0.05]" rotulo="Seu talento" corRotulo="text-primary" titulo={tipo.talentoAutolideranca.nome}>
+        <p className="text-sm text-foreground/90 leading-relaxed">{tipo.talentoAutolideranca.potencial}</p>
         <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
           <strong className="text-foreground">Desafio:</strong> {tipo.talentoAutolideranca.desafio}
         </p>
-      </div>
+      </CardRecolhivel>
     </div>
   )
 }
@@ -236,6 +263,7 @@ const COMPETENCIAS: { chave: keyof TipoEneagramaDados['competencias']; nome: str
 // As 6 competências relacionais: uma de cada vez (antes eram 6 cartões com 3
 // itens cada, uma parede de texto).
 function Competencias({ tipo }: { tipo: TipoEneagramaDados }) {
+  const [aberta, setAberta] = useState(false)
   const [ativa, setAtiva] = useState(COMPETENCIAS[0].chave)
   const c = tipo.competencias[ativa]
   const colunas = [
@@ -244,12 +272,21 @@ function Competencias({ tipo }: { tipo: TipoEneagramaDados }) {
     { titulo: 'Para desenvolver', texto: c.desenvolver, cor: 'text-emerald-700 dark:text-emerald-400', ponto: 'bg-emerald-500' },
   ]
   return (
-    <div className="glass-panel rounded-2xl p-5 md:p-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="font-display text-base font-bold text-foreground">Você nas 6 competências do dia a dia</h3>
-        <p className="text-[11px] text-muted-foreground">Escolha uma competência</p>
-      </div>
-      <div className="flex gap-1.5 overflow-x-auto mt-4 pb-1 -mx-1 px-1">
+    <div className="glass-panel rounded-2xl overflow-hidden">
+      <button type="button" onClick={() => setAberta((v) => !v)} aria-expanded={aberta} className="w-full p-5 md:p-6 flex items-center justify-between gap-3 text-left">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary">No dia a dia</p>
+          <h3 className="font-display text-base font-bold text-foreground mt-1">Você nas 6 competências do dia a dia</h3>
+        </div>
+        <span className="shrink-0 flex items-center gap-1 text-xs text-muted-foreground">
+          {aberta ? 'Ocultar' : 'Revelar'}
+          <ChevronDown className={cn('w-4 h-4 transition-transform', aberta && 'rotate-180')} />
+        </span>
+      </button>
+      {aberta && (
+      <div className="px-5 md:px-6 pb-5 md:pb-6">
+      <p className="text-[11px] text-muted-foreground">Escolha uma competência</p>
+      <div className="flex gap-1.5 overflow-x-auto mt-2 pb-1 -mx-1 px-1">
         {COMPETENCIAS.map((item) => (
           <button
             key={item.chave}
@@ -277,6 +314,8 @@ function Competencias({ tipo }: { tipo: TipoEneagramaDados }) {
           </div>
         ))}
       </div>
+      </div>
+      )}
     </div>
   )
 }
@@ -394,6 +433,7 @@ const GRUPOS_TIME = [
 ]
 
 export function ComposicaoTime({ resumo }: { resumo: ResumoTime | null }) {
+  const [gruposAbertos, setGruposAbertos] = useState<Record<string, boolean>>({})
   if (!resumo) return <p className="text-sm text-muted-foreground">Carregando...</p>
   const { totalMapeados, totalLiderados } = resumo
   if (totalMapeados < 3) return <p className="text-sm text-foreground">{resumirTime(resumo)}</p>
@@ -411,7 +451,7 @@ export function ComposicaoTime({ resumo }: { resumo: ResumoTime | null }) {
           <div key={g.chave} style={{ flexGrow: g.qtd, background: g.cor }} title={`${g.nome}: ${g.pct}%`} />
         ))}
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 items-start">
         {grupos.map((g) => (
           <div key={g.chave} className={cn('rounded-xl border border-border bg-card/70 p-4', g.qtd === 0 && 'opacity-60')}>
             <div className="flex items-center gap-2">
@@ -419,10 +459,19 @@ export function ComposicaoTime({ resumo }: { resumo: ResumoTime | null }) {
               <p className="text-sm font-semibold text-foreground">{g.nome}</p>
             </div>
             <p className={cn('font-display text-3xl font-bold mt-2 tabular-nums', g.texto)}>{g.pct}%</p>
-            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{g.descricao}</p>
-            <p className="text-xs text-foreground mt-2 leading-relaxed">
-              <strong>Como engajar:</strong> {g.engaja}
-            </p>
+            <LinkRevelar
+              aberto={!!gruposAbertos[g.chave]}
+              onClick={() => setGruposAbertos((prev) => ({ ...prev, [g.chave]: !prev[g.chave] }))}
+              rotulo="Como engajar"
+            />
+            {gruposAbertos[g.chave] && (
+              <>
+                <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{g.descricao}</p>
+                <p className="text-xs text-foreground mt-2 leading-relaxed">
+                  <strong>Como engajar:</strong> {g.engaja}
+                </p>
+              </>
+            )}
           </div>
         ))}
       </div>

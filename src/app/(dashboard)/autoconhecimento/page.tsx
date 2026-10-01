@@ -155,20 +155,26 @@ function ConversaLiderado({
   )
 }
 
-// Moldura da conversa com o assistente (cabeçalho + conteúdo).
+// Moldura da conversa com o assistente (cabeçalho + conteúdo). Fechada até a
+// pessoa abrir; fechar só esconde (hidden), a conversa continua guardada.
 function BlocoAssistente({ titulo, descricao, children, id }: { titulo: string; descricao: string; children: React.ReactNode; id?: string }) {
+  const [aberto, setAberto] = useState(false)
   return (
     <div id={id} className="glass-panel rounded-2xl p-5 md:p-6 space-y-4 scroll-mt-32">
-      <div className="flex items-start gap-3">
+      <button type="button" onClick={() => setAberto((v) => !v)} aria-expanded={aberto} className="w-full flex items-start gap-3 text-left">
         <span className="w-9 h-9 rounded-xl bg-violet-500/10 text-violet-600 grid place-items-center shrink-0">
           <MessageCircle className="w-4 h-4" />
         </span>
-        <div>
+        <div className="flex-1 min-w-0">
           <h3 className="font-display text-base font-bold text-foreground">{titulo}</h3>
           <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{descricao}</p>
         </div>
-      </div>
-      {children}
+        <span className="shrink-0 flex items-center gap-1 text-xs text-muted-foreground mt-1">
+          {aberto ? 'Ocultar' : 'Abrir conversa'}
+          <ChevronDown className={cn('w-4 h-4 transition-transform', aberto && 'rotate-180')} />
+        </span>
+      </button>
+      <div className={cn(!aberto && 'hidden')}>{children}</div>
     </div>
   )
 }
