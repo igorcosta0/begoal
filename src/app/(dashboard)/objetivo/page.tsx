@@ -3,11 +3,12 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
-import { Heart, Edit2, Check, X, Plus, Send, Sparkles, Compass, Target, Layers } from 'lucide-react'
+import { Heart, Edit2, Check, X, Plus, Send, Sparkles, Compass, Target, Layers, ChevronDown, CircleCheck, CircleX } from 'lucide-react'
 import { getFotosPerfilPorEmpresa } from '@/lib/queries/perfilPublico'
 import Avatar from '@/components/Avatar'
 import BotaoExcluirConfirmando from '@/components/BotaoExcluirConfirmando'
 import { cn, mensagemErroGravacao } from '@/lib/utils'
+import { PILARES_CULTURAIS } from '@/lib/pilaresCulturais'
 
 function toRoman(num: number) {
   const map: [number, string][] = [
@@ -23,6 +24,22 @@ function toRoman(num: number) {
 function semNumeral(texto: string) {
   return texto.replace(/^\s*[IVXLCDM]+\s*[.)–-]\s*/, '')
 }
+
+const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+
+// Detalhamento do valor (como se vive / como não se vive), achado pelo título.
+// Só existe para os valores da CTZ; outro texto fica sem detalhamento.
+function detalheDoValor(texto: string) {
+  const t = normalizar(semNumeral(texto))
+  return PILARES_CULTURAIS.find((p) => {
+    const titulo = normalizar(p.titulo)
+    return t.includes(titulo) || titulo.includes(t)
+  })
+}
+
+// "Faz A. Faz B." → ["Faz A.", "Faz B."]
+const frases = (texto: string) =>
+  texto.split(/\.\s+/).filter(Boolean).map((f, i, todas) => (i < todas.length - 1 ? `${f}.` : f))
 
 function formatDataHora(iso: string) {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
@@ -311,6 +328,8 @@ export default function ObjetivoPage() {
   const [modalValor, setModalValor] = useState<{ open: boolean; valor: any | null }>({ open: false, valor: null })
   const [textoValor, setTextoValor] = useState('')
   const [salvandoValor, setSalvandoValor] = useState(false)
+  // Detalhamento de cada valor: fechado até a pessoa abrir.
+  const [valoresAbertos, setValoresAbertos] = useState<Record<string, boolean>>({})
 
   const [loading, setLoading] = useState(true)
   const [nomeUsuario, setNomeUsuario] = useState('')
@@ -527,11 +546,48 @@ export default function ObjetivoPage() {
         {valores.length === 0 ? (
           <p className="text-sm text-muted-foreground/60 italic">Nenhum valor cadastrado ainda.</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-            {valores.map((valor, idx) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
+            {valores.map((valor, idx) => {
+              const detalhe = detalheDoValor(valor.texto)
+              const aberto = !!valoresAbertos[valor.id]
+              return (
               <div key={valor.id} className="group relative glass-panel rounded-2xl p-5 flex flex-col gap-3 min-h-[140px]">
                 <span className="font-display text-3xl font-bold text-primary/25 leading-none tabular-nums">{toRoman(idx + 1)}</span>
                 <p className="text-sm font-semibold text-foreground leading-snug">{semNumeral(valor.texto)}</p>
+                {detalhe && (
+                  <div className="mt-auto pt-1">
+                    <button
+                      onClick={() => setValoresAbertos((prev) => ({ ...prev, [valor.id]: !aberto }))}
+                      aria-expanded={aberto}
+                      className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                    >
+                      {aberto ? 'Ocultar' : 'Como se aplica'}
+                      <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', aberto && 'rotate-180')} />
+                    </button>
+                    {aberto && (
+                      <div className="mt-3 space-y-3 border-t border-border/60 pt-3">
+                        <div>
+                          <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-600 mb-1.5">
+                            <CircleCheck className="w-3.5 h-3.5" /> Como se vive
+                          </p>
+                          <ul className="space-y-1">
+                            {frases(detalhe.como_se_vive).map((f) => (
+                              <li key={f} className="text-xs text-foreground/90 leading-relaxed pl-3 relative before:content-[''] before:absolute before:left-0 before:top-[0.55em] before:w-1 before:h-1 before:rounded-full before:bg-emerald-500">
+                                {f}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-rose-600 mb-1.5">
+                            <CircleX className="w-3.5 h-3.5" /> Como não se vive
+                          </p>
+                          <p className="text-xs text-foreground/90 leading-relaxed">{detalhe.como_nao_se_vive}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="absolute right-3 top-3 flex gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                   <button onClick={() => handleAbrirModalValor(valor)} className="p-1 rounded-md hover:bg-accent transition-colors" aria-label="Editar valor">
                     <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
@@ -539,7 +595,8 @@ export default function ObjetivoPage() {
                   <BotaoExcluirConfirmando onConfirmar={() => handleExcluirValor(valor.id)} className="p-1" iconClassName="w-3.5 h-3.5" />
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </section>

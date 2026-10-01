@@ -1403,3 +1403,14 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   Guilherme → Loteamentos (KRs e sinais vitais, inclusive os removidos). Ficaram de fora porque o
   responsável não estava no pedido: 1 KR do Ezequiel sem setor ("Número de projetos sem retrabalho"),
   e os KRs do Filippe Réus (Investimento) e da Graciela (Concretize). Push de `cbaadae` e `720ef51`.
+- **Valores com detalhamento** ("Nosso jeito de ser"): cada card de valor ganhou "Como se aplica",
+  fechado por padrão, que abre "Como se vive" (em tópicos) e "Como não se vive". O texto vem de
+  `PILARES_CULTURAIS`, que saiu do `ModalAvaliacao.tsx` para `src/lib/pilaresCulturais.ts`. O modal
+  reexporta a lista, então os imports antigos continuam valendo. O valor é achado pelo título (sem
+  numeral, acento ou maiúscula). Conferido via SQL: os 4 valores da CTZ batem; valor de outra empresa
+  fica sem o botão.
+- **KR "Quantidade de Pesquisas Realizadas" deve virar sinal vital** (na aba OKR - COMERCIAL, linha
+  50, é sinal vital; o KR foi criado à mão em 29/09, e a carga de 30/09 pulou esse item porque já
+  existia como KR). Conferido: 0 táticas, 9 lançamentos, 12 metas mensais. O auto mode barrou a
+  gravação pelo Chrome. Script para o Igor rodar: `Adições futuras/KR Pesquisas vira sinal vital.sql`
+  (transação: cria o sinal vital, copia os lançamentos, apaga o KR com as metas e os lançamentos dele).
