@@ -155,10 +155,22 @@ function ConversaLiderado({
   )
 }
 
+const EVENTO_ABRIR_BLOCO = 'autoconhecimento:abrir-bloco'
+
 // Moldura da conversa com o assistente (cabeçalho + conteúdo). Fechada até a
 // pessoa abrir; fechar só esconde (hidden), a conversa continua guardada.
 function BlocoAssistente({ titulo, descricao, children, id }: { titulo: string; descricao: string; children: React.ReactNode; id?: string }) {
   const [aberto, setAberto] = useState(false)
+
+  // Atalho do topo da página (ou link com #id) abre a conversa já aberta.
+  useEffect(() => {
+    if (!id) return
+    if (window.location.hash === `#${id}`) setAberto(true)
+    const abrir = (e: Event) => { if ((e as CustomEvent<string>).detail === id) setAberto(true) }
+    window.addEventListener(EVENTO_ABRIR_BLOCO, abrir)
+    return () => window.removeEventListener(EVENTO_ABRIR_BLOCO, abrir)
+  }, [id])
+
   return (
     <div id={id} className="glass-panel rounded-2xl p-5 md:p-6 space-y-4 scroll-mt-32">
       <button type="button" onClick={() => setAberto((v) => !v)} aria-expanded={aberto} className="w-full flex items-start gap-3 text-left">
@@ -381,7 +393,10 @@ export default function AutoconhecimentoPage() {
       <nav className="sticky top-[76px] z-30 -mx-1 px-1 py-2 bg-background/85 backdrop-blur flex gap-2 overflow-x-auto text-xs font-semibold -mt-6">
         <a href="#mapa-de-si" className="shrink-0 px-3 py-1.5 rounded-full bg-primary text-primary-foreground">1 · Mapa de si</a>
         {(tipo || colegas.length > 0) && (
-          <a href="#assistente" className="shrink-0 px-3 py-1.5 rounded-full bg-card border border-border text-foreground hover:border-primary/40 transition-colors">Conversar com o assistente</a>
+          <a
+            href="#assistente"
+            onClick={() => window.dispatchEvent(new CustomEvent(EVENTO_ABRIR_BLOCO, { detail: 'assistente' }))}
+            className="shrink-0 px-3 py-1.5 rounded-full bg-card border border-border text-foreground hover:border-primary/40 transition-colors">Conversar com o assistente</a>
         )}
         {souAdminPiloto && (
           <a href="#mapa-do-time" className="shrink-0 px-3 py-1.5 rounded-full bg-card border border-border text-foreground hover:border-amber-500/50 transition-colors">2 · Mapa do time</a>

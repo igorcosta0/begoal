@@ -1439,3 +1439,6 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   - Conversas com o assistente (`BlocoAssistente`): fechadas até "Abrir conversa". Fechar usa
     `hidden`, então a conversa em andamento não se perde.
   Travas de acesso não mudaram.
+- O atalho "Conversar com o assistente", no topo do Autoconhecimento, agora também abre a conversa:
+  dispara o evento `autoconhecimento:abrir-bloco` com o id do bloco. Entrar na página com `#assistente`
+  no endereço também abre.
