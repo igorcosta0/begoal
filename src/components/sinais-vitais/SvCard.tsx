@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { cn, formatPercent, formatNumber, formatValor, getProgressColor } from '@/lib/utils'
-import { MoreHorizontal, TrendingUp, User, Building2, Target, Flag } from 'lucide-react'
+import { MoreHorizontal, TrendingUp, User, Building2, Target, Flag, ArrowLeft, ArrowRight } from 'lucide-react'
 import { progressoSinalVital, type PontoSerie } from '@/lib/okrProgresso'
 import MiniGrafico, { Tendencia } from '@/components/okr/MiniGrafico'
 
@@ -25,6 +25,10 @@ interface SvCardProps {
   onRemover?: (sv: any) => void
   onExcluir?: (sv: any) => void
   onVerHistorico?: (sv: any) => void
+  // Ordem dos cards: alça de arrastar (antes do título) e, no menu, mover uma posição (celular).
+  alca?: React.ReactNode
+  onMoverAntes?: () => void
+  onMoverDepois?: () => void
 }
 
 export default function SvCard({
@@ -34,6 +38,9 @@ export default function SvCard({
   onRemover,
   onExcluir,
   onVerHistorico,
+  alca,
+  onMoverAntes,
+  onMoverDepois,
 }: SvCardProps) {
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -55,9 +62,12 @@ export default function SvCard({
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
-        <p className="text-sm font-semibold text-foreground leading-snug flex-1">
-          {sv.titulo}
-        </p>
+        <div className="flex items-start gap-1 flex-1 min-w-0">
+          {alca}
+          <p className="text-sm font-semibold text-foreground leading-snug flex-1">
+            {sv.titulo}
+          </p>
+        </div>
         <div className="relative shrink-0">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
@@ -81,6 +91,30 @@ export default function SvCard({
               >
                 Editar
               </button>
+              {(onMoverAntes || onMoverDepois) && (
+                <>
+                  <div className="my-1 border-t border-border" />
+                  {onMoverAntes && (
+                    <button
+                      onClick={() => { onMoverAntes(); setMenuOpen(false) }}
+                      className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors flex items-center gap-2"
+                    >
+                      <ArrowLeft className="w-3 h-3" />
+                      Mover para antes
+                    </button>
+                  )}
+                  {onMoverDepois && (
+                    <button
+                      onClick={() => { onMoverDepois(); setMenuOpen(false) }}
+                      className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors flex items-center gap-2"
+                    >
+                      <ArrowRight className="w-3 h-3" />
+                      Mover para depois
+                    </button>
+                  )}
+                  <div className="my-1 border-t border-border" />
+                </>
+              )}
               {onRemover && (
                 <button
                   onClick={() => { onRemover(sv); setMenuOpen(false) }}

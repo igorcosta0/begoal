@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { mensagemErroGravacao } from '@/lib/utils'
 
 export async function getSinaisVitais(clientId: string) {
   const supabase = createClient()
@@ -6,14 +7,30 @@ export async function getSinaisVitais(clientId: string) {
     .from('sinais_vitais')
     .select(`
       id, titulo, valor_inicial, valor_atual, meta, tipo_valor,
-      objetivo_id, kr_id, responsavel_id, setor_id, client_id, created_at, removido_em,
+      objetivo_id, kr_id, responsavel_id, setor_id, client_id, created_at, removido_em, ordem,
       funcionarios!responsavel_id(full_name),
       setores!setor_id(name),
       objetivos!objetivo_id(titulo),
       krs!kr_id(titulo)
     `)
     .eq('client_id', clientId)
+    // Ordem escolhida arrastando os cards; sinal vital novo (ordem null) vai para o topo.
+    .order('ordem', { ascending: true, nullsFirst: true })
     .order('created_at', { ascending: false })
+}
+
+// Grava a ordem dos sinais vitais da empresa (ids na ordem nova, 1 = primeiro).
+// Devolve a mensagem de erro, ou null se tudo foi gravado (mesmo padrão de salvarOrdemKrs).
+export async function salvarOrdemSinaisVitais(idsEmOrdem: string[]): Promise<string | null> {
+  const supabase = createClient()
+  const resultados = await Promise.all(
+    idsEmOrdem.map((id, i) => supabase.from('sinais_vitais').update({ ordem: i + 1 }).eq('id', id).select('id'))
+  )
+  for (const { data, error } of resultados) {
+    const erro = mensagemErroGravacao(error, data?.length ?? 0)
+    if (erro) return erro
+  }
+  return null
 }
 
 export async function createSinalVital(payload: {

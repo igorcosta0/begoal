@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
-import { getSinaisVitais, deleteSinalVital, getKrsParaVinculo, marcarSinalVitalRemovido, getSeriesSinaisVitais } from '@/lib/queries/sinais-vitais'
+import { getSinaisVitais, deleteSinalVital, getKrsParaVinculo, marcarSinalVitalRemovido, getSeriesSinaisVitais, salvarOrdemSinaisVitais } from '@/lib/queries/sinais-vitais'
 import { getSetoresByEmpresa, getObjetivos, getFuncionariosByEmpresa } from '@/lib/queries/okr'
 import SvCard from '@/components/sinais-vitais/SvCard'
 import ModalCriarSv from '@/components/sinais-vitais/ModalCriarSv'
@@ -10,7 +10,7 @@ import ModalEditarSv from '@/components/sinais-vitais/ModalEditarSv'
 import ModalLancarSv from '@/components/sinais-vitais/ModalLancarSv'
 import ModalHistoricoSv from '@/components/sinais-vitais/ModalHistoricoSv'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
-import { Activity, Plus, Archive, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react'
+import { Activity, Plus, Archive, ChevronDown, ChevronUp, RotateCcw, GripVertical } from 'lucide-react'
 import { mensagemErroExclusao, mensagemErroGravacao, formatValor, formatPercent, getProgressColor, cn } from '@/lib/utils'
 import { progressoSinalVital } from '@/lib/okrProgresso'
 
@@ -33,6 +33,12 @@ export default function SinaisVitaisPage() {
   const [erroRemovidos, setErroRemovidos] = useState<string | null>(null)
   // Sem filtro os cards ficam escondidos até clicar em "Ver todos"; com filtro aparecem direto.
   const [verTodos, setVerTodos] = useState(false)
+  // Arrastar card (igual aos KRs): pegandoId = alça pressionada (libera o draggable),
+  // arrastandoId = em movimento, sobre = card sob o cursor e de que lado ele vai entrar.
+  const [pegandoId, setPegandoId] = useState<string | null>(null)
+  const [arrastandoId, setArrastandoId] = useState<string | null>(null)
+  const [sobre, setSobre] = useState<{ id: string; depois: boolean } | null>(null)
+  const [erroOrdem, setErroOrdem] = useState<string | null>(null)
 
   const [modalCriar, setModalCriar] = useState(false)
   const [modalEditar, setModalEditar] = useState<{ open: boolean; sv: any | null }>({ open: false, sv: null })
@@ -124,6 +130,34 @@ export default function SinaisVitaisPage() {
       return
     }
     fetchData()
+  }
+
+  // Move o sinal vital para antes (ou depois) do alvo. Usa todos os ativos da
+  // empresa (inclusive os escondidos por filtro), para a ordem continuar certa
+  // quando o filtro sair. A tela muda na hora; se a gravação falhar, recarrega.
+  async function handleMover(svId: string, alvoId: string, depois: boolean) {
+    const ids = svs.filter((s) => !s.removido_em).map((s) => s.id).filter((id) => id !== svId)
+    const posAlvo = ids.indexOf(alvoId)
+    if (posAlvo < 0) return
+    ids.splice(depois ? posAlvo + 1 : posAlvo, 0, svId)
+
+    const porId = new Map(svs.map((s) => [s.id, s]))
+    setSvs([...ids.map((id, i) => ({ ...porId.get(id), ordem: i + 1 })), ...svs.filter((s) => s.removido_em)])
+    setErroOrdem(null)
+
+    const erro = await salvarOrdemSinaisVitais(ids)
+    if (erro) {
+      setErroOrdem(`Não foi possível salvar a nova ordem dos sinais vitais. ${erro}`)
+      fetchData()
+    }
+  }
+
+  // Grade com várias colunas: metade direita do card = entra depois. Uma coluna só (celular): metade de baixo.
+  function soltarDepois(e: React.DragEvent<HTMLDivElement>) {
+    const r = e.currentTarget.getBoundingClientRect()
+    const grade = e.currentTarget.parentElement?.getBoundingClientRect()
+    const umaColuna = !grade || r.width > grade.width * 0.6
+    return umaColuna ? e.clientY > r.top + r.height / 2 : e.clientX > r.left + r.width / 2
   }
 
   const temFiltros = busca || setorId || objetivoId || krId || responsavelId
@@ -283,18 +317,76 @@ export default function SinaisVitaisPage() {
             </section>
           )}
 
+          {erroOrdem && <p className="text-xs text-destructive">{erroOrdem}</p>}
+
           {(temFiltros || verTodos) && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {svsFiltrados.map((sv) => (
-                <SvCard
+              {svsFiltrados.map((sv, i) => (
+                <div
                   key={sv.id}
-                  sv={sv}
-                  onLancar={(sv) => setModalLancar({ open: true, sv })}
-                  onEditar={(sv) => setModalEditar({ open: true, sv })}
-                  onRemover={(sv) => handleMarcarRemovido(sv, true)}
-                  onExcluir={(sv) => setModalExcluir({ open: true, sv, loading: false, erro: null })}
-                  onVerHistorico={(sv) => setModalHistorico({ open: true, sv })}
-                />
+                  // Só arrasta pela alça: assim clicar/selecionar texto no card continua normal.
+                  draggable={pegandoId === sv.id}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', sv.id)
+                    e.dataTransfer.effectAllowed = 'move'
+                    setArrastandoId(sv.id)
+                  }}
+                  onDragEnd={() => { setArrastandoId(null); setPegandoId(null); setSobre(null) }}
+                  onDragOver={(e) => {
+                    if (!arrastandoId || arrastandoId === sv.id) return
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = 'move'
+                    const depois = soltarDepois(e)
+                    if (!sobre || sobre.id !== sv.id || sobre.depois !== depois) setSobre({ id: sv.id, depois })
+                  }}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) setSobre((s) => (s?.id === sv.id ? null : s))
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    const id = e.dataTransfer.getData('text/plain')
+                    const depois = soltarDepois(e)
+                    setArrastandoId(null); setPegandoId(null); setSobre(null)
+                    if (id && id !== sv.id) handleMover(id, sv.id, depois)
+                  }}
+                  className={cn('relative rounded-xl transition-opacity', arrastandoId === sv.id && 'opacity-40')}
+                >
+                  {/* Linha que mostra onde o sinal vital vai entrar */}
+                  {sobre?.id === sv.id && (
+                    <span
+                      className={cn(
+                        'absolute z-10 bg-primary rounded-full pointer-events-none',
+                        'max-md:inset-x-0 max-md:h-1',
+                        sobre?.depois ? 'max-md:-bottom-2 md:-right-2' : 'max-md:-top-2 md:-left-2',
+                        'md:inset-y-0 md:w-1'
+                      )}
+                    />
+                  )}
+                  <SvCard
+                    sv={sv}
+                    onLancar={(sv) => setModalLancar({ open: true, sv })}
+                    onEditar={(sv) => setModalEditar({ open: true, sv })}
+                    onRemover={(sv) => handleMarcarRemovido(sv, true)}
+                    onExcluir={(sv) => setModalExcluir({ open: true, sv, loading: false, erro: null })}
+                    onVerHistorico={(sv) => setModalHistorico({ open: true, sv })}
+                    onMoverAntes={i > 0 ? () => handleMover(sv.id, svsFiltrados[i - 1].id, false) : undefined}
+                    onMoverDepois={i < svsFiltrados.length - 1 ? () => handleMover(sv.id, svsFiltrados[i + 1].id, true) : undefined}
+                    alca={
+                      svsFiltrados.length > 1 ? (
+                        <button
+                          type="button"
+                          aria-label="Arrastar para mudar a posição do sinal vital"
+                          title="Arraste para mudar a posição"
+                          onMouseDown={() => setPegandoId(sv.id)}
+                          onMouseUp={() => setPegandoId(null)}
+                          className="-ml-1 p-0.5 rounded text-muted-foreground/60 hover:text-foreground hover:bg-accent cursor-grab active:cursor-grabbing shrink-0"
+                        >
+                          <GripVertical className="w-4 h-4" />
+                        </button>
+                      ) : undefined
+                    }
+                  />
+                </div>
               ))}
             </div>
           )}

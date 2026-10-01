@@ -1463,3 +1463,11 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   Jean e Guilherme não têm liderado no organograma, então a página também mostra a análise de
   cargo a quem tem "Líder" no `funcionarios.cargo`. Camila Leal e Leiliane Raddatz têm análise
   gravada (testes antigos) e continuam sem vê-la.
+- **Ordem dos sinais vitais arrastando** (pedido do Igor: igual aos KRs). Coluna nova
+  `sinais_vitais.ordem` (migration `PENDENTE_20261001010000_sinais_vitais_ordem.sql`, rodada pelo
+  Chrome e conferida: 49, nenhum sem ordem, nenhum repetido). Uma ordem só por empresa, porque a
+  página é uma lista única. `getSinaisVitais` ordena por `ordem` (null primeiro, então sinal novo
+  fica no topo) e depois por `created_at`. A ordem também vale no popup de sinais vitais dos OKRs.
+  Alça ⋮⋮ antes do título, linha mostrando onde o card entra e "Mover para antes/depois" no menu.
+  Com filtro, a ordem gravada inclui os escondidos (`salvarOrdemSinaisVitais`). O código de
+  arrastar é cópia do `ObjetivoCard`, não um componente compartilhado.
