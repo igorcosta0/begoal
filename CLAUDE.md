@@ -1471,3 +1471,12 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   Alça ⋮⋮ antes do título, linha mostrando onde o card entra e "Mover para antes/depois" no menu.
   Com filtro, a ordem gravada inclui os escondidos (`salvarOrdemSinaisVitais`). O código de
   arrastar é cópia do `ObjetivoCard`, não um componente compartilhado.
+- **Gui (gestor) não conseguia editar nos OKRs.** As policies estavam inconsistentes: qualquer
+  membro da empresa já criava/editava KR e objetivo e criava/apagava lançamento, mas UPDATE de
+  `kr_lancamentos` e escrita em `kr_metas_mensais` só passavam pela policy de administrador/editor.
+  O UPDATE bloqueado devolvia 0 linhas sem erro, então "Editar lançamentos" parecia salvar e nada
+  mudava. Migration `PENDENTE_20261001020000_okr_escrita_membros.sql` (rodada pelo Chrome e
+  conferida) abre as duas operações para qualquer membro da empresa dona do KR.
+  `ModalEditarLancamentos` agora usa `.select('id')` + `mensagemErroGravacao` e mostra o erro.
+  Não conferi Sinais Vitais nem Táticas: os nomes das tabelas não apareceram na consulta de
+  policies (`sv_lancamentos`?).

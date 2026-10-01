@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { X, Edit2, Check, Trash2, Plus } from 'lucide-react'
-import { formatDate } from '@/lib/utils'
+import { formatDate, mensagemErroGravacao } from '@/lib/utils'
 import { recalcularValorAtualKr, deleteKrLancamento } from '@/lib/queries/okr'
 import BotaoExcluirConfirmando from '@/components/BotaoExcluirConfirmando'
 
@@ -29,6 +29,7 @@ export default function ModalEditarLancamentos({
     comentario: '',
   })
   const [salvando, setSalvando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
   const [excluindo, setExcluindo] = useState<string | null>(null)
 
   const fetchLancamentos = useCallback(async () => {
@@ -59,8 +60,10 @@ export default function ModalEditarLancamentos({
 
   async function handleSalvar(id: string) {
     setSalvando(true)
+    setErro(null)
     const supabase = createClient()
-    await supabase
+    // .select('id'): RLS que bloqueia o UPDATE devolve 0 linhas sem erro (antes falhava calado).
+    const { data, error } = await supabase
       .from('kr_lancamentos')
       .update({
         valor: parseFloat(formEdicao.valor) || 0,
@@ -68,6 +71,13 @@ export default function ModalEditarLancamentos({
         comentario: formEdicao.comentario || null,
       })
       .eq('id', id)
+      .select('id')
+    const erroGravacao = mensagemErroGravacao(error, data?.length ?? 0)
+    if (erroGravacao) {
+      setErro(`Não foi possível salvar o lançamento. ${erroGravacao}`)
+      setSalvando(false)
+      return
+    }
 
     await recalcularValorAtualKr(kr.id)
 
@@ -106,6 +116,7 @@ export default function ModalEditarLancamentos({
 
         {/* Lista */}
         <div className="flex-1 overflow-y-auto p-5">
+          {erro && <p className="mb-3 text-xs text-destructive">{erro}</p>}
           {loading ? (
             <div className="space-y-3">
               {[1, 2, 3].map(i => <div key={i} className="h-16 rounded-xl bg-secondary animate-pulse" />)}
