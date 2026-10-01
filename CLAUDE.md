@@ -1414,3 +1414,10 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   existia como KR). Conferido: 0 táticas, 9 lançamentos, 12 metas mensais. O auto mode barrou a
   gravação pelo Chrome. Script para o Igor rodar: `Adições futuras/KR Pesquisas vira sinal vital.sql`
   (transação: cria o sinal vital, copia os lançamentos, apaga o KR com as metas e os lançamentos dele).
+- O Igor rodou `KR Pesquisas vira sinal vital.sql`. O SQL Editor mostrou o erro `42P01: relation
+  "_novo_sv" does not exist`, mas a conversão foi feita (conferido via SQL): o sinal vital
+  "Quantidade de Pesquisas Realizadas" existe (objetivo "SER UMA EMPRESA MAIS EFICIENTE...", Ross,
+  Concretize, meta 1, 9 lançamentos 0,0,1,2,0,0,0,0,0) e o KR sumiu junto com as metas e os
+  lançamentos dele. O erro veio só do select de conferência no fim. **Lição**: no SQL Editor do
+  Supabase, não usar `create temp table ... on commit drop` para passar dados entre comandos. Usar um
+  comando só, com CTEs, ou buscar o registro pelo título.
