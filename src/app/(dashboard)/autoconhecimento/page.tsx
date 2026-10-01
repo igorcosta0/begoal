@@ -230,6 +230,7 @@ export default function AutoconhecimentoPage() {
   const [cargosPerfil, setCargosPerfil] = useState<Record<string, FuncionarioCargoPerfil>>({})
   const [gerandoId, setGerandoId] = useState<string | null>(null)
   const [erroGeracao, setErroGeracao] = useState<string | null>(null)
+  const [acessoLiberado, setAcessoLiberado] = useState(false)
 
   useEffect(() => {
     if (!ctz) {
@@ -249,24 +250,31 @@ export default function AutoconhecimentoPage() {
       const veDicaMapa1 = ['igorecosta1@gmail.com', 'priscila.santos@behive.net.br'].includes(emailAtual)
       setSouVeDicaMapa1(veDicaMapa1)
 
-      const { perfil, error } = await getMeuPerfilEneagrama()
-      if (error) setErroPerfil(error)
-      else if (perfil) {
-        setTipoNumero(perfil.tipo)
-        setSubtipoSequencia(perfil.subtipo_sequencia)
-      }
-
       // Líderes (01/10/2026): quem tem liderado direto no organograma vê o
-      // Mapa do time. A análise de cargo aparece pra eles e também pra quem
-      // tem "Líder" no cargo do cadastro (Jean, Guilherme: líderes sem
-      // liderado no organograma). Outras pessoas com análise gravada (testes
-      // antigos) continuam sem vê-la.
+      // Mapa do time. Quem tem "Líder" no cargo do cadastro (Jean, Guilherme:
+      // líderes sem liderado no organograma) também é líder aqui.
+      // Mesma regra de podeVerAutoconhecimento (menu e Início).
       const [{ souLider: liderDeAlguem }, { data: meuCadastro }] = await Promise.all([
         getSouLiderDeAlguem(),
         supabase.from('funcionarios').select('cargo').eq('user_id', user.id).eq('client_id', empresa.id).maybeSingle(),
       ])
       setSouLider(liderDeAlguem)
       const liderPeloCargo = /l[ií]der/i.test(meuCadastro?.cargo ?? '')
+
+      // Liderado não vê o módulo (01/10/2026): só líderes e piloto.
+      const acesso = piloto || liderDeAlguem || liderPeloCargo
+      setAcessoLiberado(acesso)
+      if (!acesso) {
+        setLoading(false)
+        return
+      }
+
+      const { perfil, error } = await getMeuPerfilEneagrama()
+      if (error) setErroPerfil(error)
+      else if (perfil) {
+        setTipoNumero(perfil.tipo)
+        setSubtipoSequencia(perfil.subtipo_sequencia)
+      }
       if (liderDeAlguem) {
         getMeusLideradosComPerfilMapeado().then(({ liderados: l }) => setLiderados(l))
         getResumoTimeLiderado().then(({ resumo }) => setResumoTime(resumo))
@@ -334,10 +342,9 @@ export default function AutoconhecimentoPage() {
   }
 
   // Módulo construído só pra CTZ (fonte é o Programa Foco da BeHive, aplicado
-  // só lá). Graduou de "só piloto" pra "toda a CTZ" em 10/09/2026 — a visão
-  // de administrador do protótipo (Perfis da equipe/cruzamento cargo)
-  // continua restrita mais abaixo, dentro da própria página.
-  if (!ctz) {
+  // só lá). Desde 01/10/2026, só líderes e piloto — liderado vê a mesma
+  // mensagem genérica, sem pista de que é uma restrição.
+  if (!ctz || !acessoLiberado) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-card/50 p-16 text-center">
         <p className="text-muted-foreground text-sm">Este módulo ainda não está disponível para esta empresa.</p>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { TIPOS_ENEAGRAMA, NOME_INSTINTO, type Instinto } from '@/lib/eneagrama/tipos'
 import { chamarGemini } from '@/lib/gemini'
+import { podeVerAutoconhecimento } from '@/lib/autoconhecimentoAcesso'
 import { limparHistorico, LIMITE_PERGUNTA, erroInterno, metodoConversa, mensagensAnterioresDaPessoa } from '@/lib/apiIa'
 
 // Espaço extra pro retry de chamarGemini (pior caso ~36s: 2 modelos × 18s)
@@ -39,8 +40,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Texto muito longo (máximo ${LIMITE_PERGUNTA} caracteres)` }, { status: 400 })
     }
 
-    // Aberto pra qualquer um com tipo mapeado (10/09/2026): a trava é o
-    // próprio perfil existir (404 logo abaixo). Simulação (01/10/2026): Igor/
+    // Desde 01/10/2026, só líderes e piloto (liderado não usa o módulo).
+    if (!(await podeVerAutoconhecimento(supabase, user))) {
+      return NextResponse.json({ error: 'Módulo ainda não disponível' }, { status: 403 })
+    }
+
+    // Além disso, o próprio perfil precisa existir (404 logo abaixo). Simulação (01/10/2026): Igor/
     // Priscila veem a página como o Felipe Marques e mandam o funcionário
     // simulado — só aceito pra quem já enxerga todos os tipos
     // (pode_ver_todos_eneagrama_ctz). Qualquer outra pessoa fica presa ao

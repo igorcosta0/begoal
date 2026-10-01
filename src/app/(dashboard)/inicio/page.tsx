@@ -7,6 +7,7 @@ import { getObjetivos, getKrsByEmpresa } from '@/lib/queries/okr'
 import { calcularKr, progressoObjetivo, progressoSinalVital } from '@/lib/okrProgresso'
 import { getCiclosAvaliacao } from '@/lib/queries/avaliacao'
 import { formatPercent, isEmpresaCTZ, souPilotoAutoconhecimento, mensagemErroGravacao } from '@/lib/utils'
+import { podeVerAutoconhecimento } from '@/lib/autoconhecimentoAcesso'
 import {
   Edit2, Check, X, ArrowRight, TrendingUp, Megaphone, Plus,
   Sparkles, Library, Compass,
@@ -31,6 +32,7 @@ export default function InicioPage() {
   const [dataHoje, setDataHoje] = useState('')
 
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [podeVerAuto, setPodeVerAuto] = useState(false)
   const [permissionLevel, setPermissionLevel] = useState('visualizador')
   const [taticasAtivas, setTaticasAtivas] = useState(0)
   const [funcionariosCount, setFuncionariosCount] = useState(0)
@@ -55,6 +57,9 @@ export default function InicioPage() {
     if (user) { setUserId(user.id); setUserEmail(user.email ?? null) }
 
     const ctz = isEmpresaCTZ(empresa.company_name)
+    // Autoconhecimento só pra líderes e piloto (01/10/2026).
+    if (ctz && user) podeVerAutoconhecimento(supabase, user, empresa.id).then(setPodeVerAuto)
+    else setPodeVerAuto(false)
 
     const [
       { data: identidadeData }, { data: objs }, { data: krsData }, { data: funcData },
@@ -141,7 +146,7 @@ export default function InicioPage() {
     { href: '/funcionarios', label: 'Funcionários', icon: Users, cor: 'bg-sky-100 text-sky-700', meta: `${funcionariosCount} pessoas no time` },
     { href: '/avaliacao', label: 'Avaliação', icon: ClipboardList, cor: 'bg-blue-100 text-blue-700', meta: cicloAvaliacaoNome ? `Ciclo ${cicloAvaliacaoNome}` : 'Nenhum ciclo ativo', hidden: !ctz },
     { href: '/cargos', label: 'Cargos', icon: Briefcase, cor: 'bg-amber-100 text-amber-700', meta: 'Perfis de cargo mapeados', hidden: !podeVerCargos },
-    { href: '/autoconhecimento', label: 'Autoconhecimento', icon: Sparkles, cor: 'bg-violet-100 text-violet-700', meta: 'Eneagrama da equipe', hidden: !ctz },
+    { href: '/autoconhecimento', label: 'Autoconhecimento', icon: Sparkles, cor: 'bg-violet-100 text-violet-700', meta: 'Eneagrama da equipe', hidden: !podeVerAuto },
     { href: '/biblioteca', label: 'Biblioteca', icon: Library, cor: 'bg-sky-100 text-sky-700', meta: `${bibliotecaCount} materiais` },
   ].filter((m) => !m.hidden)
 

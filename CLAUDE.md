@@ -1485,3 +1485,10 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   pelo Chrome e conferido. O Réus já estava igual à imagem (3, AP/SO/SX). **Anna Laura Lopes (tipo
   2, SO/AP/SX) ficou pendente**: ela não existe em `funcionarios` de nenhuma empresa, e a tabela exige
   `funcionario_id` e `user_id`.
+- **Autoconhecimento só para líderes e piloto** (pedido do Igor: "o Gabriel é liderado pelo
+  Marques, então não deve ver o Autoconhecimento"). Regra única em `src/lib/autoconhecimentoAcesso.ts`
+  (`podeVerAutoconhecimento`): piloto, OU `sou_lider_de_alguem()`, OU "Líder" no
+  `funcionarios.cargo`. Aplicada no menu (`Topbar`), no atalho da Início, na página (liderado vê a
+  mensagem genérica de "não disponível") e na rota `/api/assistente-eneagrama` (403). Reverte a
+  decisão de 10/09 de abrir o Mapa de si para a CTZ inteira. O liderado continua aparecendo para o
+  líder no Mapa do time (o Gabriel já aparecia para o Marques, nada mudou ali).

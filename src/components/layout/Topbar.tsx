@@ -1,11 +1,13 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { createClient } from '@/lib/supabase/client'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { cn, isEmpresaCTZ, souPilotoAutoconhecimento } from '@/lib/utils'
+import { podeVerAutoconhecimento } from '@/lib/autoconhecimentoAcesso'
 import Avatar from '@/components/Avatar'
 import {
   Target, Heart, Zap, Activity, Users, Settings,
@@ -47,6 +49,19 @@ export default function Topbar({ papeisPorEmpresa, userEmail, fotoUrl }: TopbarP
   const ctz = isEmpresaCTZ(empresa?.company_name)
   const podeVerCargos = ctz && (isAdmin || souPilotoAutoconhecimento(userEmail))
 
+  // Autoconhecimento: só líderes e piloto (01/10/2026). Escondido até confirmar.
+  const [podeVerAuto, setPodeVerAuto] = useState(false)
+  useEffect(() => {
+    if (!ctz || !empresa) { setPodeVerAuto(false); return }
+    let ativo = true
+    const supabase = createClient()
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      const pode = user ? await podeVerAutoconhecimento(supabase, user, empresa.id) : false
+      if (ativo) setPodeVerAuto(pode)
+    })
+    return () => { ativo = false }
+  }, [ctz, empresa])
+
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
@@ -75,7 +90,7 @@ export default function Topbar({ papeisPorEmpresa, userEmail, fotoUrl }: TopbarP
         { href: '/funcionarios', label: 'Funcionários', icon: Users },
         { href: '/cargos', label: 'Cargos', icon: Briefcase, hidden: !podeVerCargos },
         { href: '/avaliacao', label: 'Avaliação', icon: ClipboardList, hidden: !ctz },
-        { href: '/autoconhecimento', label: 'Autoconhecimento', icon: Sparkles, hidden: !ctz },
+        { href: '/autoconhecimento', label: 'Autoconhecimento', icon: Sparkles, hidden: !podeVerAuto },
       ],
     },
     {
