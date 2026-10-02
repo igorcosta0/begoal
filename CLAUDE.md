@@ -1511,3 +1511,5 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   status, data de admissão, perfil comportamental e gestor): `required` nos campos + checagem em
   `handleCriar` (texto só com espaços não passa). Perfil comportamental começa vazio no cadastro
   ("N/A" ainda pode ser escolhido de propósito). "Editar Funcionário" continua tudo opcional.
+- "Novo Funcionário" e "Adicionar primeiro funcionário" também só aparecem para administrador
+  (mesmo `souAdmin`). Não-admin vê só a lista e o botão "Perfil" de cada card.

@@ -443,12 +443,14 @@ export default function FuncionariosPage() {
             </p>
           </div>
         </div>
-        <button
-          onClick={() => { setForm(FORM_INICIAL); setModalCriar(true) }}
-          className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
-        >
-          <Plus className="w-4 h-4" /> Novo Funcionário
-        </button>
+        {souAdmin && (
+          <button
+            onClick={() => { setForm(FORM_INICIAL); setModalCriar(true) }}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
+          >
+            <Plus className="w-4 h-4" /> Novo Funcionário
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -493,12 +495,14 @@ export default function FuncionariosPage() {
             <Users className="w-6 h-6 text-muted-foreground/40" />
           </div>
           <p className="text-muted-foreground text-sm mb-3">Nenhum funcionário encontrado.</p>
-          <button
-            onClick={() => { setForm(FORM_INICIAL); setModalCriar(true) }}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
-          >
-            <Plus className="w-4 h-4" /> Adicionar primeiro funcionário
-          </button>
+          {souAdmin && (
+            <button
+              onClick={() => { setForm(FORM_INICIAL); setModalCriar(true) }}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
+            >
+              <Plus className="w-4 h-4" /> Adicionar primeiro funcionário
+            </button>
+          )}
         </div>
       ) : (
         <div data-tour="tour-funcionarios-lista" className="space-y-3">
