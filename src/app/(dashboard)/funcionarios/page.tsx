@@ -70,9 +70,9 @@ function ModalFuncionario({
 }: ModalFuncionarioProps) {
   if (!open) return null
 
-  // Pedido 02/10/2026: na CTZ o cargo só pode ser escolhido da base de Cargos.
-  // Cargo antigo digitado à mão que não bate com a base continua aparecendo
-  // (marcado), senão abrir "Editar" e salvar apagaria o cargo da pessoa.
+  // Pedido 02/10/2026: na CTZ, funcionário NOVO só recebe cargo da base de
+  // Cargos. Editar quem já está no sistema continua com texto livre (pedido
+  // do Igor: não mexer nos cargos já gravados).
   const areasCargos = cargos
     ? Array.from(new Set(cargos.map((c) => c.area))).map((area) => ({
         area,
@@ -81,7 +81,6 @@ function ModalFuncionario({
           .sort((a, b) => a.cargo_base.localeCompare(b.cargo_base) || (ORDEM_NIVEL[a.nivel ?? ''] ?? 99) - (ORDEM_NIVEL[b.nivel ?? ''] ?? 99)),
       }))
     : []
-  const cargoForaDaBase = !!cargos && !!form.cargo && !cargos.some((c) => nomeCargo(c) === form.cargo)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -122,9 +121,6 @@ function ModalFuncionario({
                     className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="">Nenhum</option>
-                    {cargoForaDaBase && (
-                      <option value={form.cargo}>{form.cargo} (não cadastrado)</option>
-                    )}
                     {areasCargos.map((g) => (
                       <optgroup key={g.area} label={g.area}>
                         {g.itens.map((c) => (
@@ -612,7 +608,7 @@ export default function FuncionariosPage() {
         setForm={setForm}
         setores={setores}
         funcionarios={funcionarios}
-        cargos={ctz ? cargosBase : null}
+        cargos={null}
         onSubmit={handleEditar}
         onCancel={() => { setModalEditar({ open: false, funcionario: null }); setErroForm(null) }}
         erro={erroForm}

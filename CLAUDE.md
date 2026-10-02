@@ -1501,3 +1501,6 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   Cargo antigo digitado à mão que não bate com a base aparece como "(não cadastrado)", para não ser
   apagado ao editar. Fora da CTZ continua texto livre (a base de Cargos só existe na CTZ). Não grava
   o vínculo em `funcionarios_cargo_perfil` (a escrita lá é só do piloto). Sem migration.
+  - Ajuste no mesmo dia (pedido do Igor): a lista vale **só para funcionário novo**. "Editar
+    Funcionário" voltou a ser texto livre e a opção "(não cadastrado)" saiu, porque os cargos de
+    quem já está no sistema ficam como estão.
