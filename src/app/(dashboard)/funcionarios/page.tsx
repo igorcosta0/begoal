@@ -4,12 +4,13 @@ import { useEffect, useState, useCallback } from 'react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
 import { getSetoresByEmpresa } from '@/lib/queries/okr'
-import { getTodosCargosPerfil, type FuncionarioCargoPerfil } from '@/lib/queries/cargosPerfil'
+import Link from 'next/link'
+import { getTodosCargosPerfil, getCargosPerfil, type FuncionarioCargoPerfil, type CargoPerfilCompleto } from '@/lib/queries/cargosPerfil'
 import { getPerfisPublicosPorEmpresa, type PerfilPublico } from '@/lib/queries/perfilPublico'
 import Avatar from '@/components/Avatar'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
 import { User, Building2, Briefcase, MoreHorizontal, Users, Plus, ChevronDown, UserCircle2 } from 'lucide-react'
-import { mensagemErroExclusao, mensagemErroGravacao } from '@/lib/utils'
+import { mensagemErroExclusao, mensagemErroGravacao, isEmpresaCTZ } from '@/lib/utils'
 
 const STATUS_OPTIONS = ['Ativo', 'Férias', 'Afastado', 'Desligado']
 const PROFILE_OPTIONS = [
@@ -20,6 +21,13 @@ const PROFILE_OPTIONS = [
   'Comunicador/Analista/Executor', 'Planejador/Analista/Executor',
   'Comunicador/Planejador/Analista/Executor',
 ]
+
+const ORDEM_NIVEL: Record<string, number> = { 'Júnior': 0, 'Pleno': 1, 'Sênior': 2 }
+
+// Texto gravado em funcionarios.cargo quando o cargo vem da base de Cargos.
+function nomeCargo(c: { cargo_base: string; nivel: string | null }) {
+  return c.nivel ? `${c.cargo_base} ${c.nivel}` : c.cargo_base
+}
 
 interface FormFuncionario {
   full_name: string
@@ -39,6 +47,8 @@ interface ModalFuncionarioProps {
   setForm: (form: FormFuncionario) => void
   setores: any[]
   funcionarios: any[]
+  // null = empresa sem base de Cargos (fora da CTZ): cargo continua texto livre.
+  cargos: CargoPerfilCompleto[] | null
   onSubmit: (e: React.FormEvent) => void
   onCancel: () => void
   erro?: string | null
@@ -52,12 +62,26 @@ function ModalFuncionario({
   setForm,
   setores,
   funcionarios,
+  cargos,
   onSubmit,
   onCancel,
   erro,
   salvando,
 }: ModalFuncionarioProps) {
   if (!open) return null
+
+  // Pedido 02/10/2026: na CTZ o cargo só pode ser escolhido da base de Cargos.
+  // Cargo antigo digitado à mão que não bate com a base continua aparecendo
+  // (marcado), senão abrir "Editar" e salvar apagaria o cargo da pessoa.
+  const areasCargos = cargos
+    ? Array.from(new Set(cargos.map((c) => c.area))).map((area) => ({
+        area,
+        itens: cargos
+          .filter((c) => c.area === area)
+          .sort((a, b) => a.cargo_base.localeCompare(b.cargo_base) || (ORDEM_NIVEL[a.nivel ?? ''] ?? 99) - (ORDEM_NIVEL[b.nivel ?? ''] ?? 99)),
+      }))
+    : []
+  const cargoForaDaBase = !!cargos && !!form.cargo && !cargos.some((c) => nomeCargo(c) === form.cargo)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -90,12 +114,38 @@ function ModalFuncionario({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium text-foreground">Cargo</label>
-              <input
-                type="text"
-                value={form.cargo}
-                onChange={(e) => setForm({ ...form, cargo: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
+              {cargos ? (
+                <>
+                  <select
+                    value={form.cargo}
+                    onChange={(e) => setForm({ ...form, cargo: e.target.value })}
+                    className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="">Nenhum</option>
+                    {cargoForaDaBase && (
+                      <option value={form.cargo}>{form.cargo} (não cadastrado)</option>
+                    )}
+                    {areasCargos.map((g) => (
+                      <optgroup key={g.area} label={g.area}>
+                        {g.itens.map((c) => (
+                          <option key={c.id} value={nomeCargo(c)}>{nomeCargo(c)}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Não achou o cargo?{' '}
+                    <Link href="/cargos" className="text-primary hover:underline">Cadastre na base de Cargos</Link>
+                  </p>
+                </>
+              ) : (
+                <input
+                  type="text"
+                  value={form.cargo}
+                  onChange={(e) => setForm({ ...form, cargo: e.target.value })}
+                  className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              )}
             </div>
             <div>
               <label className="text-xs font-medium text-foreground">Setor</label>
@@ -250,6 +300,14 @@ export default function FuncionariosPage() {
     if (!empresa) return
     getSetoresByEmpresa(empresa.id).then(({ data }) => setSetores(data ?? []))
   }, [empresa])
+
+  // Base de Cargos só existe na CTZ; fora dela o cargo continua texto livre.
+  const ctz = isEmpresaCTZ(empresa?.company_name)
+  const [cargosBase, setCargosBase] = useState<CargoPerfilCompleto[]>([])
+  useEffect(() => {
+    if (!empresa || !ctz) return
+    getCargosPerfil(empresa.id).then(({ data }) => setCargosBase(data))
+  }, [empresa, ctz])
 
   useEffect(() => {
     if (!empresa) return
@@ -540,6 +598,7 @@ export default function FuncionariosPage() {
         setForm={setForm}
         setores={setores}
         funcionarios={funcionarios}
+        cargos={ctz ? cargosBase : null}
         onSubmit={handleCriar}
         onCancel={() => { setModalCriar(false); setErroForm(null) }}
         erro={erroForm}
@@ -553,6 +612,7 @@ export default function FuncionariosPage() {
         setForm={setForm}
         setores={setores}
         funcionarios={funcionarios}
+        cargos={ctz ? cargosBase : null}
         onSubmit={handleEditar}
         onCancel={() => { setModalEditar({ open: false, funcionario: null }); setErroForm(null) }}
         erro={erroForm}

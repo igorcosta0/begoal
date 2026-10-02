@@ -1492,3 +1492,12 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   mensagem genérica de "não disponível") e na rota `/api/assistente-eneagrama` (403). Reverte a
   decisão de 10/09 de abrir o Mapa de si para a CTZ inteira. O liderado continua aparecendo para o
   líder no Mapa do time (o Gabriel já aparecia para o Marques, nada mudou ali).
+
+### 2026-10-02
+- **Cargo do funcionário vem da base de Cargos** (pedido do Igor: não deixar digitar). No modal
+  Novo/Editar Funcionário (`funcionarios/page.tsx`), na CTZ, o campo Cargo virou uma lista dos
+  cargos de `cargos_perfil`, agrupados por área (texto gravado = "cargo_base nível", em
+  `funcionarios.cargo`, como antes). Embaixo, um link para `/cargos` para cadastrar o que faltar.
+  Cargo antigo digitado à mão que não bate com a base aparece como "(não cadastrado)", para não ser
+  apagado ao editar. Fora da CTZ continua texto livre (a base de Cargos só existe na CTZ). Não grava
+  o vínculo em `funcionarios_cargo_perfil` (a escrita lá é só do piloto). Sem migration.
