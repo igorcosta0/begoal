@@ -1507,3 +1507,7 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
 - Funcionários: o menu "⋯" do card (Editar/Excluir) só aparece para administrador da empresa
   selecionada (`useAcessoAdministrador`). A RLS de escrita de `funcionarios` já barrava os outros;
   só a tela mudou. "Novo Funcionário" continua visível para todos (não foi pedido).
+- Cadastro de funcionário novo com **todos os campos obrigatórios** (nome, e-mail, cargo, setor,
+  status, data de admissão, perfil comportamental e gestor): `required` nos campos + checagem em
+  `handleCriar` (texto só com espaços não passa). Perfil comportamental começa vazio no cadastro
+  ("N/A" ainda pode ser escolhido de propósito). "Editar Funcionário" continua tudo opcional.

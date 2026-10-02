@@ -50,6 +50,8 @@ interface ModalFuncionarioProps {
   funcionarios: any[]
   // null = empresa sem base de Cargos (fora da CTZ): cargo continua texto livre.
   cargos: CargoPerfilCompleto[] | null
+  // true no cadastro de funcionário novo: todos os campos obrigatórios.
+  obrigatorio?: boolean
   onSubmit: (e: React.FormEvent) => void
   onCancel: () => void
   erro?: string | null
@@ -64,12 +66,18 @@ function ModalFuncionario({
   setores,
   funcionarios,
   cargos,
+  obrigatorio = false,
   onSubmit,
   onCancel,
   erro,
   salvando,
 }: ModalFuncionarioProps) {
   if (!open) return null
+
+  // Pedido 02/10/2026: no cadastro, o navegador não deixa enviar com campo
+  // vazio (`required`); na edição continua tudo opcional, como sempre foi.
+  const asterisco = obrigatorio ? ' *' : ''
+  const vazio = obrigatorio ? 'Selecione...' : 'Nenhum'
 
   // Pedido 02/10/2026: na CTZ, funcionário NOVO só recebe cargo da base de
   // Cargos. Editar quem já está no sistema continua com texto livre (pedido
@@ -101,11 +109,12 @@ function ModalFuncionario({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-foreground">E-mail</label>
+              <label className="text-xs font-medium text-foreground">E-mail{asterisco}</label>
               <input
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
+                required={obrigatorio}
                 className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
@@ -113,15 +122,16 @@ function ModalFuncionario({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-foreground">Cargo</label>
+              <label className="text-xs font-medium text-foreground">Cargo{asterisco}</label>
               {cargos ? (
                 <>
                   <select
                     value={form.cargo}
                     onChange={(e) => setForm({ ...form, cargo: e.target.value })}
+                    required={obrigatorio}
                     className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   >
-                    <option value="">Nenhum</option>
+                    <option value="">{vazio}</option>
                     {areasCargos.map((g) => (
                       <optgroup key={g.area} label={g.area}>
                         {g.itens.map((c) => (
@@ -140,18 +150,20 @@ function ModalFuncionario({
                   type="text"
                   value={form.cargo}
                   onChange={(e) => setForm({ ...form, cargo: e.target.value })}
+                  required={obrigatorio}
                   className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               )}
             </div>
             <div>
-              <label className="text-xs font-medium text-foreground">Setor</label>
+              <label className="text-xs font-medium text-foreground">Setor{asterisco}</label>
               <select
                 value={form.setor_id}
                 onChange={(e) => setForm({ ...form, setor_id: e.target.value })}
+                required={obrigatorio}
                 className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="">Nenhum</option>
+                <option value="">{vazio}</option>
                 {setores.map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
@@ -161,10 +173,11 @@ function ModalFuncionario({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-foreground">Status</label>
+              <label className="text-xs font-medium text-foreground">Status{asterisco}</label>
               <select
                 value={form.status}
                 onChange={(e) => setForm({ ...form, status: e.target.value })}
+                required={obrigatorio}
                 className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 {STATUS_OPTIONS.map((s) => (
@@ -173,23 +186,26 @@ function ModalFuncionario({
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-foreground">Data admissão</label>
+              <label className="text-xs font-medium text-foreground">Data admissão{asterisco}</label>
               <input
                 type="date"
                 value={form.data_admissao}
                 onChange={(e) => setForm({ ...form, data_admissao: e.target.value })}
+                required={obrigatorio}
                 className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-medium text-foreground">Perfil comportamental</label>
+            <label className="text-xs font-medium text-foreground">Perfil comportamental{asterisco}</label>
             <select
               value={form.profile}
               onChange={(e) => setForm({ ...form, profile: e.target.value })}
+              required={obrigatorio}
               className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
+              {obrigatorio && <option value="">Selecione...</option>}
               {PROFILE_OPTIONS.map((p) => (
                 <option key={p} value={p}>{p}</option>
               ))}
@@ -197,13 +213,14 @@ function ModalFuncionario({
           </div>
 
           <div>
-            <label className="text-xs font-medium text-foreground">Gestor</label>
+            <label className="text-xs font-medium text-foreground">Gestor{asterisco}</label>
             <select
               value={form.gestor_id}
               onChange={(e) => setForm({ ...form, gestor_id: e.target.value })}
+              required={obrigatorio}
               className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              <option value="">Nenhum</option>
+              <option value="">{vazio}</option>
               {funcionarios.map((f) => (
                 <option key={f.id} value={f.id}>{f.full_name}</option>
               ))}
@@ -238,7 +255,7 @@ function ModalFuncionario({
 
 const FORM_INICIAL: FormFuncionario = {
   full_name: '', email: '', cargo: '', setor_id: '',
-  gestor_id: '', status: 'Ativo', profile: 'N/A', data_admissao: '',
+  gestor_id: '', status: 'Ativo', profile: '', data_admissao: '',
 }
 
 export default function FuncionariosPage() {
@@ -336,6 +353,10 @@ export default function FuncionariosPage() {
   async function handleCriar(e: React.FormEvent) {
     e.preventDefault()
     if (!empresa) return
+    if (Object.values(form).some((v) => !v.trim())) {
+      setErroForm('Preencha todos os campos para cadastrar o funcionário.')
+      return
+    }
     setSalvandoForm(true)
     setErroForm(null)
     const supabase = createClient()
@@ -601,6 +622,7 @@ export default function FuncionariosPage() {
         setores={setores}
         funcionarios={funcionarios}
         cargos={ctz ? cargosBase : null}
+        obrigatorio
         onSubmit={handleCriar}
         onCancel={() => { setModalCriar(false); setErroForm(null) }}
         erro={erroForm}
