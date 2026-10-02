@@ -9,6 +9,7 @@ import { getTodosCargosPerfil, getCargosPerfil, type FuncionarioCargoPerfil, typ
 import { getPerfisPublicosPorEmpresa, type PerfilPublico } from '@/lib/queries/perfilPublico'
 import Avatar from '@/components/Avatar'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
+import { useAcessoAdministrador } from '@/lib/hooks/useAcessoAdministrador'
 import { User, Building2, Briefcase, MoreHorizontal, Users, Plus, ChevronDown, UserCircle2 } from 'lucide-react'
 import { mensagemErroExclusao, mensagemErroGravacao, isEmpresaCTZ } from '@/lib/utils'
 
@@ -242,6 +243,9 @@ const FORM_INICIAL: FormFuncionario = {
 
 export default function FuncionariosPage() {
   const { empresa } = useEmpresaStore()
+  // Pedido 02/10/2026: só administrador vê o menu de Editar/Excluir. A RLS
+  // de escrita de funcionarios já barrava os outros; aqui só some da tela.
+  const souAdmin = useAcessoAdministrador() === 'ok'
 
   const [funcionarios, setFuncionarios] = useState<any[]>([])
   const [setores, setSetores] = useState<any[]>([])
@@ -524,6 +528,7 @@ export default function FuncionariosPage() {
                     Perfil
                     <ChevronDown className={`w-3 h-3 transition-transform ${perfilExpandidoId === f.id ? 'rotate-180' : ''}`} />
                   </button>
+                  {souAdmin && (
                   <div className="relative">
                     <button
                       onClick={() => setMenuOpen(menuOpen === f.id ? null : f.id)}
@@ -549,6 +554,7 @@ export default function FuncionariosPage() {
                       </div>
                     )}
                   </div>
+                  )}
                 </div>
               </div>
 

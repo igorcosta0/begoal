@@ -1504,3 +1504,6 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   - Ajuste no mesmo dia (pedido do Igor): a lista vale **só para funcionário novo**. "Editar
     Funcionário" voltou a ser texto livre e a opção "(não cadastrado)" saiu, porque os cargos de
     quem já está no sistema ficam como estão.
+- Funcionários: o menu "⋯" do card (Editar/Excluir) só aparece para administrador da empresa
+  selecionada (`useAcessoAdministrador`). A RLS de escrita de `funcionarios` já barrava os outros;
+  só a tela mudou. "Novo Funcionário" continua visível para todos (não foi pedido).
