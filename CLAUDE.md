@@ -1513,3 +1513,26 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   ("N/A" ainda pode ser escolhido de propósito). "Editar Funcionário" continua tudo opcional.
 - "Novo Funcionário" e "Adicionar primeiro funcionário" também só aparecem para administrador
   (mesmo `souAdmin`). Não-admin vê só a lista e o botão "Perfil" de cada card.
+
+### 2026-10-05
+- **Módulo de Pesquisa** (novo, só CTZ, menu Pessoas › Pesquisa, rota `/pesquisa`). Decisões do
+  Igor via `AskUserQuestion`: interna = **anônima**; externa = **um link por pesquisa**
+  (`/responder/<token>`, rota pública no middleware) em que a pessoa informa e-mail, nome completo
+  e empresa antes de responder, uma resposta por e-mail; **só administrador** cria/publica/encerra/
+  vê resultados; tipos de pergunta: nota 1–5, NPS 0–10, múltipla escolha, texto livre.
+  - Migration `PENDENTE_20261005000000_pesquisas.sql` (**rodar ANTES do push**): tabelas
+    `pesquisas` (status rascunho/aberta/encerrada, token aleatório), `pesquisa_perguntas` (só
+    editável em rascunho, pela RLS), `pesquisa_respostas` (itens em jsonb; e-mail/nome/empresa só na
+    externa) e `pesquisa_participacoes` (quem já respondeu a interna, sem ligação com a resposta;
+    as duas guardam só a data, sem hora, pra não casar uma com a outra). Quem responde de fora não
+    tem login: funções SECURITY DEFINER `pesquisa_publica_obter/ja_respondeu/responder` liberadas
+    pro `anon`, que conferem o token e validam cada resposta (`pesquisa_validar_respostas`).
+    Interna: `pesquisa_interna_responder`.
+  - Front: `src/lib/queries/pesquisas.ts`, `src/app/(dashboard)/pesquisa/page.tsx`,
+    `src/app/responder/[token]/page.tsx`, componentes em `src/components/pesquisa/` (editor com
+    modelo inicial NPS + satisfação + "o que melhorar", formulário de resposta, resultados com NPS,
+    média, distribuição, textos, "quem respondeu"/"quem falta" e exportar CSV).
+  - Limites conhecidos: o sistema não envia e-mail (o admin copia o link e manda); o link externo
+    aceita qualquer e-mail digitado (não confirma que é da pessoa); em pesquisa interna com poucas
+    respostas, "quem falta" + data podem permitir deduzir autoria.
+  - `npm run type-check` e lint limpos. Sem teste no navegador. Commit local, sem push.

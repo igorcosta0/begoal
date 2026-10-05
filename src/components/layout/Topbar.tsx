@@ -12,7 +12,7 @@ import Avatar from '@/components/Avatar'
 import {
   Target, Heart, Zap, Activity, Users, Settings,
   User, LogOut, Building2, Home, ArrowLeftRight, Upload, Map, ClipboardList,
-  Library, Compass, Sparkles, Briefcase, ChevronDown,
+  Library, Compass, Sparkles, Briefcase, ChevronDown, MessageSquareHeart,
 } from 'lucide-react'
 
 interface NavLink {
@@ -91,6 +91,7 @@ export default function Topbar({ papeisPorEmpresa, userEmail, fotoUrl }: TopbarP
         { href: '/cargos', label: 'Cargos', icon: Briefcase, hidden: !podeVerCargos },
         { href: '/avaliacao', label: 'Avaliação', icon: ClipboardList, hidden: !ctz },
         { href: '/autoconhecimento', label: 'Autoconhecimento', icon: Sparkles, hidden: !podeVerAuto },
+        { href: '/pesquisa', label: 'Pesquisa', icon: MessageSquareHeart, hidden: !ctz },
       ],
     },
     {
