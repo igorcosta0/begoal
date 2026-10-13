@@ -1536,3 +1536,58 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
     aceita qualquer e-mail digitado (não confirma que é da pessoa); em pesquisa interna com poucas
     respostas, "quem falta" + data podem permitir deduzir autoria.
   - `npm run type-check` e lint limpos. Sem teste no navegador. Commit local, sem push.
+
+### 2026-10-07 (v2)
+- **Avaliação de desempenho da v2 fechada no design** (canvas v79; detalhes na memória
+  `begoal-v2-decisoes.md`). Com isso, todos os módulos da v2 têm telas aprovadas. Ainda não há código.
+  - Etapa 3 (avaliação do líder) aprovada, revisada tela a tela.
+  - Etapa 4 (calibragem) redesenhada: o **próprio líder** calibra a equipe depois de ver a
+    autoavaliação e os pares. Os **administradores** revisam a régua entre equipes, mas **nunca
+    alteram nota**: só enviam um pedido ao líder, que aceita (e ele mesmo ajusta) ou recusa (vale a
+    nota dele). Substitui o "comitê" e as listas fixas de e-mail da v1.
+  - Etapa 5 (feedback, resultado e nine-box): o avaliado vê a nota final e por bloco, a própria
+    autoavaliação e a média dos pares, só depois que o líder marca a conversa como feita. O nine-box
+    fica com o líder (só a equipe dele) e os administradores. As anotações da conversa ficam só com
+    o líder e os administradores; o avaliado vê as até 3 ações combinadas.
+- Chrome não conectou nesta sessão: as telas foram conferidas com o Edge do Windows em modo
+  headless (`msedge --headless --screenshot`), sem instalar nada.
+
+### 2026-10-13
+- **O projeto do Supabase ("OKR's", plano gratuito) estava pausado**: o painel mostrava "Project is
+  paused" e o endereço do banco não resolvia (sistema fora do ar). O Igor restaurou pelo painel
+  ("Resume project"); o status fica "Coming up..." por alguns minutos e, nesse intervalo, o SQL
+  Editor redireciona para a página inicial do projeto.
+- **Empresa nova: BMG Desenvolvimento Imobiliário** (`Adições futuras/BMG-OKR/`: planilha do plano
+  tático + apresentação da estratégia 2026). Script `Adições futuras/BMG - carga inicial.sql`
+  gerado por Node a partir da planilha (Python não está instalado; `xlsx` do `node_modules` lê a
+  planilha): empresa, 15 setores, 16 pessoas sem login, 3 objetivos, 15 KRs e 66 táticas (uma por
+  ação, com o nome da tática na frente). **Rodado pelo Chrome e conferido** (client_id
+  `a497cf80-38af-4e32-85ee-5b04338b87ba`). Administradores pedidos pelo Igor: ele, Priscila Santos
+  e Eduardo Rigotto. Escolhas (4 KRs sem meta entram com meta 0 e "(meta a definir)" no nome etc.)
+  estão no cabeçalho do script. **Falta**: a lista de pessoas da BMG com e-mail, para os logins.
+  - **Criar empresa dispara um gatilho no banco** (não está nas migrations do repo): cria sozinho o
+    setor "Corporativo", o funcionário "Administrador" e papéis de administrador para as contas
+    "superusuário" (behive@, cristina.fernanda, joao.vitor, teteusfts1, eduardo@rh3consultoria e
+    um usuário sem perfil). Por isso inserir em `user_company_roles` logo depois de criar a empresa
+    precisa de `on conflict (user_id, client_id)`.
+  - **Levar um script grande ao SQL Editor sem redigitar**: o Supabase bloqueia `fetch` para
+    127.0.0.1 e a área de transferência não funcionou; funcionou servir o arquivo numa página
+    local (Node) e, dela, redirecionar para `.../sql/new#bmg=<texto codificado>`, lendo
+    `location.hash` na página do editor e passando para o `monaco`.
+
+### 2026-10-13 (v2)
+- **Pendências do design da v2 fechadas** (pedido do Igor: resolver o que faltava para começar o
+  código). Detalhes na memória `begoal-v2-decisoes.md`.
+  - Design system na versão 8 (31 componentes): "Estratégia" saiu do menu, do guia e dos tipos; o
+    menu mostra o nome do módulo aberto no lugar de "Mais"; entraram os componentes de login e
+    avaliação (TextField, Stepper, RatingScale, ScoreTile, ComparisonRow, PersonChip, NineBox).
+    Conferidos com o Edge em modo headless antes de publicar.
+  - Notion: Diário com as sessões de 30/09, 07/10 e 13/10; Roadmap com as telas e o design system
+    concluídos e os módulos que faltavam; Paridade com 15 itens do que entrou na v1 de 29/09 a 13/10.
+  - Os geradores antigos das telas não existem mais no disco. A fonte das telas é o que está
+    publicado no canvas.
+- Ficou com o Igor: decidir os 5 itens "Pendente" da Paridade (módulo de Pesquisa na v2, ordem
+  manual de KRs e de sinais vitais, sinais vitais "Removidos", visão geral da avaliação) e apagar do
+  canvas as telas marcadas "Substituída", se quiser.
+- Próximo passo da v2: começar o código (criar o projeto, tema do design system, modelo de dados,
+  login).
