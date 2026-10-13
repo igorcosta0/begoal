@@ -1574,6 +1574,19 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
     127.0.0.1 e a área de transferência não funcionou; funcionou servir o arquivo numa página
     local (Node) e, dela, redirecionar para `.../sql/new#bmg=<texto codificado>`, lendo
     `location.hash` na página do editor e passando para o `monaco`.
+- **Negócios dentro de um grupo** (pedido do Igor: na BMG, um botão para alternar entre Agro e
+  Pecuária, Brasfrigo Itajaí, Brasfrigo Uberlândia, Desenvolvimento Imobiliário, CSC e Guima
+  Café). Decisão minha, a confirmar com ele: **cada negócio é uma empresa própria em `clients`**
+  (dados, pessoas e acessos separados, mesma RLS de sempre), ligadas por três colunas novas
+  (`grupo`, `negocio`, `negocio_ordem`; migration `PENDENTE_20261013000000_clients_grupo_negocio.sql`).
+  A empresa já carregada é o negócio "Desenvolvimento Imobiliário". A `Topbar` troca o selo da
+  empresa por um botão com a lista dos negócios do grupo a que a pessoa tem acesso (troca a
+  empresa selecionada e recarrega a página); a seleção de empresa mostra o grupo como uma
+  entrada só. Sem as colunas no banco, o botão só não aparece. Script dos 5 negócios novos:
+  `Adições futuras/BMG - negocios.sql`. `npm run type-check` limpo, sem teste no navegador.
+  Migration e script rodados pelo Chrome e conferidos (6 negócios no grupo BMG, 9 acessos em
+  cada, objetivos só em Desenvolvimento Imobiliário); enviado a `master`. Limites: não existe visão consolidada do
+  grupo, e quem atua em mais de um negócio precisa de cadastro em cada um.
 
 ### 2026-10-13 (v2)
 - **Pendências do design da v2 fechadas** (pedido do Igor: resolver o que faltava para começar o

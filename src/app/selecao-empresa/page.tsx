@@ -8,11 +8,50 @@ interface Empresa {
   id: string
   company_name: string
   logo_url?: string
+  grupo?: string | null
+  negocio?: string | null
+  negocio_ordem?: number | null
+}
+
+/** Uma linha da lista: empresa comum, ou um grupo inteiro (ex.: BMG) com seus negócios. */
+interface Entrada {
+  chave: string
+  nome: string
+  logo_url?: string
+  /** Empresa em que se entra ao clicar; num grupo, o primeiro negócio da ordem. */
+  destino: Empresa
+  negocios: number
+}
+
+function montarEntradas(lista: Empresa[]): Entrada[] {
+  const entradas: Entrada[] = []
+  const grupos = new Map<string, Empresa[]>()
+  for (const e of lista) {
+    if (!e.grupo) {
+      entradas.push({ chave: e.id, nome: e.company_name, logo_url: e.logo_url, destino: e, negocios: 0 })
+      continue
+    }
+    const doGrupo = grupos.get(e.grupo)
+    if (doGrupo) doGrupo.push(e)
+    else grupos.set(e.grupo, [e])
+  }
+  grupos.forEach((doGrupo, grupo) => {
+    doGrupo.sort((a, b) => (a.negocio_ordem ?? 999) - (b.negocio_ordem ?? 999) || a.company_name.localeCompare(b.company_name))
+    const destino = doGrupo[0]
+    entradas.push({
+      chave: `grupo:${grupo}`,
+      nome: doGrupo.length > 1 ? grupo : destino.company_name,
+      logo_url: destino.logo_url,
+      destino,
+      negocios: doGrupo.length > 1 ? doGrupo.length : 0,
+    })
+  })
+  return entradas.sort((a, b) => a.nome.localeCompare(b.nome))
 }
 
 export default function SelecaoEmpresaPage() {
   const { setEmpresa } = useEmpresaStore()
-  const [empresas, setEmpresas] = useState<Empresa[]>([])
+  const [empresas, setEmpresas] = useState<Entrada[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -33,13 +72,15 @@ export default function SelecaoEmpresaPage() {
 
         // Usuário comum com apenas uma empresa: pula a seleção e vai direto para a página inicial.
         // Administradores sempre escolhem, pois podem acompanhar múltiplas empresas.
-        if (!isAdministrador && lista.length === 1) {
-          setEmpresa(lista[0])
+        // Vários negócios do mesmo grupo contam como uma entrada só (troca-se pelo botão do topo).
+        const entradas = montarEntradas(lista)
+        if (!isAdministrador && entradas.length === 1) {
+          setEmpresa(entradas[0].destino)
           window.location.href = '/inicio'
           return
         }
 
-        setEmpresas(lista)
+        setEmpresas(entradas)
       }
       setLoading(false)
     }
@@ -90,25 +131,30 @@ export default function SelecaoEmpresaPage() {
           </p>
         </div>
         <div className="space-y-3">
-          {empresas.map((empresa) => (
+          {empresas.map((entrada) => (
             <button
-              key={empresa.id}
-              onClick={() => handleSelect(empresa)}
+              key={entrada.chave}
+              onClick={() => handleSelect(entrada.destino)}
               className="w-full flex items-center gap-4 p-4 rounded-lg border border-border bg-card hover:bg-accent transition-colors text-left"
             >
-              {empresa.logo_url ? (
+              {entrada.logo_url ? (
                 <img
-                  src={empresa.logo_url}
-                  alt={empresa.company_name}
+                  src={entrada.logo_url}
+                  alt={entrada.nome}
                   className="w-10 h-10 rounded-md object-cover"
                 />
               ) : (
                 <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
-                  {empresa.company_name.charAt(0).toUpperCase()}
+                  {entrada.nome.charAt(0).toUpperCase()}
                 </div>
               )}
-              <span className="text-sm font-medium text-foreground">
-                {empresa.company_name}
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-foreground">{entrada.nome}</span>
+                {entrada.negocios > 0 && (
+                  <span className="block text-xs text-muted-foreground mt-0.5">
+                    {entrada.negocios} negócios · alterne pelo botão no topo do sistema
+                  </span>
+                )}
               </span>
             </button>
           ))}

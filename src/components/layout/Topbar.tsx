@@ -12,7 +12,7 @@ import Avatar from '@/components/Avatar'
 import {
   Target, Heart, Zap, Activity, Users, Settings,
   User, LogOut, Building2, Home, ArrowLeftRight, Upload, Map, ClipboardList,
-  Library, Compass, Sparkles, Briefcase, ChevronDown, MessageSquareHeart,
+  Library, Compass, Sparkles, Briefcase, ChevronDown, MessageSquareHeart, Layers, Check,
 } from 'lucide-react'
 
 interface NavLink {
@@ -29,6 +29,17 @@ interface NavGroup {
   links: NavLink[]
 }
 
+interface Negocio {
+  id: string
+  company_name: string
+  logo_url?: string
+  grupo: string | null
+  negocio: string | null
+  negocio_ordem: number | null
+}
+
+const nomeNegocio = (n: Negocio) => n.negocio ?? n.company_name
+
 interface TopbarProps {
   /** client_id → permission_level de cada empresa em que o usuário tem papel */
   papeisPorEmpresa: Record<string, string>
@@ -39,7 +50,7 @@ interface TopbarProps {
 export default function Topbar({ papeisPorEmpresa, userEmail, fotoUrl }: TopbarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const { empresa, clear: clearEmpresa } = useEmpresaStore()
+  const { empresa, setEmpresa, clear: clearEmpresa } = useEmpresaStore()
 
   const permissionLevel = empresa ? papeisPorEmpresa[empresa.id] : undefined
   const isAdmin = permissionLevel === 'administrador'
@@ -61,6 +72,46 @@ export default function Topbar({ papeisPorEmpresa, userEmail, fotoUrl }: TopbarP
     })
     return () => { ativo = false }
   }, [ctz, empresa])
+
+  // Negócios do mesmo grupo (ex.: BMG) a que a pessoa tem acesso. Cada negócio é
+  // uma empresa em `clients`; se as colunas ainda não existirem no banco, a
+  // consulta falha e o botão simplesmente não aparece.
+  const [negocios, setNegocios] = useState<Negocio[]>([])
+  const empresaId = empresa?.id
+  useEffect(() => {
+    if (!empresaId) { setNegocios([]); return }
+    let ativo = true
+    const supabase = createClient()
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return
+      const { data } = await supabase
+        .from('user_company_roles')
+        .select('clients(id, company_name, logo_url, grupo, negocio, negocio_ordem)')
+        .eq('user_id', user.id)
+      if (!ativo) return
+      const todas = ((data ?? []) as unknown as { clients: Negocio | null }[])
+        .map((r) => r.clients)
+        .filter((c): c is Negocio => c !== null)
+      const grupo = todas.find((c) => c.id === empresaId)?.grupo
+      setNegocios(
+        grupo
+          ? todas
+              .filter((c) => c.grupo === grupo)
+              .sort((a, b) => (a.negocio_ordem ?? 999) - (b.negocio_ordem ?? 999) || nomeNegocio(a).localeCompare(nomeNegocio(b)))
+          : []
+      )
+    })
+    return () => { ativo = false }
+  }, [empresaId])
+
+  const negocioAtual = negocios.find((n) => n.id === empresaId)
+
+  function handleTrocarNegocio(n: Negocio) {
+    if (n.id === empresaId) return
+    setEmpresa(n)
+    // Recarrega a página atual: cada tela busca os dados da empresa ao abrir.
+    window.location.reload()
+  }
 
   async function handleLogout() {
     const supabase = createClient()
@@ -188,7 +239,50 @@ export default function Topbar({ papeisPorEmpresa, userEmail, fotoUrl }: TopbarP
 
         {/* Empresa + usuário */}
         <div className="flex items-center gap-2 ml-auto pl-1 shrink-0">
-          {empresa && (
+          {empresa && negocioAtual && negocios.length > 1 ? (
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button
+                  title="Alternar negócio"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-foreground bg-secondary hover:bg-accent rounded-full px-3 py-1.5 max-w-[150px] sm:max-w-[240px] transition-colors outline-none"
+                >
+                  <Layers className="w-3.5 h-3.5 shrink-0 text-primary" />
+                  <span className="truncate">
+                    <span className="hidden lg:inline text-muted-foreground font-medium">{negocioAtual.grupo} · </span>
+                    {nomeNegocio(negocioAtual)}
+                  </span>
+                  <ChevronDown className="w-3 h-3 shrink-0 opacity-60" />
+                </button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  align="end"
+                  sideOffset={10}
+                  className="z-50 min-w-[230px] bg-card border border-border shadow-glass-lg rounded-2xl p-1.5 outline-none"
+                >
+                  <DropdownMenu.Label className="px-3 pt-1.5 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Negócios · {negocioAtual.grupo}
+                  </DropdownMenu.Label>
+                  {negocios.map((n) => {
+                    const atual = n.id === empresa.id
+                    return (
+                      <DropdownMenu.Item
+                        key={n.id}
+                        onSelect={() => handleTrocarNegocio(n)}
+                        className={cn(
+                          'flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-colors cursor-pointer outline-none',
+                          atual ? 'bg-accent text-accent-foreground' : 'text-foreground hover:bg-secondary'
+                        )}
+                      >
+                        <span className="flex-1 truncate">{nomeNegocio(n)}</span>
+                        {atual && <Check className="w-4 h-4 shrink-0" />}
+                      </DropdownMenu.Item>
+                    )
+                  })}
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
+          ) : empresa && (
             <div className="hidden lg:flex items-center gap-1.5 text-xs font-medium text-muted-foreground bg-secondary rounded-full px-3 py-1.5 max-w-[180px]">
               <Building2 className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate">{empresa.company_name}</span>

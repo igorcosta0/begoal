@@ -5,6 +5,10 @@ interface Empresa {
   id: string
   company_name: string
   logo_url?: string
+  /** Grupo com vários negócios (ex.: BMG). Cada negócio é uma empresa própria em `clients`. */
+  grupo?: string | null
+  negocio?: string | null
+  negocio_ordem?: number | null
 }
 
 interface EmpresaState {
