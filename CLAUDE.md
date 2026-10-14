@@ -1587,6 +1587,16 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   Migration e script rodados pelo Chrome e conferidos (6 negócios no grupo BMG, 9 acessos em
   cada, objetivos só em Desenvolvimento Imobiliário); enviado a `master`. Limites: não existe visão consolidada do
   grupo, e quem atua em mais de um negócio precisa de cadastro em cada um.
+- **OKRs 26/27 da BMG Brasfrigo Itajaí** (`Adições futuras/Brasfrigo/`: 4 planilhas, uma por
+  objetivo, + apresentação). Script `Adições futuras/Brasfrigo Itajaí - carga.sql`, gerado por Node
+  a partir das planilhas, **rodado pelo Chrome e conferido** (client_id
+  `221d5e28-0ad1-4bd8-8244-ac8437fa7acd`): 7 setores, 13 pessoas sem login, 4 objetivos, 25 KRs,
+  3 sinais vitais e 132 táticas. Meta do KR = "Meta Set 27"; a "Meta Dez 26" entrou em
+  `kr_metas_mensais` (dez/2026 e set/2027) nos 14 KRs que têm as duas. 10 KRs sem meta na
+  planilha entraram com meta 0 e "(meta a definir)". KRs e a maioria das táticas ficaram sem
+  responsável (a planilha não traz). As demais escolhas estão no cabeçalho do script. Nada foi
+  carregado na Brasfrigo Uberlândia (os arquivos são só de Itajaí). Fora da carga: as abas
+  "Aterrizando" (projetos, hipóteses, investimentos).
 
 ### 2026-10-13 (v2)
 - **Pendências do design da v2 fechadas** (pedido do Igor: resolver o que faltava para começar o
@@ -1604,3 +1614,15 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   canvas as telas marcadas "Substituída", se quiser.
 - Próximo passo da v2: começar o código (criar o projeto, tema do design system, modelo de dados,
   login).
+
+### 2026-10-14
+- **Login do Lucas Rosa** (`lucas.rosa@grupobmg.com.br`, senha padrão `Senha123!`): **gestor** nos 6
+  negócios do grupo BMG (escolha do Igor). Na Desenvolvimento Imobiliário, o cadastro "Lucas" da carga
+  de 13/10 (responsável de tática em Projetos) foi ligado ao login e virou "Lucas Rosa". Nos outros 5,
+  foi criado um cadastro novo. Script `Adições futuras/BMG - login Lucas Rosa.sql`, rodado pelo Chrome
+  e conferido (6 papéis de gestor, 6 cadastros).
+- **Coluna "Atrasados" em Táticas** (pedido do Igor, vale para todas as empresas). É calculada, não
+  é um status gravado: tática com prazo antes de hoje e não concluída (`taticaAtrasada` em
+  `utils.ts`). No quadro fica entre "Em Andamento" e "Concluído", com o prazo em vermelho e o status
+  original no card. Não dá para soltar um card nela; ele sai ao ser concluído ou ao mudar o prazo.
+  O popup de táticas do KR (OKRs) ganhou a contagem "Atrasadas" e o selo "Atrasada". Sem migration.

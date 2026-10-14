@@ -7,15 +7,21 @@ import { getObjetivos, getSetoresByEmpresa, getFuncionariosByEmpresa } from '@/l
 import { getFotosPerfilPorEmpresa } from '@/lib/queries/perfilPublico'
 import Avatar from '@/components/Avatar'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
-import { User, Building2, Calendar, CheckCircle2, Circle, MessageSquare, Send, Trash2, ChevronDown, ChevronUp, Zap, Plus, X, GripVertical, Pencil } from 'lucide-react'
-import { cn, formatDate, mensagemErroExclusao, mensagemErroGravacao } from '@/lib/utils'
+import { User, Building2, Calendar, CheckCircle2, Circle, MessageSquare, Send, Trash2, ChevronDown, ChevronUp, Zap, Plus, X, GripVertical, Pencil, AlertTriangle } from 'lucide-react'
+import { cn, formatDate, mensagemErroExclusao, mensagemErroGravacao, taticaAtrasada } from '@/lib/utils'
 
 const STATUS_OPTIONS = ['Não Iniciado', 'Em Andamento', 'Concluído']
+
+// Coluna calculada: não é um Status gravado. Tática com prazo vencido e não
+// concluída aparece aqui, seja qual for o Status dela.
+const COLUNA_ATRASADOS = 'Atrasados'
+const COLUNAS_QUADRO = ['Não Iniciado', 'Em Andamento', COLUNA_ATRASADOS, 'Concluído']
 
 const COLUNA_ESTILO: Record<string, { barra: string; badge: string }> = {
   'Não Iniciado': { barra: 'bg-slate-400', badge: 'bg-slate-100 text-slate-600' },
   'Em Andamento': { barra: 'bg-blue-500', badge: 'bg-blue-100 text-blue-700' },
   'Concluído': { barra: 'bg-emerald-500', badge: 'bg-emerald-100 text-emerald-700' },
+  [COLUNA_ATRASADOS]: { barra: 'bg-red-500', badge: 'bg-red-100 text-red-700' },
 }
 
 interface FormTatica {
@@ -446,7 +452,7 @@ export default function TaticasPage() {
     const taticaId = e.dataTransfer.getData('text/plain')
     setColunaSobre(null)
     setArrastandoId(null)
-    if (!taticaId) return
+    if (!taticaId || status === COLUNA_ATRASADOS) return
     handleMoverStatus(taticaId, status)
   }
 
@@ -469,9 +475,13 @@ export default function TaticasPage() {
     .filter((t) => !filtroResponsavel || t.responsavel_id === filtroResponsavel)
     .filter((t) => !filtroSetor || t.setor_id === filtroSetor)
 
-  const colunas = STATUS_OPTIONS.map((status) => ({
+  const colunas = COLUNAS_QUADRO.map((status) => ({
     status,
-    itens: taticasFiltradas.filter((t) => (t.Status || 'Não Iniciado') === status),
+    itens: taticasFiltradas.filter((t) =>
+      status === COLUNA_ATRASADOS
+        ? taticaAtrasada(t)
+        : !taticaAtrasada(t) && (t.Status || 'Não Iniciado') === status
+    ),
   }))
 
   return (
@@ -528,8 +538,8 @@ export default function TaticasPage() {
 
       {/* Board Kanban */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-64 rounded-2xl bg-secondary animate-pulse" />
           ))}
         </div>
@@ -560,11 +570,12 @@ export default function TaticasPage() {
         <div data-tour="tour-taticas-board" className="flex gap-4 overflow-x-auto pb-1">
           {colunas.map(({ status, itens }) => {
             const estilo = COLUNA_ESTILO[status]
-            const emFoco = colunaSobre === status
+            const ehAtrasados = status === COLUNA_ATRASADOS
+            const emFoco = colunaSobre === status && !ehAtrasados
             return (
               <div
                 key={status}
-                onDragOver={(e) => { e.preventDefault(); setColunaSobre(status) }}
+                onDragOver={(e) => { if (ehAtrasados) return; e.preventDefault(); setColunaSobre(status) }}
                 onDragLeave={() => setColunaSobre((atual) => (atual === status ? null : atual))}
                 onDrop={(e) => handleDropNaColuna(e, status)}
                 className={cn(
@@ -581,6 +592,9 @@ export default function TaticasPage() {
                       {itens.length}
                     </span>
                   </div>
+                  {ehAtrasados && (
+                    <p className="text-[10px] text-muted-foreground mt-1">Prazo vencido. Sai daqui ao concluir ou mudar o prazo.</p>
+                  )}
                 </div>
 
                 {/* Cartões */}
@@ -590,7 +604,7 @@ export default function TaticasPage() {
                       'rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground/60 transition-colors',
                       emFoco ? 'border-primary/40' : 'border-border'
                     )}>
-                      {emFoco ? 'Solte aqui' : 'Sem táticas'}
+                      {emFoco ? 'Solte aqui' : ehAtrasados ? 'Nenhuma tática atrasada' : 'Sem táticas'}
                     </div>
                   )}
                   {itens.map((tatica) => (
@@ -643,9 +657,14 @@ export default function TaticasPage() {
                           </span>
                         )}
                         {tatica.prazo && (
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
+                          <span className={cn('flex items-center gap-1', ehAtrasados && 'text-red-600 font-semibold')}>
+                            {ehAtrasados ? <AlertTriangle className="w-3 h-3" /> : <Calendar className="w-3 h-3" />}
                             {formatDate(tatica.prazo)}
+                          </span>
+                        )}
+                        {ehAtrasados && (
+                          <span className={`px-1.5 py-0.5 rounded-full font-medium ${COLUNA_ESTILO[tatica.Status || 'Não Iniciado']?.badge ?? COLUNA_ESTILO['Não Iniciado'].badge}`}>
+                            {tatica.Status || 'Não Iniciado'}
                           </span>
                         )}
                       </div>

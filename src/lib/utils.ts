@@ -24,6 +24,13 @@ export function dataLocalISO(date: Date = new Date()): string {
   return `${ano}-${mes}-${dia}`
 }
 
+// Tática atrasada: prazo já passou (antes de hoje) e ainda não foi concluída.
+// Não é um status gravado no banco — é calculado na hora, em todas as telas.
+export function taticaAtrasada(t: { prazo?: string | null; concluida?: boolean | null; Status?: string | null }) {
+  if (!t.prazo || t.concluida || t.Status === 'Concluído') return false
+  return t.prazo.slice(0, 10) < dataLocalISO()
+}
+
 export function formatDate(date: string | Date) {
   return new Intl.DateTimeFormat('pt-BR', {
     day: '2-digit',

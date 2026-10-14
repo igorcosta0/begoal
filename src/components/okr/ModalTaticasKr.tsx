@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { CheckCircle2, Circle, User, Building2, Calendar, X, Zap } from 'lucide-react'
-import { formatDate } from '@/lib/utils'
+import { CheckCircle2, Circle, User, Building2, Calendar, X, Zap, AlertTriangle } from 'lucide-react'
+import { formatDate, taticaAtrasada } from '@/lib/utils'
 
 interface ModalTaticasKrProps {
   open: boolean
@@ -97,6 +97,11 @@ export default function ModalTaticasKr({ open, kr, onClose }: ModalTaticasKrProp
                   <p className="text-lg font-bold text-amber-600">{taticas.filter(t => !t.concluida).length}</p>
                   <p className="text-[10px] text-muted-foreground">Pendentes</p>
                 </div>
+                <div className="w-px h-8 bg-border" />
+                <div className="text-center flex-1">
+                  <p className="text-lg font-bold text-red-600">{taticas.filter(taticaAtrasada).length}</p>
+                  <p className="text-[10px] text-muted-foreground">Atrasadas</p>
+                </div>
               </div>
 
               {/* Lista */}
@@ -129,13 +134,18 @@ export default function ModalTaticasKr({ open, kr, onClose }: ModalTaticasKrProp
                         </span>
                       )}
                       {tatica.prazo && (
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
+                        <span className={`flex items-center gap-1 ${taticaAtrasada(tatica) ? 'text-red-600 font-semibold' : ''}`}>
+                          {taticaAtrasada(tatica) ? <AlertTriangle className="w-3 h-3" /> : <Calendar className="w-3 h-3" />}
                           {formatDate(tatica.prazo)}
                         </span>
                       )}
                     </div>
                   </div>
+                  {taticaAtrasada(tatica) && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 bg-red-100 text-red-700">
+                      Atrasada
+                    </span>
+                  )}
                   {tatica.Status && (
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${statusColor(tatica.Status)}`}>
                       {tatica.Status}
