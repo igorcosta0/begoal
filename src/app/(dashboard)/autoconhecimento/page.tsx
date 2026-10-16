@@ -247,7 +247,7 @@ export default function AutoconhecimentoPage() {
       const piloto = souPilotoAutoconhecimento(user.email)
       setSouAdminPiloto(piloto)
       const emailAtual = user.email?.toLowerCase() ?? ''
-      const veDicaMapa1 = ['igorecosta1@gmail.com', 'priscila.santos@behive.net.br'].includes(emailAtual)
+      const veDicaMapa1 = ['igorecosta1@gmail.com', 'priscila.santos@behive.net.br', 'sandra.melo@behive.net.br'].includes(emailAtual)
       setSouVeDicaMapa1(veDicaMapa1)
 
       // Líderes (01/10/2026): quem tem liderado direto no organograma vê o

@@ -1626,3 +1626,16 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
   `utils.ts`). No quadro fica entre "Em Andamento" e "Concluído", com o prazo em vermelho e o status
   original no card. Não dá para soltar um card nela; ele sai ao ser concluído ou ao mudar o prazo.
   O popup de táticas do KR (OKRs) ganhou a contagem "Atrasadas" e o selo "Atrasada". Sem migration.
+
+### 2026-10-16
+- **Login da Sandra Melo** (`sandra.melo@behive.net.br`) com o mesmo acesso de Igor e Priscila,
+  igual ao pacote da Letícia e do Eduardo: administradora nas 17 empresas (inclui os 6 negócios da
+  BMG), `is_calibrador` na CTZ, cadastro "Consultora Externa (BeHive)" na CTZ e o nome dela em
+  `pode_ver_lado_calibragem`/`pode_ver_todos_eneagrama_ctz`. Senha inicial = a senha padrão usada
+  no login do Lucas Rosa (o "Esqueci minha senha" não entrega e-mail para fora da equipe do
+  projeto). Migration `PENDENTE_20261016000000_sandra_melo_acesso_igual_igor_priscila.sql`, rodada
+  pelo Chrome e conferida (antes, conferido que as duas funções no banco batiam com o
+  repositório). No front, o e-mail dela entrou nas listas fixas de `utils.ts` (piloto do
+  Autoconhecimento), `avaliacao/page.tsx` (calibragem do ciclo inteiro e nine-box) e
+  `autoconhecimento/page.tsx` (a simulação do Felipe Marques que Igor/Priscila veem). Empresa
+  criada depois não dá acesso a ela sozinha.
