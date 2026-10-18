@@ -14,6 +14,15 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
 
 ## Fatos operacionais importantes
 
+- **Nova formatação do notebook (depois de 18/10/2026).** Backup completo em
+  `C:\Users\igorc\OneDrive\Documents\Backup begoal 2026-10-18\`, com o arquivo
+  `LEIA-ME - como restaurar.md`. Se a sessão abrir sem `.env.local`, sem `Adições futuras/` ou sem a
+  memória do Claude (`C:\Users\igorc\.claude\projects\C--dev-begoal\memory\`), restaurar dali antes de
+  qualquer outra coisa: memória (`memoria-claude/`), conversas antigas (`claude-projects/`),
+  `.env.local` e `Adições futuras/` (`repo-extras/`), configurações do Claude Code (`claude.json` tem o
+  MCP do Supabase) e `begoal-completo.bundle` (git com todas as branches, inclusive a local
+  `backup/redesign-glassmorphism-2026-09-16`). Pedir ok antes de instalar Git/Node de novo.
+
 - **Repositório de verdade**: `https://github.com/igorcosta0/begoal.git`, pasta local `C:\dev\begoal`.
 - **Branch que importa é `master`, não `main`.** `main` está praticamente vazia (só 3 commits, versão v1 do módulo de avaliação, sem calibragem/pares/nota 1-5). Todo o trabalho real está em `master`, que o Vercel usa pra deploy automático — **todo `git push` pra `master` dispara deploy em produção**, confirmar antes de enviar mudança que não deveria ir pro ar ainda.
 - **Existe uma cópia antiga e quebrada do projeto em `C:\Users\igorc\OneDrive\Documents\begoal-master-20260825T123459Z-1-001\begoal-master`** — não é a pasta de trabalho, é um backup/export incompleto (faltam quase todos os arquivos de `src/`, `node_modules` parcial, sem histórico de git). Se uma sessão abrir lá por engano, os arquivos de `src/app`/`src/components` vão aparecer vazios — não é bug do Claude, é a cópia mesmo. Ignorar essa pasta, trabalhar sempre em `C:\dev\begoal`.
