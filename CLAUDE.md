@@ -15,7 +15,8 @@ da chave Gemini no AI Studio), C6 (tirar e-mails/UUIDs fixos), bugs A1–A18 e i
 ## Fatos operacionais importantes
 
 - **Nova formatação do notebook (depois de 18/10/2026).** Backup completo em
-  `C:\Users\igorc\OneDrive\Documents\Backup begoal 2026-10-18\`, com o arquivo
+  `C:\dev\Backup begoal 2026-10-18\` (o Igor não usa OneDrive: a pasta `C:\dev` inteira é copiada
+  para fora do notebook e colada de volta no mesmo caminho), com o arquivo
   `LEIA-ME - como restaurar.md`. Se a sessão abrir sem `.env.local`, sem `Adições futuras/` ou sem a
   memória do Claude (`C:\Users\igorc\.claude\projects\C--dev-begoal\memory\`), restaurar dali antes de
   qualquer outra coisa: memória (`memoria-claude/`), conversas antigas (`claude-projects/`),
