@@ -133,8 +133,6 @@
 
 ## Pendências abertas
 
-- **O commit `561241c` (front do acesso da Sandra Melo) ainda não foi enviado a `master`**; a
-  migration dele já rodou.
 - Do pente fino (`Adições futuras/Pente Fino - begoal - 2026-09-23.md`) e da verificação para venda
   (`Adições futuras/Verificacao para venda - begoal - 2026-09-25.md`): C2 (RLS de `clients` e
   superadmin), C3, C4 (conferir o plano da chave Gemini no AI Studio), C6 (e-mails/UUIDs fixos), os
