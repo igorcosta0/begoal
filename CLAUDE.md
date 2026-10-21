@@ -12,7 +12,9 @@
 - **v2** = reescrita do zero, em `C:\dev\begoal-v2` (repo privado `igorcosta0/begoal-v2`, branch
   `main`, sem deploy). **O andamento da v2 NÃO fica neste arquivo**: está na memória do Claude
   (`begoal-v2-decisoes.md`, seção do código, a partir de 14/10) e no Notion (página "Begoal v2":
-  Roadmap, Paridade, Diário). Para trabalhar na v2, abrir a sessão em `C:\dev\begoal-v2`.
+  Roadmap, Paridade, Diário). **Para trabalhar na v2, abrir a sessão aqui em `C:\dev\begoal`** (é
+  onde está a memória do Claude; uma sessão aberta em `C:\dev\begoal-v2` começa sem ela) e mexer nos
+  arquivos de `C:\dev\begoal-v2`.
 - O que entra na v1 precisa ser reproduzido na v2: registrar na Paridade do Notion.
 
 ## Como trabalhar aqui
