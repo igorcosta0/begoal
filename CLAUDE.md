@@ -67,9 +67,12 @@
 - **RLS que bloqueia UPDATE/DELETE devolve 0 linhas, sem erro.** Gravações usam `.select('id')` +
   `mensagemErroGravacao` (`utils.ts`) para mostrar o erro.
 - **"Esqueci minha senha" não entrega e-mail** para quem não é da equipe do projeto (SMTP padrão do
-  Supabase). Logins novos são criados com a senha padrão (a mesma do login do Lucas Rosa) e a pessoa
-  troca depois. Criar `auth.users`/`auth.identities` por SQL funciona; o gatilho
-  `on_auth_user_created` cria `profiles`.
+  Supabase). Logins novos são criados com a senha padrão (a mesma do login do Lucas Rosa). Quem
+  entra com ela só vê o pop-up de troca obrigatória (`TrocaSenhaObrigatoria`, no layout do
+  `(dashboard)`), pela função `usando_senha_padrao()`; a senha fica na tabela `senha_padrao` (sem
+  acesso pela API), preenchida por `Adições futuras/Senha padrao - configurar.sql`, nunca no Git.
+  Criar `auth.users`/`auth.identities` por SQL funciona; o gatilho `on_auth_user_created` cria
+  `profiles`. Modelo: `Adições futuras/CTZ - novos funcionarios 2026-10.sql`.
 - **Acesso "igual ao de Igor e Priscila"** (Letícia Leite, Eduardo Rigotto, Sandra Melo) = admin em
   todas as empresas existentes (`cross join clients`, roda uma vez: empresa criada depois NÃO herda),
   `is_calibrador` na CTZ, cadastro "Consultora Externa (BeHive)" na CTZ, user_id nas funções
@@ -142,7 +145,6 @@
   `npm audit`), Vercel Hobby proíbe uso comercial, sem staging, sem termos/LGPD, RLS desabilitado em
   `page_access_log` e `Propagandas`.
 - Confirmar se `PENDENTE_20260925000000_avatars_limites.sql` foi rodada.
-- Dados: Anna Laura Lopes (Eneagrama tipo 2) não existe em `funcionarios`; a análise de cargo do
-  Guilherme não foi gerada; os sinais vitais em "Removidos" esperam validação para serem apagados;
+- Dados: a análise de cargo do Guilherme não foi gerada; os sinais vitais em "Removidos" esperam validação para serem apagados;
   KRs de Corretagem/repasse (Finato): anual × mensal sem resposta; logins das pessoas da BMG (falta
   a lista com e-mails).

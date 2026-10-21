@@ -1613,3 +1613,25 @@
   Autoconhecimento), `avaliacao/page.tsx` (calibragem do ciclo inteiro e nine-box) e
   `autoconhecimento/page.tsx` (a simulação do Felipe Marques que Igor/Priscila veem). Empresa
   criada depois não dá acesso a ela sozinha.
+
+### 2026-10-21
+- **Novos funcionários da CTZ** (4 nomes em amarelo de `Adições futuras/QUADRO DE FUNCIONARIOS (1).xlsx`,
+  fora do Git). Os cadastros já existiam (Artur, Célio e Daniela de 02/10; Laura de 07/08), sem
+  login nem gestor. Script `Adições futuras/CTZ - novos funcionarios 2026-10.sql`, rodado pelo Igor
+  e conferido: e-mail, cargo (nome da base de Cargos), admissão da planilha, login confirmado com a
+  senha padrão, "visualizador" na CTZ e gestor (Célio → Réus, Daniela → Jean, Artur → Célio,
+  Laura → Ross). A "Anna Laura Lopes" do Eneagrama pendente é a Laura Tolentino: tipo 2 (SO/AP/SX)
+  gravado. A admissão da Laura mudou de 30/07 para 28/09 (planilha). E-mail do Artur cortado na
+  planilha ("...com.b"), usado `.com.br`.
+- **Troca obrigatória da senha padrão** (pedido do Igor): quem entra com a senha padrão só vê um
+  pop-up que não fecha (`src/components/layout/TrocaSenhaObrigatoria.tsx`) até trocar a senha; a
+  única outra saída é "Sair". O layout do `(dashboard)` chama `usando_senha_padrao()` e, se for
+  verdade, não renderiza nada do sistema. A função (SECURITY DEFINER) compara a senha de quem está
+  logado com as da tabela `senha_padrao` (RLS sem policy, sem grants), então vale para quem já tem a
+  senha padrão hoje e some sozinha quando a pessoa troca. A senha não está na migration: a tabela é
+  preenchida por `Adições futuras/Senha padrao - configurar.sql`. Migration
+  `PENDENTE_20261021000000_senha_padrao_troca_obrigatoria.sql` rodada pelo Chrome e conferida
+  (authenticated executa, anon não, ninguém lê a tabela). Sem a função ou sem a tabela preenchida,
+  o pop-up simplesmente não aparece. Não bloqueia as rotas `/api` nem a `/selecao-empresa` (só o
+  layout das telas). `npm run type-check` e lint limpos; o pop-up não foi visto renderizado (o
+  localhost pede login).

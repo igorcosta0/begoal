@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import Topbar from '@/components/layout/Topbar'
 import TourOverlay from '@/components/tour/TourOverlay'
 import EmpresaGuard from '@/components/layout/EmpresaGuard'
+import TrocaSenhaObrigatoria from '@/components/layout/TrocaSenhaObrigatoria'
 
 export default async function DashboardLayout({
   children,
@@ -17,6 +18,17 @@ export default async function DashboardLayout({
 
   if (!user) {
     redirect('/login')
+  }
+
+  // Quem entrou com a senha padrão não vê nada do sistema até trocar a senha
+  // (pedido 21/10/2026): só o pop-up, que não fecha.
+  const { data: usandoSenhaPadrao } = await supabase.rpc('usando_senha_padrao')
+  if (usandoSenhaPadrao) {
+    return (
+      <div className="min-h-screen bg-background">
+        <TrocaSenhaObrigatoria />
+      </div>
+    )
   }
 
   // Pente fino (23/09/2026): antes pegava `.limit(1)` sem filtrar empresa —
