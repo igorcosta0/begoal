@@ -29,6 +29,8 @@ interface AvaliacaoParaGrafico {
 interface Props {
   avaliacoes: AvaliacaoParaGrafico[]
   cicloId: string
+  /** Ciclo com metas individuais (21/10/2026): não há critério comum da área para abrir. */
+  usaMetas?: boolean
 }
 
 // Índigo/ciano (valores/desempenho): par já validado com
@@ -136,7 +138,7 @@ function Painel({ titulo, subtitulo, children, legenda }: { titulo: string; subt
   )
 }
 
-export default function GraficosAvaliacao({ avaliacoes, cicloId }: Props) {
+export default function GraficosAvaliacao({ avaliacoes, cicloId, usaMetas }: Props) {
   // null = empresa toda
   const [area, setArea] = useState<string | null>(null)
   const [detalhamento, setDetalhamento] = useState<DetalhamentoPergunta[]>([])
@@ -289,9 +291,15 @@ export default function GraficosAvaliacao({ avaliacoes, cicloId }: Props) {
         {area ? (
           <Painel
             titulo={`Desempenho · ${nomeRecorte}`}
-            subtitulo="Média de cada critério técnico da área"
+            subtitulo={usaMetas ? 'Metas individuais' : 'Média de cada critério técnico da área'}
           >
-            <ListaBarras linhas={porCriterio} cor={COR_DESEMPENHO} vazio="Nenhuma nota de desempenho preenchida ainda nesta área." />
+            {usaMetas ? (
+              <p className="text-xs text-muted-foreground py-6 text-center">
+                Neste ciclo cada pessoa tem as próprias metas, então não há critério comum da área para comparar. A média de desempenho da área está no indicador acima.
+              </p>
+            ) : (
+              <ListaBarras linhas={porCriterio} cor={COR_DESEMPENHO} vazio="Nenhuma nota de desempenho preenchida ainda nesta área." />
+            )}
           </Painel>
         ) : (
           <Painel

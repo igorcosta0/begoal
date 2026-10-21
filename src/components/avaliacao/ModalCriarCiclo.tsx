@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import { createCicloAvaliacao, updateCiclo } from '@/lib/queries/avaliacao'
+import { cn } from '@/lib/utils'
 
 interface CicloEditavel {
   id: string
   nome: string
   periodo: 1 | 2
   ano: number
+  status: 'rascunho' | 'ativo' | 'encerrado'
+  metas_individuais: boolean
 }
 
 interface Props {
@@ -26,6 +29,10 @@ export default function ModalCriarCiclo({ open, clientId, ciclo, onClose, onSave
   const [nome, setNome] = useState('')
   const [periodo, setPeriodo] = useState<1 | 2>(1)
   const [ano, setAno] = useState(ANO_ATUAL)
+  // Pedido (21/10/2026): ciclo novo já nasce com metas individuais no
+  // Desempenho. A opção só muda com o ciclo em rascunho (trigger
+  // checar_ciclo_metas_individuais no banco).
+  const [metasIndividuais, setMetasIndividuais] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -34,6 +41,7 @@ export default function ModalCriarCiclo({ open, clientId, ciclo, onClose, onSave
     setNome(ciclo?.nome ?? '')
     setPeriodo(ciclo?.periodo ?? 1)
     setAno(ciclo?.ano ?? ANO_ATUAL)
+    setMetasIndividuais(ciclo ? ciclo.metas_individuais : true)
     setError('')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, ciclo?.id])
@@ -51,8 +59,13 @@ export default function ModalCriarCiclo({ open, clientId, ciclo, onClose, onSave
     setError('')
     const nomeGerado = nome.trim() || `${periodo}º Semestre ${ano}`
     const { error: err } = editando && ciclo
-      ? await updateCiclo(ciclo.id, { nome: nomeGerado, periodo, ano })
-      : await createCicloAvaliacao({ client_id: clientId, nome: nomeGerado, periodo, ano })
+      ? await updateCiclo(ciclo.id, {
+          nome: nomeGerado,
+          periodo,
+          ano,
+          ...(ciclo.status === 'rascunho' ? { metas_individuais: metasIndividuais } : {}),
+        })
+      : await createCicloAvaliacao({ client_id: clientId, nome: nomeGerado, periodo, ano, metas_individuais: metasIndividuais })
     setLoading(false)
     if (err) {
       setError(err.message)
@@ -108,6 +121,29 @@ export default function ModalCriarCiclo({ open, clientId, ciclo, onClose, onSave
               className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
+
+          <label
+            className={cn(
+              'flex items-start gap-3 rounded-xl border border-border p-3',
+              ciclo && ciclo.status !== 'rascunho' ? 'opacity-60' : 'cursor-pointer hover:bg-accent/30'
+            )}
+          >
+            <input
+              type="checkbox"
+              checked={metasIndividuais}
+              onChange={(e) => setMetasIndividuais(e.target.checked)}
+              disabled={!!ciclo && ciclo.status !== 'rascunho'}
+              className="mt-0.5 accent-primary"
+            />
+            <span>
+              <span className="block text-sm font-medium text-foreground">Desempenho por metas individuais</span>
+              <span className="block text-xs text-muted-foreground mt-0.5">
+                {ciclo && ciclo.status !== 'rascunho'
+                  ? 'Não dá para mudar depois que o ciclo foi ativado.'
+                  : 'Cada líder cadastra de 1 a 5 metas para cada liderado antes da ativação. Desmarcado, o Desempenho usa os critérios da vertical, como nos ciclos anteriores.'}
+              </span>
+            </span>
+          </label>
 
           {error && (
             <p className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-md px-3 py-2">

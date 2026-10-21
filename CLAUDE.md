@@ -109,6 +109,13 @@
   vertical técnica trava na da avaliação comum (`get_vertical_padrao`).
 - Verticais e critérios em `VERTICAIS_CTZ` (`ModalAvaliacao.tsx`); pilares culturais em
   `src/lib/pilaresCulturais.ts`. A aba "Visão geral" abre primeiro no ciclo (só avaliação comum).
+- **Metas individuais** (desde 21/10/2026, `ciclos_avaliacao.metas_individuais`, padrão em ciclo
+  novo): o Desempenho usa de 1 a 5 metas por pessoa (`avaliacao_metas`) no lugar dos critérios da
+  vertical. O gestor no organograma cadastra com o ciclo em rascunho; ao ativar, travam (só
+  administrador corrige); ninguém entra no ciclo sem meta (gatilho em `avaliacoes`). As notas ficam
+  em `avaliacoes_tecnica` com `criterio_key = 'meta:<id>'`, pelas mesmas RPCs. Pares fica só com a
+  Cultura. Ciclos antigos seguem com a vertical. Tela: `PainelMetas` (aba "Metas" e seção do
+  líder); guia próprio no botão "Guia da Avaliação" (`guiaAvaliacao.ts`, mesmo `TourOverlay`).
 
 ### Autoconhecimento / Eneagrama (só CTZ)
 - Vê o módulo: piloto (lista fixa em `utils.ts`), quem tem liderado no organograma

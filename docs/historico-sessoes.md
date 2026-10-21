@@ -1635,3 +1635,28 @@
   o pop-up simplesmente não aparece. Não bloqueia as rotas `/api` nem a `/selecao-empresa` (só o
   layout das telas). `npm run type-check` e lint limpos; o pop-up não foi visto renderizado (o
   localhost pede login).
+- **Metas individuais na Avaliação** (pedido do Igor: "Todos terão metas individuais na parte de
+  desempenho. Na parte de cultura, igual para todos."). Decisões dele, nesta ordem: o líder cadastra
+  as metas dos liderados; definidas na abertura do ciclo e travadas depois; régua de notas de hoje.
+  Sugestões aceitas ("ok"): ativar bloqueia quem está sem meta; só administrador corrige meta depois
+  da ativação; "líder" = gestor no organograma (quem está no topo fica com o administrador); a
+  pessoa vê as próprias metas desde a ativação; 1 a 5 metas com o mesmo peso; pares só na Cultura;
+  vale só para ciclos novos.
+  - Migration `PENDENTE_20261021010000_avaliacao_metas_individuais.sql` (rodada pelo Chrome e
+    conferida: coluna, 4 policies, 4 gatilhos, anon sem acesso): `ciclos_avaliacao.metas_individuais`
+    (só muda em rascunho), tabela `avaliacao_metas` com RLS por `pode_ver_metas`/`pode_editar_metas`,
+    limite de 5, sincronização das linhas de nota e médias técnicas quando o administrador cria ou
+    exclui meta depois da ativação, e gatilho que impede criar avaliação comum sem meta. As notas
+    usam `avaliacoes_tecnica` com `criterio_key = 'meta:<id>'` (RPCs e `avaliacao_completude`
+    intactas).
+  - Front: opção no "Novo Ciclo" (marcada por padrão), selo "Metas individuais" no ciclo, aba "Metas"
+    (`PainelMetas`) na gestão e seção "Metas dos meus liderados" na visão do líder, checagem antes de
+    ativar, aba "Metas Individuais (50%)" no `ModalAvaliacao` (sem vertical; pares só Cultura), Painel
+    de Calibragem por meta, visão geral sem detalhamento por critério nesses ciclos.
+  - **Guia da Avaliação** (pedido do Igor): botão no topo da tela; o `useTourStore` passou a guardar
+    o roteiro (`passos`), e o `TourOverlay` mostra qualquer roteiro. Passos por papel em
+    `src/components/avaliacao/guiaAvaliacao.ts`.
+  - Conferido numa prévia temporária com dados fictícios (apagada): painel de metas, formulário,
+    "Novo Ciclo" e os passos do guia. O `ModalAvaliacao` com metas não foi visto renderizado (precisa
+    de login). O ciclo atual ("1º Ciclo - 1º Semestre 2026", ativo) segue sem metas; para usar,
+    encerrar e criar o próximo. `npm run type-check` e lint limpos.

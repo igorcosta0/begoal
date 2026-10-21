@@ -40,7 +40,7 @@ export async function getCiclosAvaliacao(clientId: string) {
   const supabase = createClient()
   return supabase
     .from('ciclos_avaliacao')
-    .select('id, nome, periodo, ano, status, oculto, created_at')
+    .select('id, nome, periodo, ano, status, oculto, metas_individuais, created_at')
     .eq('client_id', clientId)
     .order('ano', { ascending: false })
     .order('periodo', { ascending: false })
@@ -51,6 +51,7 @@ export async function createCicloAvaliacao(payload: {
   nome: string
   periodo: number
   ano: number
+  metas_individuais?: boolean
 }) {
   const supabase = createClient()
   return supabase.from('ciclos_avaliacao').insert(payload).select().single()
@@ -58,7 +59,7 @@ export async function createCicloAvaliacao(payload: {
 
 export async function updateCiclo(
   id: string,
-  payload: { nome?: string; periodo?: number; ano?: number; oculto?: boolean }
+  payload: { nome?: string; periodo?: number; ano?: number; oculto?: boolean; metas_individuais?: boolean }
 ) {
   const supabase = createClient()
   return supabase.from('ciclos_avaliacao').update(payload).eq('id', id)
@@ -422,4 +423,81 @@ export async function createPdiItem(payload: {
 export async function deletePdiItem(id: string) {
   const supabase = createClient()
   return supabase.from('avaliacoes_pdi').delete().eq('id', id)
+}
+
+// ── Metas individuais (pedido 21/10/2026) ───────────────────────────────────
+// Ciclo com metas_individuais = true troca os critérios da vertical
+// (VERTICAIS_CTZ) por metas de cada pessoa no Desempenho. O líder (gestor no
+// organograma) cadastra enquanto o ciclo está em rascunho; depois da ativação
+// só administrador corrige. Quem pode ver/gravar é decidido pela RLS
+// (pode_ver_metas/pode_editar_metas, migration
+// PENDENTE_20261021010000_avaliacao_metas_individuais). As notas de cada meta
+// ficam em avaliacoes_tecnica com criterio_key = chaveMeta(id), pelas mesmas
+// RPCs das notas técnicas.
+
+export const LIMITE_METAS_POR_PESSOA = 5
+
+export interface MetaAvaliacao {
+  id: string
+  ciclo_id: string
+  funcionario_id: string
+  titulo: string
+  descricao: string | null
+  ordem: number
+}
+
+export function chaveMeta(metaId: string) {
+  return `meta:${metaId}`
+}
+
+// Mesmo formato dos critérios de VERTICAIS_CTZ, pra a aba de Desempenho e o
+// Painel de Calibragem tratarem metas e critérios do mesmo jeito.
+export function criteriosDasMetas(metas: MetaAvaliacao[]) {
+  return metas.map((m) => ({ key: chaveMeta(m.id), label: m.titulo, descricao: m.descricao ?? '' }))
+}
+
+export async function getCicloUsaMetas(cicloId: string): Promise<boolean> {
+  const supabase = createClient()
+  const { data } = await supabase.from('ciclos_avaliacao').select('metas_individuais').eq('id', cicloId).maybeSingle()
+  return !!data?.metas_individuais
+}
+
+// Todas as metas do ciclo que esta pessoa pode ver (a RLS filtra).
+export async function getMetasDoCiclo(cicloId: string) {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('avaliacao_metas')
+    .select('id, ciclo_id, funcionario_id, titulo, descricao, ordem')
+    .eq('ciclo_id', cicloId)
+    .order('ordem')
+    .order('created_at')
+  return { data: (data ?? []) as MetaAvaliacao[], error }
+}
+
+export async function getMetasDoFuncionario(cicloId: string, funcionarioId: string) {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('avaliacao_metas')
+    .select('id, ciclo_id, funcionario_id, titulo, descricao, ordem')
+    .eq('ciclo_id', cicloId)
+    .eq('funcionario_id', funcionarioId)
+    .order('ordem')
+    .order('created_at')
+  return { data: (data ?? []) as MetaAvaliacao[], error }
+}
+
+export async function createMeta(payload: { ciclo_id: string; funcionario_id: string; titulo: string; descricao: string | null; ordem: number }) {
+  const supabase = createClient()
+  return supabase.from('avaliacao_metas').insert(payload).select('id, ciclo_id, funcionario_id, titulo, descricao, ordem').single()
+}
+
+// .select('id'): a RLS que barra UPDATE/DELETE devolve 0 linhas sem erro.
+export async function updateMeta(id: string, payload: { titulo: string; descricao: string | null }) {
+  const supabase = createClient()
+  return supabase.from('avaliacao_metas').update(payload).eq('id', id).select('id')
+}
+
+export async function deleteMeta(id: string) {
+  const supabase = createClient()
+  return supabase.from('avaliacao_metas').delete().eq('id', id).select('id')
 }

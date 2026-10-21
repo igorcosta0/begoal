@@ -13,6 +13,9 @@ import {
   deletePdiItem,
   getVerticalPadrao,
   getAutoavaliacaoPadrao,
+  getCicloUsaMetas,
+  getMetasDoFuncionario,
+  criteriosDasMetas,
   type AutoavaliacaoPadraoCultural,
   type AutoavaliacaoPadraoTecnica,
 } from '@/lib/queries/avaliacao'
@@ -275,13 +278,13 @@ function ScoreButton({
 
 // ── LegendaNotas ─────────────────────────────────────────────────────────────
 
-function LegendaNotas() {
+function LegendaNotas({ usaMetas }: { usaMetas?: boolean }) {
   return (
     <div className="border border-border rounded-lg p-3">
       <p className="text-xs text-muted-foreground mb-3">
         A Avaliação de Desempenho é um ritual de gestão do Grupo CTZ. A nota final é calculada de forma
-        equilibrada, com peso de 50% para a aderência aos nossos pilares culturais e 50% para a entrega das
-        metas e OKRs específicos de cada vertical. Use a régua a seguir para pontuar as competências e
+        equilibrada, com peso de 50% para a aderência aos nossos pilares culturais e 50% para a entrega das{' '}
+        {usaMetas ? 'metas individuais de cada pessoa' : 'metas e OKRs específicos de cada vertical'}. Use a régua a seguir para pontuar as competências e
         resultados:
       </p>
       <p className="text-xs font-medium text-foreground mb-2">O que significa cada nota</p>
@@ -419,6 +422,11 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
   // direito) — nesses casos o painel simplesmente não aparece.
   const [autoPadrao, setAutoPadrao] = useState<{ cultural: AutoavaliacaoPadraoCultural[]; tecnica: AutoavaliacaoPadraoTecnica[] } | null>(null)
   const [autoPadraoAberto, setAutoPadraoAberto] = useState(true)
+  // Metas individuais (pedido 21/10/2026): no ciclo com metas_individuais, a
+  // aba de Desempenho troca os critérios da vertical pelas metas da pessoa
+  // (notas gravadas com criterio_key 'meta:<id>'). null = ainda carregando.
+  const [usaMetas, setUsaMetas] = useState<boolean | null>(null)
+  const [criteriosMetas, setCriteriosMetas] = useState<{ key: string; label: string; descricao: string }[]>([])
   // Pedido (ago/2026): quais campos específicos estão faltando na última
   // tentativa de salvar — usado pra desenhar contorno vermelho neles e pra
   // trocar de aba automaticamente, em vez de só uma frase genérica no
@@ -458,6 +466,21 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
         vertical: false,
       })
       loadData(avaliacao.id)
+
+      setUsaMetas(null)
+      setCriteriosMetas([])
+      if (avaliacao.ciclo_id) {
+        const cicloId = avaliacao.ciclo_id
+        getCicloUsaMetas(cicloId).then(async (usa) => {
+          if (usa && avaliacao.funcionario_id) {
+            const { data } = await getMetasDoFuncionario(cicloId, avaliacao.funcionario_id)
+            setCriteriosMetas(criteriosDasMetas(data))
+          }
+          setUsaMetas(usa)
+        })
+      } else {
+        setUsaMetas(false)
+      }
 
       // Pedido (ago/2026): na Avaliação de Pares, a vertical não fica livre
       // pro par escolher — trava na vertical ATUAL da avaliação comum (tipo
@@ -545,6 +568,14 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
   // critérios específicos que faltam — pra: 1) trocar automaticamente pra
   // aba com problema (handleSalvarOuConcluir); 2) desenhar contorno
   // vermelho exatamente nos campos vazios, em vez de só uma frase.
+  // Critérios da aba de Desempenho: as metas da pessoa no ciclo com metas
+  // individuais (Avaliação de Pares fica só com a Cultura nesse caso) ou os
+  // critérios da vertical nos ciclos antigos.
+  function criteriosDoDesempenho() {
+    if (usaMetas) return avaliacao?.tipo === 'pares' ? [] : criteriosMetas
+    return vertical ? (VERTICAIS_CTZ[vertical]?.criterios ?? []) : []
+  }
+
   function validarCampos(): { faltando: string[]; invalidos: typeof camposInvalidos } {
     const faltando: string[] = []
     const ehParesForm = avaliacao?.tipo === 'pares'
@@ -571,12 +602,16 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
       faltando.push(ehParesForm ? 'observações do avaliador' : 'observações do gestor')
     }
 
-    const verticalFaltando = !vertical
+    // No ciclo com metas individuais a vertical não decide mais o Desempenho.
+    const verticalFaltando = !usaMetas && !vertical
     if (verticalFaltando) {
       faltando.push('vertical de atuação')
     }
+    if (usaMetas && !ehParesForm && criteriosMetas.length === 0) {
+      faltando.push('metas individuais (nenhuma meta cadastrada para esta pessoa; fale com o administrador)')
+    }
 
-    const criteriosAtuais = vertical ? (VERTICAIS_CTZ[vertical]?.criterios ?? []) : []
+    const criteriosAtuais = criteriosDoDesempenho()
     const criteriosComNotaFaltando = criteriosAtuais.length
       ? criteriosAtuais.filter((c) => (isAdmin ? scoresT[c.key]?.gestor == null : scoresT[c.key]?.auto == null)).map((c) => c.key)
       : []
@@ -680,7 +715,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
       return false
     }
 
-    const criterios = vertical ? (VERTICAIS_CTZ[vertical]?.criterios ?? []) : []
+    const criterios = criteriosDoDesempenho()
     if (criterios.length) {
       const resultadosT = await Promise.all(
         criterios.map((c) => {
@@ -848,7 +883,10 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
   // pedido). Calibragem continua fora (pares nunca entra em
   // iniciarCalibragemCiclo/finalizarCalibragemCiclo, filtro tipo='padrao').
   const ehPares = avaliacao.tipo === 'pares'
-  const criterios = vertical ? (VERTICAIS_CTZ[vertical]?.criterios ?? []) : []
+  const criterios = criteriosDoDesempenho()
+  // Rótulos das notas de autoavaliação mostradas no painel de pares: vêm das
+  // metas quando o ciclo usa metas (a lista de critérios de pares fica vazia).
+  const criteriosParaRotulo = usaMetas ? criteriosMetas : criterios
   const statusLabel: Record<string, string> = {
     pendente: 'Pendente',
     auto_concluida: 'Autoavaliação Concluída',
@@ -998,7 +1036,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                     {autoPadrao.tecnica.length > 0 && (
                       <div className="pt-2 border-t border-border/60 space-y-3">
                         {autoPadrao.tecnica.map((t) => {
-                          const criterio = criterios.find((c) => c.key === t.criterio_key)
+                          const criterio = criteriosParaRotulo.find((c) => c.key === t.criterio_key)
                           return (
                             <div key={t.criterio_key} className="text-xs">
                               <div className="flex items-center gap-2">
@@ -1034,7 +1072,7 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
               )}
             >
               {tab === 'cultural' && 'Alinhamento Cultural (50%)'}
-              {tab === 'tecnica' && 'Performance Técnica (50%)'}
+              {tab === 'tecnica' && (usaMetas ? 'Metas Individuais (50%)' : 'Performance Técnica (50%)')}
               {tab === 'pdi' && 'PDI'}
             </button>
           ))}
@@ -1044,10 +1082,10 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
         <div className="flex-1 overflow-y-auto p-5">
           {/* Legenda das notas */}
           <div className="mb-4">
-            <LegendaNotas />
+            <LegendaNotas usaMetas={!!usaMetas} />
           </div>
 
-          {loading ? (
+          {loading || usaMetas === null ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => <div key={i} className="h-20 rounded-2xl bg-secondary animate-pulse" />)}
             </div>
@@ -1235,6 +1273,16 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
               {/* Tab Técnica */}
               {activeTab === 'tecnica' && (
                 <div className="space-y-4">
+                  {usaMetas && (
+                    <p className="text-xs text-muted-foreground">
+                      {ehPares
+                        ? 'Neste ciclo o Desempenho é medido por metas individuais, que só a própria pessoa, o gestor e a calibragem avaliam. Na Avaliação de Pares, avalie só a Cultura e deixe suas observações abaixo.'
+                        : criterios.length === 0
+                          ? 'Nenhuma meta individual foi cadastrada para esta pessoa neste ciclo. Fale com o administrador.'
+                          : 'Avalie cada meta individual definida pelo líder no início do ciclo, usando a régua de notas acima.'}
+                    </p>
+                  )}
+                  {!usaMetas && (
                   <div>
                     <label className="text-xs font-medium text-foreground">Vertical de atuação *</label>
                     <select
@@ -1259,8 +1307,9 @@ export default function ModalAvaliacao({ open, avaliacao, cicloNome, isAdmin, so
                       </p>
                     )}
                   </div>
+                  )}
 
-                  {!vertical && (
+                  {!usaMetas && !vertical && (
                     <p className="text-sm text-muted-foreground text-center py-8">
                       Selecione a vertical para habilitar os critérios.
                     </p>

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { useTourStore, TOUR_PASSOS } from '@/store/useTourStore'
+import { useTourStore } from '@/store/useTourStore'
 import { X, ArrowLeft, ArrowRight, MapPin } from 'lucide-react'
 
 const POPUP_LARGURA = 320
@@ -21,11 +21,11 @@ function medir(el: Element): Retangulo {
 }
 
 export default function TourOverlay() {
-  const { ativo, passoIndex, proximo, voltar, sair } = useTourStore()
+  const { ativo, passoIndex, passos, proximo, voltar, sair } = useTourStore()
   const pathname = usePathname()
   const router = useRouter()
 
-  const passo = TOUR_PASSOS[passoIndex]
+  const passo = passos[passoIndex]
   const [rect, setRect] = useState<Retangulo | null>(null)
   const alvoRef = useRef<Element | null>(null)
 
@@ -111,7 +111,7 @@ export default function TourOverlay() {
   if (!ativo || !passo || pathname !== passo.pagina) return null
 
   const primeiro = passoIndex === 0
-  const ultimo = passoIndex === TOUR_PASSOS.length - 1
+  const ultimo = passoIndex === passos.length - 1
 
   const popupStyle = calcularPosicaoPopup(rect, passo.posicao)
 
@@ -148,7 +148,7 @@ export default function TourOverlay() {
       >
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-primary">
-            <MapPin className="w-3 h-3" /> Passo {passoIndex + 1} de {TOUR_PASSOS.length}
+            <MapPin className="w-3 h-3" /> Passo {passoIndex + 1} de {passos.length}
           </div>
           <button onClick={handleSair} className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Sair do tour">
             <X className="w-4 h-4" />
@@ -158,7 +158,7 @@ export default function TourOverlay() {
         <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{passo.texto}</p>
 
         <div className="flex items-center gap-1.5 mt-4">
-          {TOUR_PASSOS.map((_, idx) => (
+          {passos.map((_, idx) => (
             <span
               key={idx}
               className={`h-1 rounded-full transition-all ${idx === passoIndex ? 'w-4 bg-primary' : 'w-1 bg-border'}`}

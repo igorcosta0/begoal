@@ -8,6 +8,10 @@ import {
   upsertAvaliacaoCultural,
   upsertAvaliacaoTecnica,
   updateAvaliacao,
+  getCicloUsaMetas,
+  getMetasDoCiclo,
+  criteriosDasMetas,
+  type MetaAvaliacao,
 } from '@/lib/queries/avaliacao'
 import { PILARES_CULTURAIS, VERTICAIS_CTZ } from '@/components/avaliacao/ModalAvaliacao'
 import { X, CheckCircle2 } from 'lucide-react'
@@ -140,6 +144,15 @@ export default function ModalCalibragem({ open, cicloId, cicloNome, onClose, onS
   const [participantes, setParticipantes] = useState<ParticipanteCalibragem[]>([])
   const [erro, setErro] = useState('')
   const [salvandoCelula, setSalvandoCelula] = useState<string | null>(null)
+  // Ciclo com metas individuais (pedido 21/10/2026): a tabela técnica de cada
+  // pessoa mostra as metas dela no lugar dos critérios da vertical.
+  const [usaMetas, setUsaMetas] = useState(false)
+  const [metas, setMetas] = useState<MetaAvaliacao[]>([])
+
+  function criteriosDoParticipante(p: ParticipanteCalibragem) {
+    if (usaMetas) return criteriosDasMetas(metas.filter((m) => m.funcionario_id === p.funcionario_id))
+    return p.vertical ? VERTICAIS_CTZ[p.vertical]?.criterios ?? [] : []
+  }
 
   useEffect(() => {
     if (open && cicloId) {
@@ -151,12 +164,16 @@ export default function ModalCalibragem({ open, cicloId, cicloNome, onClose, onS
   async function carregar(id: string) {
     setLoading(true)
     setErro('')
-    const [{ data: cultural, error: erroC }, { data: tecnica, error: erroT }] = await Promise.all([
+    const [{ data: cultural, error: erroC }, { data: tecnica, error: erroT }, usa, { data: metasCiclo, error: erroM }] = await Promise.all([
       getCalibragemCicloCultural(id),
       getCalibragemCicloTecnica(id),
+      getCicloUsaMetas(id),
+      getMetasDoCiclo(id),
     ])
-    if (erroC || erroT) {
-      setErro((erroC || erroT)?.message ?? 'Erro ao carregar calibragem.')
+    setUsaMetas(usa)
+    setMetas(metasCiclo)
+    if (erroC || erroT || erroM) {
+      setErro((erroC || erroT || erroM)?.message ?? 'Erro ao carregar calibragem.')
       setLoading(false)
       return
     }
@@ -255,7 +272,7 @@ export default function ModalCalibragem({ open, cicloId, cicloNome, onClose, onS
       return
     }
 
-    const criteriosVertical = p.vertical ? VERTICAIS_CTZ[p.vertical]?.criterios ?? [] : []
+    const criteriosVertical = criteriosDoParticipante(p)
     const mediaTecnica = calcMedia(
       criteriosVertical.map((c) => (c.key === criterioKey ? valor : p.criterios[c.key]?.nota_calibragem ?? null))
     )
@@ -314,7 +331,7 @@ export default function ModalCalibragem({ open, cicloId, cicloNome, onClose, onS
             </div>
           ) : (
             participantes.map((p) => {
-              const criteriosVertical = p.vertical ? VERTICAIS_CTZ[p.vertical]?.criterios ?? [] : []
+              const criteriosVertical = criteriosDoParticipante(p)
               return (
                 <div key={p.avaliacao_id} className="border border-border rounded-xl overflow-hidden">
                   <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b border-border">
@@ -377,7 +394,7 @@ export default function ModalCalibragem({ open, cicloId, cicloNome, onClose, onS
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="text-left text-xs text-muted-foreground border-b border-border">
-                            <th className="px-4 py-2 font-medium">Critério técnico</th>
+                            <th className="px-4 py-2 font-medium">{usaMetas ? 'Meta individual' : 'Critério técnico'}</th>
                             <th className="px-2 py-2 font-medium">Auto</th>
                             <th className="px-2 py-2 font-medium">Avaliador</th>
                             <th className="px-2 py-2 font-medium">Média Pares</th>

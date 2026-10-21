@@ -16,6 +16,7 @@ import {
   iniciarCalibragemCiclo,
   finalizarCalibragemCiclo,
   getCalibragemPendente,
+  getMetasDoCiclo,
 } from '@/lib/queries/avaliacao'
 import { getFuncionariosByEmpresa } from '@/lib/queries/okr'
 import { getFotosPerfilPorEmpresa } from '@/lib/queries/perfilPublico'
@@ -27,8 +28,11 @@ import ModalCalibragem from '@/components/avaliacao/ModalCalibragem'
 import ModalMontarAvaliacoes, { type LinhaMontagem, type OpcaoAvaliador, type ParPares } from '@/components/avaliacao/ModalMontarAvaliacoes'
 import ModalGerenciarLideres from '@/components/avaliacao/ModalGerenciarLideres'
 import GraficosAvaliacao from '@/components/avaliacao/GraficosAvaliacao'
+import PainelMetas from '@/components/avaliacao/PainelMetas'
 import { cn, isEmpresaCTZ } from '@/lib/utils'
-import { LayoutGrid, Plus, ChevronRight, Trash2, Users2, ArrowRightLeft, X, Crown, UserCheck, Pencil, Eye, EyeOff, CheckCircle2, BarChart3, ListChecks } from 'lucide-react'
+import { LayoutGrid, Plus, ChevronRight, Trash2, Users2, ArrowRightLeft, X, Crown, UserCheck, Pencil, Eye, EyeOff, CheckCircle2, BarChart3, ListChecks, Target, Compass } from 'lucide-react'
+import { useTourStore } from '@/store/useTourStore'
+import { passosGuiaAvaliacao } from '@/components/avaliacao/guiaAvaliacao'
 import { VERTICAIS_CTZ } from '@/components/avaliacao/ModalAvaliacao'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
@@ -42,6 +46,10 @@ interface Ciclo {
   // Oculto: admin escondeu o ciclo dos participantes (não mexe no status, só
   // na visibilidade) — reversível, o ciclo e as avaliações continuam intactos.
   oculto: boolean
+  // Pedido (21/10/2026): Desempenho por metas individuais em vez dos
+  // critérios da vertical (ver PainelMetas e a migration
+  // PENDENTE_20261021010000_avaliacao_metas_individuais).
+  metas_individuais: boolean
 }
 
 interface Avaliacao {
@@ -254,7 +262,8 @@ export default function AvaliacaoPage() {
   // Aba dentro do painel expandido do ciclo: "Visão geral" (dashboard, padrão
   // desde 30/09/2026, chave 'graficos') ou a lista de avaliações. Volta pra
   // visão geral toda vez que troca/fecha o ciclo expandido.
-  const [abaCiclo, setAbaCiclo] = useState<'avaliacoes' | 'graficos'>('graficos')
+  const [abaCiclo, setAbaCiclo] = useState<'avaliacoes' | 'graficos' | 'metas'>('graficos')
+  const { iniciar: iniciarGuia } = useTourStore()
 
   const [modalCriarCiclo, setModalCriarCiclo] = useState<{ open: boolean; ciclo: Ciclo | null }>({ open: false, ciclo: null })
   const [modalAvaliacao, setModalAvaliacao] = useState<{
@@ -503,6 +512,30 @@ export default function AvaliacaoPage() {
     if (!ciclo) return
     setModalMontar((prev) => ({ ...prev, confirmando: true, erro: null }))
 
+    // Metas individuais: ninguém entra no ciclo sem pelo menos 1 meta (o
+    // banco também barra, no gatilho checar_avaliacao_tem_metas). Confere
+    // ANTES de ativar, pra não deixar o ciclo ativo pela metade.
+    if (ciclo.metas_individuais) {
+      const incluidosAgora = linhas.filter((l) => l.incluir)
+      const { data: metasCiclo, error: erroMetas } = await getMetasDoCiclo(ciclo.id)
+      if (erroMetas) {
+        setModalMontar((prev) => ({ ...prev, confirmando: false, erro: erroMetas.message }))
+        return
+      }
+      const comMetas = new Set(metasCiclo.map((m) => m.funcionario_id))
+      const semMetas = incluidosAgora
+        .filter((l) => !comMetas.has(l.funcionario_id))
+        .map((l) => funcionarios.find((f) => f.id === l.funcionario_id)?.full_name ?? 'Sem nome')
+      if (semMetas.length > 0) {
+        setModalMontar((prev) => ({
+          ...prev,
+          confirmando: false,
+          erro: `Estas pessoas ainda estão sem metas individuais: ${semMetas.join(', ')}. Cadastre as metas na aba "Metas" do ciclo (ou desmarque-as aqui) antes de ${ativarAoConfirmar ? 'ativar' : 'adicionar'}.`,
+        }))
+        return
+      }
+    }
+
     if (ativarAoConfirmar) {
       const { error } = await updateCicloStatus(ciclo.id, 'ativo')
       if (error) {
@@ -720,6 +753,9 @@ export default function AvaliacaoPage() {
         evidencias_tecnicas: null,
         observacoes_gerais: avaliacao.observacoes_gerais,
         observacoes_calibragem: avaliacao.observacoes_calibragem,
+        // Metas individuais (21/10/2026): o modal busca as metas da pessoa no ciclo.
+        funcionario_id: meuFuncionario?.id,
+        ciclo_id: avaliacao.ciclo?.id,
       } as Avaliacao,
       cicloNome: avaliacao.ciclo?.nome ?? '',
       papelAvaliador: false,
@@ -827,8 +863,52 @@ export default function AvaliacaoPage() {
   // líderes dentro do ciclo (via "Avaliações"), o que dava a impressão de que
   // o sorteio não estava limitando a quantidade — a quantidade já estava
   // certa, só não tinha um recorte "isso aqui é seu" pra ele.
+  // Metas individuais (pedido 21/10/2026): o líder cadastra as metas dos
+  // liderados (gestor no organograma) no ciclo com metas_individuais enquanto
+  // ele está em rascunho; depois da ativação a lista fica só para consulta.
+  // Administrador/calibrador usa a aba "Metas" do ciclo, na visão de gestão.
+  const cicloMetasAberto = ciclos.find((c) => c.metas_individuais && c.status !== 'encerrado') ?? null
+  const meusLiderados = meuFuncionario ? funcionarios.filter((f) => f.gestor_id === meuFuncionario.id) : []
+  const metasLideradosSection = !isAdmin && cicloMetasAberto && meusLiderados.length > 0 && (
+    <div data-tour="tour-av-metas-lideres" className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Target className="w-3.5 h-3.5 text-primary" />
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          Metas dos meus liderados · {cicloMetasAberto.nome}
+        </p>
+      </div>
+      <PainelMetas
+        ciclo={cicloMetasAberto}
+        pessoas={meusLiderados}
+        souAdministrador={souAdministrador}
+        meuFuncionarioId={meuFuncionario?.id ?? null}
+        fotosPorFuncionarioId={fotosPorFuncionarioId}
+      />
+    </div>
+  )
+
+  // Guia interativo da Avaliação (pedido 21/10/2026): mesmo tour do Guia de
+  // Uso, com passos desta tela, montados pelo papel de quem abriu.
+  function abrirGuia() {
+    // Na gestão, abre o ciclo com metas na aba "Metas" para o guia apontar para ela.
+    if (isAdmin && cicloMetasAberto) {
+      setCicloAtivo(cicloMetasAberto)
+      setAbaCiclo('metas')
+    }
+    iniciarGuia(passosGuiaAvaliacao({ gestao: isAdmin, administrador: souAdministrador, lider: meusLiderados.length > 0 }))
+  }
+  const botaoGuia = (
+    <button
+      onClick={abrirGuia}
+      className="flex items-center gap-1.5 px-3 py-2.5 border border-border rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors"
+    >
+      <Compass className="w-4 h-4 text-primary" />
+      Guia da Avaliação
+    </button>
+  )
+
   const precisoAvaliarSection = avaliacoesParaAvaliar.length > 0 && (
-    <div className="space-y-3">
+    <div data-tour="tour-av-devo" className="space-y-3">
       <div className="flex items-center gap-2">
         <ArrowRightLeft className="w-3.5 h-3.5 text-violet-600" />
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
@@ -887,7 +967,7 @@ export default function AvaliacaoPage() {
   // vasculhar a lista geral do ciclo expandido, que abre tudo em modo gestor
   // (isAdmin=true) e nunca deixava preencher a autoavaliação de verdade.
   const minhasAvaliacoesSection = minhasAvaliacoesVisiveis.length > 0 && (
-    <div className="space-y-3">
+    <div data-tour="tour-av-minhas" className="space-y-3">
       <div className="flex items-center gap-2">
         <UserCheck className="w-3.5 h-3.5 text-primary" />
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
@@ -934,10 +1014,11 @@ export default function AvaliacaoPage() {
           <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
             <LayoutGrid className="w-5 h-5 text-primary" />
           </div>
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl font-bold text-foreground tracking-tight">Minhas Avaliações</h1>
             <p className="text-sm text-muted-foreground mt-0.5">{empresa?.company_name}</p>
           </div>
+          {botaoGuia}
         </div>
 
         {minhasAvaliacoesVisiveis.length === 0 ? (
@@ -948,7 +1029,7 @@ export default function AvaliacaoPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div data-tour="tour-av-minhas" className="space-y-3">
             <div className="flex items-center gap-2">
               <UserCheck className="w-3.5 h-3.5 text-primary" />
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
@@ -1006,6 +1087,8 @@ export default function AvaliacaoPage() {
           </div>
         )}
 
+        {metasLideradosSection}
+
         {precisoAvaliarSection}
 
         <ModalAvaliacao
@@ -1038,6 +1121,7 @@ export default function AvaliacaoPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+        {botaoGuia}
         {souAdministrador && (
           <button
             onClick={abrirModalGerenciarLideres}
@@ -1097,7 +1181,7 @@ export default function AvaliacaoPage() {
           )}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div data-tour="tour-av-ciclos" className="space-y-2">
           {ciclos.map((ciclo) => (
             <div key={ciclo.id} className="border border-border rounded-lg bg-card overflow-hidden">
               <div
@@ -1107,7 +1191,8 @@ export default function AvaliacaoPage() {
                 )}
                 onClick={() => {
                   setCicloAtivo(cicloAtivo?.id === ciclo.id ? null : ciclo)
-                  setAbaCiclo('graficos')
+                  // Em rascunho com metas individuais, o trabalho do momento é cadastrar as metas.
+                  setAbaCiclo(ciclo.status === 'rascunho' && ciclo.metas_individuais ? 'metas' : 'graficos')
                 }}
               >
                 <div className="flex items-center gap-3">
@@ -1128,6 +1213,11 @@ export default function AvaliacaoPage() {
                   <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', cicloStatusColor[ciclo.status])}>
                     {cicloStatusLabel[ciclo.status]}
                   </span>
+                  {ciclo.metas_individuais && (
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-primary/10 text-primary hidden sm:inline-flex items-center gap-1" title="Desempenho por metas individuais">
+                      <Target className="w-3 h-3" /> Metas individuais
+                    </span>
+                  )}
                   {ciclo.oculto && (
                     <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-slate-200 text-slate-700" title="Escondido dos participantes — só administrador vê">
                       Oculto
@@ -1282,9 +1372,34 @@ export default function AvaliacaoPage() {
                       <ListChecks className="w-3.5 h-3.5" />
                       Avaliações
                     </button>
+                    {ciclo.metas_individuais && (
+                      <button
+                        data-tour="tour-av-aba-metas"
+                        onClick={() => setAbaCiclo('metas')}
+                        className={cn(
+                          'flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 -mb-px transition-colors',
+                          abaCiclo === 'metas'
+                            ? 'border-primary text-foreground'
+                            : 'border-transparent text-muted-foreground hover:text-foreground'
+                        )}
+                      >
+                        <Target className="w-3.5 h-3.5" />
+                        Metas
+                      </button>
+                    )}
                   </div>
 
-                  {abaCiclo === 'graficos' && <GraficosAvaliacao avaliacoes={avaliacoes} cicloId={ciclo.id} />}
+                  {abaCiclo === 'graficos' && <GraficosAvaliacao avaliacoes={avaliacoes} cicloId={ciclo.id} usaMetas={ciclo.metas_individuais} />}
+
+                  {abaCiclo === 'metas' && ciclo.metas_individuais && (
+                    <PainelMetas
+                      ciclo={ciclo}
+                      pessoas={funcionarios}
+                      souAdministrador={souAdministrador}
+                      meuFuncionarioId={meuFuncionario?.id ?? null}
+                      fotosPorFuncionarioId={fotosPorFuncionarioId}
+                    />
+                  )}
 
                   {/* Avaliações existentes */}
                   {abaCiclo === 'avaliacoes' && avaliacoes.length > 0 && (

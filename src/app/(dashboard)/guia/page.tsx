@@ -42,7 +42,7 @@ const AREAS = [
   },
   {
     href: '/avaliacao', icon: ClipboardList, titulo: 'Avaliação de Desempenho',
-    descricao: 'Ciclo semestral com autoavaliação, avaliação do gestor e calibração — metade cultura, metade metas técnicas da vertical.',
+    descricao: 'Ciclo semestral com autoavaliação, avaliação do gestor e calibração — metade cultura, igual para todos, e metade metas individuais de cada pessoa. A tela tem um guia próprio.',
     // Pente fino (M7): o guia listava a Avaliação para qualquer empresa.
     somenteCtz: true,
   },

@@ -113,7 +113,7 @@ export const TOUR_PASSOS: TourPasso[] = [
     pagina: '/avaliacao',
     alvo: 'tour-avaliacao',
     titulo: 'A sala de avaliação',
-    texto: 'Ciclo semestral de avaliação de desempenho: metade cultura, metade metas técnicas da vertical de cada pessoa.',
+    texto: 'Ciclo semestral de avaliação de desempenho: metade cultura, igual para todos, e metade desempenho, medido pelas metas individuais de cada pessoa. A tela tem um guia próprio, no botão "Guia da Avaliação".',
     posicao: 'top',
   },
   {
@@ -136,7 +136,10 @@ export const TOUR_PASSOS: TourPasso[] = [
 interface TourState {
   ativo: boolean
   passoIndex: number
-  iniciar: () => void
+  // Roteiro em andamento. O Guia de Uso usa TOUR_PASSOS; telas com guia
+  // próprio (ex.: Avaliação, pedido 21/10/2026) passam o roteiro delas.
+  passos: TourPasso[]
+  iniciar: (passos?: TourPasso[]) => void
   proximo: () => void
   voltar: () => void
   sair: () => void
@@ -147,10 +150,11 @@ export const useTourStore = create<TourState>()(
     (set, get) => ({
       ativo: false,
       passoIndex: 0,
-      iniciar: () => set({ ativo: true, passoIndex: 0 }),
+      passos: TOUR_PASSOS,
+      iniciar: (passos) => set({ ativo: true, passoIndex: 0, passos: passos ?? TOUR_PASSOS }),
       proximo: () => {
         const next = get().passoIndex + 1
-        if (next >= TOUR_PASSOS.length) {
+        if (next >= get().passos.length) {
           set({ ativo: false, passoIndex: 0 })
         } else {
           set({ passoIndex: next })
