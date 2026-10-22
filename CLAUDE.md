@@ -123,6 +123,9 @@
   `src/lib/autoconhecimentoAcesso.ts`, aplicada no menu, na Início, na página e na rota de API.
 - Mapa de si (todos que veem o módulo) e Mapa do time (líderes). A conversa "sobre um colega" é só
   do piloto. Igor/Priscila/Sandra veem a página como **simulação do Felipe Marques**.
+- **Time espelhado** (`funcionarios.ve_time_de`, 22/10/2026): o Mapa do time mostra os liderados
+  diretos do cadastro apontado ali, além dos próprios (função `meus_cadastros_de_lider()`). Hoje só o
+  Célio Bitencourt → Felipe Marques. Não muda organograma nem Avaliação.
 - **O tipo de outra pessoa nunca vai para o navegador**: só as rotas de API leem, por funções
   SECURITY DEFINER. A lista "Perfis da equipe" (tipo de todos) foi removida (commit `38172fc`).
 - Perfis em `funcionarios_eneagrama` (tabela própria, RLS "só a própria linha").

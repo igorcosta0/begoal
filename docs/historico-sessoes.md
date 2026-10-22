@@ -1660,3 +1660,15 @@
     "Novo Ciclo" e os passos do guia. O `ModalAvaliacao` com metas não foi visto renderizado (precisa
     de login). O ciclo atual ("1º Ciclo - 1º Semestre 2026", ativo) segue sem metas; para usar,
     encerrar e criar o próximo. `npm run type-check` e lint limpos.
+
+### 2026-10-22
+
+- **Célio vê o Mapa do time do Felipe Marques** (pedido do Igor: o Célio, recém-cadastrado,
+  "está entrando no lugar do Felipe Marques"). Migration
+  `PENDENTE_20261022000000_celio_ve_mapa_do_time_do_felipe.sql`: coluna `funcionarios.ve_time_de` e
+  função `meus_cadastros_de_lider()`; `sou_lider_de_alguem`, `listar_meus_liderados_com_perfil_mapeado`,
+  `resumo_time_liderado` e `obter_tipo_liderado` passam a aceitar os liderados de quem a pessoa
+  espelha. Sem mudança no front (o Célio entra como líder comum). O tipo do Felipe não é usado na
+  conversa do Célio. Organograma e Avaliação intactos.
+  Rodada pelo Chrome e conferida simulando o login do Célio: líder = true, lista e resumo com os
+  liderados do Felipe (11) mais o Artur Thomaz Ezequiel, que já tinha o Célio como gestor (12 no total).
