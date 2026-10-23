@@ -39,7 +39,7 @@ function Destaque({ valor, rotulo }: { valor: string; rotulo: string }) {
 function ResultadoPergunta({ q, respostas, externa }: { q: Pergunta; respostas: RespostaPesquisa[]; externa: boolean }) {
   const valores = respostas
     .map((r) => ({ r, v: r.itens[q.id] }))
-    .filter(({ v }) => v !== undefined && v !== null && v !== '')
+    .filter(({ v }) => v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && !v.length))
 
   if (!valores.length) return <p className="text-sm text-muted-foreground">Ainda sem respostas.</p>
 
@@ -54,6 +54,22 @@ function ResultadoPergunta({ q, respostas, externa }: { q: Pergunta; respostas: 
         </div>
         <div className="space-y-1.5">
           {[5, 4, 3, 2, 1].map((n) => <Barra key={n} label={`Nota ${n}`} qtd={nums.filter((x) => x === n).length} total={nums.length} />)}
+        </div>
+      </div>
+    )
+  }
+
+  if (q.tipo === 'escala_0_10') {
+    const nums = valores.map(({ v }) => Number(v))
+    const media = nums.reduce((a, b) => a + b, 0) / nums.length
+    return (
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-2 max-w-sm">
+          <Destaque valor={media.toFixed(1).replace('.', ',')} rotulo="média (0 a 10)" />
+          <Destaque valor={String(nums.length)} rotulo="respostas" />
+        </div>
+        <div className="space-y-1.5">
+          {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0].map((n) => <Barra key={n} label={`Nota ${n}`} qtd={nums.filter((x) => x === n).length} total={nums.length} />)}
         </div>
       </div>
     )
@@ -76,6 +92,18 @@ function ResultadoPergunta({ q, respostas, externa }: { q: Pergunta; respostas: 
           <Barra label="Neutros (7–8)" qtd={neut} total={nums.length} cor="bg-amber-500" />
           <Barra label="Detratores (0–6)" qtd={det} total={nums.length} cor="bg-rose-500" />
         </div>
+      </div>
+    )
+  }
+
+  // Várias opções: a porcentagem é sobre quem respondeu (a soma passa de 100%).
+  if (q.tipo === 'multipla_varias') {
+    return (
+      <div className="space-y-1.5">
+        <p className="text-[11px] text-muted-foreground">Cada pessoa podia marcar mais de uma opção.</p>
+        {q.opcoes.map((op) => (
+          <Barra key={op} label={op} qtd={valores.filter(({ v }) => Array.isArray(v) && v.includes(op)).length} total={valores.length} />
+        ))}
       </div>
     )
   }
@@ -103,7 +131,7 @@ function ResultadoPergunta({ q, respostas, externa }: { q: Pergunta; respostas: 
 }
 
 function csvCelula(v: unknown): string {
-  const s = v === undefined || v === null ? '' : String(v)
+  const s = v === undefined || v === null ? '' : Array.isArray(v) ? v.join(', ') : String(v)
   return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 

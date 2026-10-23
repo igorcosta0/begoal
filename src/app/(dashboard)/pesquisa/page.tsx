@@ -2,16 +2,17 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import {
-  MessageSquareHeart, Plus, Link2, Check, Pencil, Send, Lock, RotateCcw, BarChart3, Trash2, Users, Globe, X, CheckCircle2,
+  MessageSquareHeart, Plus, Link2, Check, Pencil, Send, Lock, RotateCcw, BarChart3, Trash2, Users, Globe, X, CheckCircle2, Copy, LayoutTemplate,
 } from 'lucide-react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
 import { cn, formatDate, isEmpresaCTZ } from '@/lib/utils'
 import {
-  excluirPesquisa, getParticipacoes, getPerguntas, getPesquisas, linkPublicoPesquisa, mudarStatusPesquisa,
+  duplicarPesquisa, excluirPesquisa, getParticipacoes, getPerguntas, getPesquisas, linkPublicoPesquisa, mudarStatusPesquisa,
   perguntasFaltando, responderPesquisaInterna,
   type Pergunta, type Pesquisa, type PesquisaComContagem, type Respostas, type StatusPesquisa,
 } from '@/lib/queries/pesquisas'
+import { NOME_MODELO } from '@/lib/pesquisaModelos'
 import ModalEditarPesquisa from '@/components/pesquisa/ModalEditarPesquisa'
 import ResultadosPesquisa from '@/components/pesquisa/ResultadosPesquisa'
 import FormularioPesquisa from '@/components/pesquisa/FormularioPesquisa'
@@ -121,6 +122,14 @@ export default function PesquisaPage() {
     carregar()
   }
 
+  async function duplicar(p: Pesquisa) {
+    setAviso(null)
+    const { error } = await duplicarPesquisa(p)
+    if (error) { setAviso(error); return }
+    setAviso(`Cópia de "${p.titulo}" criada como rascunho. Ajuste o que precisar e publique.`)
+    carregar()
+  }
+
   async function confirmarExclusao() {
     if (!excluir.pesquisa) return
     setExcluir((e) => ({ ...e, loading: true, erro: null }))
@@ -183,7 +192,7 @@ export default function PesquisaPage() {
           <div>
             <h1 className="text-2xl font-bold text-foreground tracking-tight">Pesquisa</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Pesquisas de satisfação com funcionários (anônimas) e com clientes (por link)
+              Clima, Pulse, NPS, Satisfação e Cultura, com funcionários (anônimas) e com clientes (por link)
             </p>
           </div>
         </div>
@@ -255,6 +264,9 @@ export default function PesquisaPage() {
 
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
+                        <LayoutTemplate className="w-3.5 h-3.5" /> {NOME_MODELO[p.modelo] ?? 'Personalizada'}
+                      </span>
+                      <span className="flex items-center gap-1">
                         {externa ? <Globe className="w-3.5 h-3.5" /> : <Users className="w-3.5 h-3.5" />}
                         {externa ? 'Clientes (link)' : 'Funcionários (anônima)'}
                       </span>
@@ -288,6 +300,7 @@ export default function PesquisaPage() {
                       )}
                       {p.status === 'aberta' && <BotaoAcao onClick={() => mudarStatus(p, 'encerrada')} icon={Lock}>Encerrar</BotaoAcao>}
                       {p.status === 'encerrada' && <BotaoAcao onClick={() => mudarStatus(p, 'aberta')} icon={RotateCcw}>Reabrir</BotaoAcao>}
+                      <BotaoAcao onClick={() => duplicar(p)} icon={Copy}>Duplicar</BotaoAcao>
                       <BotaoAcao onClick={() => setExcluir({ pesquisa: p, loading: false, erro: null })} icon={Trash2} perigo>Excluir</BotaoAcao>
                     </div>
                   </div>
@@ -302,6 +315,7 @@ export default function PesquisaPage() {
         <ModalEditarPesquisa
           open={modalEditar.open}
           clientId={empresa.id}
+          empresaNome={empresa.company_name}
           pesquisa={modalEditar.pesquisa}
           onClose={() => setModalEditar({ open: false, pesquisa: null })}
           onSuccess={() => { setModalEditar({ open: false, pesquisa: null }); carregar() }}

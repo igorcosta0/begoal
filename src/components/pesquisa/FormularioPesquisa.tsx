@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import type { Pergunta, Respostas } from '@/lib/queries/pesquisas'
+import type { Pergunta, Respostas, ValorResposta } from '@/lib/queries/pesquisas'
 
 // Perguntas de uma pesquisa para responder. Usado na resposta interna (modal)
 // e na página pública do link externo.
@@ -16,7 +16,7 @@ export default function FormularioPesquisa({
   onChange: (respostas: Respostas) => void
   faltando?: string[]
 }) {
-  function set(id: string, valor: number | string) {
+  function set(id: string, valor: ValorResposta) {
     onChange({ ...respostas, [id]: valor })
   }
 
@@ -58,6 +58,29 @@ export default function FormularioPesquisa({
                   ))}
                   <div className="w-full flex justify-between text-[11px] text-muted-foreground max-w-[268px]">
                     <span>Muito insatisfeito</span><span>Muito satisfeito</span>
+                  </div>
+                </div>
+              )}
+
+              {q.tipo === 'escala_0_10' && (
+                <div>
+                  <div className="grid grid-cols-11 gap-1 sm:gap-1.5 max-w-xl">
+                    {Array.from({ length: 11 }, (_, n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => set(q.id, n)}
+                        className={cn(
+                          'h-10 rounded-lg border text-xs sm:text-sm font-semibold transition-colors',
+                          valor === n ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-foreground hover:bg-secondary'
+                        )}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex justify-between text-[11px] text-muted-foreground max-w-xl mt-1">
+                    <span>0 · muito pouco</span><span>10 · totalmente</span>
                   </div>
                 </div>
               )}
@@ -107,6 +130,34 @@ export default function FormularioPesquisa({
                       {op}
                     </label>
                   ))}
+                </div>
+              )}
+
+              {q.tipo === 'multipla_varias' && (
+                <div className="space-y-1.5">
+                  <p className="text-[11px] text-muted-foreground">Marque quantas quiser.</p>
+                  {q.opcoes.map((op) => {
+                    const marcadas = Array.isArray(valor) ? valor : []
+                    const marcada = marcadas.includes(op)
+                    return (
+                      <label
+                        key={op}
+                        className={cn(
+                          'flex items-center gap-2.5 px-3 py-2 rounded-xl border cursor-pointer text-sm transition-colors',
+                          marcada ? 'border-primary bg-primary/5 text-foreground' : 'border-border text-foreground hover:bg-secondary'
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={marcada}
+                          // Mantém a ordem das opções, não a ordem dos cliques.
+                          onChange={() => set(q.id, q.opcoes.filter((o) => (o === op ? !marcada : marcadas.includes(o))))}
+                          className="accent-[hsl(var(--primary))]"
+                        />
+                        {op}
+                      </label>
+                    )
+                  })}
                 </div>
               )}
 

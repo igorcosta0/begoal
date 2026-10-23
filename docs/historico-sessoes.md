@@ -1672,3 +1672,24 @@
   conversa do Célio. Organograma e Avaliação intactos.
   Rodada pelo Chrome e conferida simulando o login do Célio: líder = true, lista e resumo com os
   liderados do Felipe (11) mais o Artur Thomaz Ezequiel, que já tinha o Célio como gestor (12 no total).
+
+### 2026-10-23
+
+- **Pesquisa, etapa 1 do guia do Miro (M2 Pesquisas)**. O Igor passou o guia (quadro "Módulo de
+  Pesquisas — Organograma Funcional", 59 funcionalidades) e aprovou a ordem em 5 etapas.
+  - Migration `PENDENTE_20261023000000_pesquisa_etapa1_modelos_tipos.sql`: tipos `escala_0_10` e
+    `multipla_varias` (resposta em lista), coluna `pesquisas.modelo` e nova
+    `pesquisa_validar_respostas`. `nota_1_5` continua aceita no banco, mas não é oferecida (F24).
+    Rodada pelo Chrome e conferida: as duas checagens novas, a validação nova, o anon sem acesso e
+    as 2 pesquisas que já existiam marcadas como `personalizada`.
+  - Front: "Nova pesquisa" virou um assistente em 4 passos (Modelo, Informações, Perguntas,
+    Revisão com prévia clicável). Tem 5 modelos (Clima, Pulse, NPS, Satisfação, Cultura) e o banco
+    de perguntas por tema em `src/lib/pesquisaModelos.ts` (`{empresa}` vira o nome da empresa). A IA
+    sugere perguntas a partir do objetivo (`/api/pesquisa-sugerir-perguntas`, Gemini, a saída é
+    conferida). Botão "Duplicar" (cópia em rascunho) e o nome do modelo no card. Formulário e
+    resultados tratam os tipos novos (média 0–10; várias opções em % de quem respondeu; CSV junta
+    a lista).
+  - Conferido numa prévia temporária (apagada), com o Edge headless (a captura do Chrome do Igor
+    não funcionou nesta sessão): os 4 passos no desktop e em 500px. A rota da IA não foi testada de
+    verdade (precisa de login). `npm run type-check` e lint limpos.
+

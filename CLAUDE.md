@@ -142,6 +142,11 @@
 - **Grupo de empresas (BMG)**: cada negócio é uma empresa própria em `clients`, ligadas por
   `grupo`/`negocio`/`negocio_ordem`; a `Topbar` troca de negócio. Não há visão consolidada do grupo.
 - **Pesquisa** (só CTZ, só admin cria): interna anônima e externa por link `/responder/<token>`.
+  **Segue o guia do Miro** (M1–M5, F01–F59; link na memória `pesquisa-guia-miro.md`), em etapas:
+  1) M2, feita em 23/10 (assistente em 4 passos, modelos e banco em `src/lib/pesquisaModelos.ts`,
+  IA em `/api/pesquisa-sugerir-perguntas`, tipos `escala_0_10` e `multipla_varias`, duplicar);
+  2) M4+M5 sem filtros; 3) M3 (lista, convite, QR); 4) filtros, comparativos e IA nos resultados;
+  5) perfis (M1). A nota de 1 a 5 ficou só para as pesquisas antigas.
 - **Foto de perfil e "Sobre mim"** ficam em `funcionarios_perfil_publico` (a escrita em
   `funcionarios` é só de administrador; o próprio nome usa a RPC `atualizar_meu_nome`).
 - **Cargos** (`cargos_perfil`, só CTZ): o cadastro de funcionário novo escolhe o cargo dessa lista.
