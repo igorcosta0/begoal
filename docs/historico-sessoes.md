@@ -1692,4 +1692,16 @@
   - Conferido numa prévia temporária (apagada), com o Edge headless (a captura do Chrome do Igor
     não funcionou nesta sessão): os 4 passos no desktop e em 500px. A rota da IA não foi testada de
     verdade (precisa de login). `npm run type-check` e lint limpos.
+- **Pesquisa, etapa 2 (M4 Acompanhamento + M5 Resultados, sem filtros/comparativos/IA)**.
+  - Migration `PENDENTE_20261023010000_pesquisa_etapa2_pausar.sql` (rodada pelo Chrome e conferida):
+    status `pausada` (F42) e mensagem própria em `pesquisa_publica_responder`. Card ganha
+    Pausar/Retomar; a página pública avisa "pausada"; `publicada_em` só marca a 1ª publicação.
+  - Resultados: atualiza sozinho a cada 20 s enquanto aberta (F43) e tem "atualizar agora". Cada
+    pergunta pode virar Barras, Colunas ou Pizza (F44/F45; pizza só onde soma 100%), em
+    `GraficoPergunta.tsx` com a paleta categórica validada da skill dataviz. NPS mostra também a
+    média (F46/F47). A aba "Participação" (interna) tem a barra "x de y", as listas de quem falta e
+    de quem já respondeu (F41/F55) e o "Lembrar quem falta" (F56): abre o e-mail do admin com todos
+    em Cco, ou copia os e-mails e a mensagem. Não há envio pelo sistema.
+  - Conferido numa prévia temporária (apagada) com dados fictícios, interceptando o `fetch` do
+    Supabase: os 3 tipos de gráfico, a participação e o celular (500px). `type-check` e lint limpos.
 

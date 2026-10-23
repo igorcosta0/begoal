@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import {
-  MessageSquareHeart, Plus, Link2, Check, Pencil, Send, Lock, RotateCcw, BarChart3, Trash2, Users, Globe, X, CheckCircle2, Copy, LayoutTemplate,
+  MessageSquareHeart, Plus, Link2, Check, Pencil, Send, Lock, RotateCcw, BarChart3, Trash2, Users, Globe, X, CheckCircle2, Copy, LayoutTemplate, Pause, Play,
 } from 'lucide-react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
@@ -26,6 +26,7 @@ import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
 const STATUS_STYLE: Record<StatusPesquisa, { label: string; cls: string }> = {
   rascunho: { label: 'Rascunho', cls: 'bg-slate-100 text-slate-700' },
   aberta: { label: 'Aberta', cls: 'bg-emerald-100 text-emerald-700' },
+  pausada: { label: 'Pausada', cls: 'bg-amber-100 text-amber-800' },
   encerrada: { label: 'Encerrada', cls: 'bg-rose-100 text-rose-700' },
 }
 
@@ -112,13 +113,14 @@ export default function PesquisaPage() {
       const { data } = await getPerguntas(p.id)
       if (!data.length) { setAviso('Adicione pelo menos uma pergunta antes de publicar.'); return }
     }
-    const { error } = await mudarStatusPesquisa(p.id, status)
+    const { error } = await mudarStatusPesquisa(p, status)
     if (error) { setAviso(error); return }
     if (status === 'aberta' && p.status === 'rascunho') {
       setAviso(p.publico === 'externa'
         ? 'Pesquisa publicada. Copie o link no card e envie para os clientes.'
         : 'Pesquisa publicada. Os funcionários já podem responder em Pessoas › Pesquisa.')
     }
+    if (status === 'pausada') setAviso('Pesquisa pausada. Ninguém consegue responder até você clicar em "Retomar".')
     carregar()
   }
 
@@ -273,12 +275,12 @@ export default function PesquisaPage() {
                       <span className="font-mono">{p.total_respostas} {p.total_respostas === 1 ? 'resposta' : 'respostas'}</span>
                       <span>
                         {p.status === 'rascunho' ? `Criada em ${formatDate(p.created_at)}`
-                          : p.status === 'aberta' && p.publicada_em ? `Aberta em ${formatDate(p.publicada_em)}`
+                          : p.status !== 'encerrada' && p.publicada_em ? `Aberta em ${formatDate(p.publicada_em)}`
                           : p.encerrada_em ? `Encerrada em ${formatDate(p.encerrada_em)}` : null}
                       </span>
                     </div>
 
-                    {externa && p.status === 'aberta' && (
+                    {externa && (p.status === 'aberta' || p.status === 'pausada') && (
                       <div className="flex items-center gap-2 rounded-xl bg-muted/40 border border-border/60 px-3 py-2">
                         <Link2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                         <span className="text-xs font-mono text-muted-foreground truncate flex-1">{linkPublicoPesquisa(p.token)}</span>
@@ -298,7 +300,9 @@ export default function PesquisaPage() {
                       {p.status !== 'rascunho' && (
                         <BotaoAcao onClick={() => setResultados(p)} icon={BarChart3} destaque>Resultados</BotaoAcao>
                       )}
-                      {p.status === 'aberta' && <BotaoAcao onClick={() => mudarStatus(p, 'encerrada')} icon={Lock}>Encerrar</BotaoAcao>}
+                      {p.status === 'aberta' && <BotaoAcao onClick={() => mudarStatus(p, 'pausada')} icon={Pause}>Pausar</BotaoAcao>}
+                      {p.status === 'pausada' && <BotaoAcao onClick={() => mudarStatus(p, 'aberta')} icon={Play}>Retomar</BotaoAcao>}
+                      {(p.status === 'aberta' || p.status === 'pausada') && <BotaoAcao onClick={() => mudarStatus(p, 'encerrada')} icon={Lock}>Encerrar</BotaoAcao>}
                       {p.status === 'encerrada' && <BotaoAcao onClick={() => mudarStatus(p, 'aberta')} icon={RotateCcw}>Reabrir</BotaoAcao>}
                       <BotaoAcao onClick={() => duplicar(p)} icon={Copy}>Duplicar</BotaoAcao>
                       <BotaoAcao onClick={() => setExcluir({ pesquisa: p, loading: false, erro: null })} icon={Trash2} perigo>Excluir</BotaoAcao>

@@ -7,7 +7,8 @@ import { createClient } from '@/lib/supabase/client'
 // - só administrador cria, publica, encerra e vê resultados.
 
 export type PublicoPesquisa = 'interna' | 'externa'
-export type StatusPesquisa = 'rascunho' | 'aberta' | 'encerrada'
+// 'pausada' (F42): ninguém responde, mas volta a abrir de onde parou.
+export type StatusPesquisa = 'rascunho' | 'aberta' | 'pausada' | 'encerrada'
 // 'nota_1_5' é de antes do guia do Miro (23/10/2026): continua valendo nas
 // pesquisas que já usam, mas não é mais oferecida na criação (F24).
 export type TipoPergunta = 'escala_0_10' | 'nps' | 'texto' | 'multipla' | 'multipla_varias' | 'nota_1_5'
@@ -202,11 +203,16 @@ export async function sugerirPerguntasIa(params: {
   }
 }
 
-export async function mudarStatusPesquisa(id: string, status: StatusPesquisa): Promise<{ error: string | null }> {
+// `publicada_em` só marca a primeira publicação: retomar uma pausada ou
+// reabrir uma encerrada não muda a data de abertura.
+export async function mudarStatusPesquisa(p: Pesquisa, status: StatusPesquisa): Promise<{ error: string | null }> {
   const supabase = createClient()
   const agora = new Date().toISOString()
-  const extra = status === 'aberta' ? { publicada_em: agora, encerrada_em: null } : status === 'encerrada' ? { encerrada_em: agora } : {}
-  const { data, error } = await supabase.from('pesquisas').update({ status, ...extra }).eq('id', id).select('id')
+  const extra =
+    status === 'aberta' ? { encerrada_em: null, ...(p.status === 'rascunho' ? { publicada_em: agora } : {}) }
+    : status === 'encerrada' ? { encerrada_em: agora }
+    : {}
+  const { data, error } = await supabase.from('pesquisas').update({ status, ...extra }).eq('id', p.id).select('id')
   if (error) return { error: error.message }
   if (!data?.length) return { error: 'Sem permissão para alterar esta pesquisa.' }
   return { error: null }

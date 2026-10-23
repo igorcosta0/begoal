@@ -16,7 +16,7 @@ import FormularioPesquisa from '@/components/pesquisa/FormularioPesquisa'
 const inputCls = 'mt-1 w-full px-3 py-2.5 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring'
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
-type Etapa = 'carregando' | 'invalida' | 'encerrada' | 'identificacao' | 'formulario' | 'enviada'
+type Etapa = 'carregando' | 'invalida' | 'pausada' | 'encerrada' | 'identificacao' | 'formulario' | 'enviada'
 
 export default function ResponderPesquisaPage({ params }: { params: { token: string } }) {
   const { token } = params
@@ -37,7 +37,7 @@ export default function ResponderPesquisaPage({ params }: { params: { token: str
     getPesquisaPublica(token).then(({ data }) => {
       if (!data) return setEtapa('invalida')
       setPesquisa(data)
-      setEtapa(data.status === 'aberta' ? 'identificacao' : 'encerrada')
+      setEtapa(data.status === 'aberta' ? 'identificacao' : data.status === 'pausada' ? 'pausada' : 'encerrada')
     })
   }, [token])
 
@@ -89,6 +89,12 @@ export default function ResponderPesquisaPage({ params }: { params: { token: str
         {etapa === 'invalida' && (
           <Aviso icone={<Lock className="w-6 h-6 text-muted-foreground" />} titulo="Link inválido">
             Esta pesquisa não existe ou o link está incompleto. Confira o endereço recebido.
+          </Aviso>
+        )}
+
+        {etapa === 'pausada' && pesquisa && (
+          <Aviso icone={<Lock className="w-6 h-6 text-muted-foreground" />} titulo={pesquisa.titulo}>
+            Esta pesquisa está pausada no momento. Tente de novo mais tarde, pelo mesmo link.
           </Aviso>
         )}
 
