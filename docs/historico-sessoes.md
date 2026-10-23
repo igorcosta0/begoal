@@ -1724,4 +1724,20 @@
   - Conferido numa prévia temporária (apagada): passo Envio nos 3 modos, importação com erros e
     acentos, lista de convites, QR e página do convite, também em 500px. O card da página principal
     não foi visto renderizado (precisa de login). `type-check` e lint limpos.
+- **Pesquisa, etapa 4 (resto do M5: filtros, relatório, comparativos, IA)**.
+  - Migration `PENDENTE_20261023030000_pesquisa_etapa4_recortes.sql` (rodada pelo Chrome e testada
+    simulando um admin, com dados de teste num bloco desfeito por erro proposital): `segmento` sai da
+    leitura da API (select por coluna); `pesquisa_respostas_filtradas` esconde recorte com < 5 ou com
+    complemento de 1 a 4; `pesquisa_metricas_por_segmento` junta grupos pequenos em "Outros" (e o
+    menor visível, se "Outros" ficar com 1 a 4); `pesquisa_opcoes_filtro`.
+  - Front: `FiltrosResultados` (área, cargo, tempo, estado, cliente e respostas de múltipla escolha;
+    valores com < 5 desabilitados; chips do que está aplicado), aviso de recorte pequeno, "Montar
+    relatório" (escolhe as perguntas; abre janela com cabeçalho, filtros, análise e gráficos e chama
+    a impressão = PDF), `AnaliseIaPainel` + rota `/api/pesquisa-analise` (Gemini; sem nome/e-mail;
+    usa a mesma função do banco), aba "Comparativo" (`ComparativoPesquisa`: mesma empresa e mesmo
+    modelo; padrão = origem ou a anterior; perguntas iguais por tipo+enunciado com variação; tendência
+    por área; histórico em linha de até 8 aplicações). Contas em `src/lib/pesquisaMetricas.ts`.
+  - Conferido numa prévia (apagada) com o `fetch` interceptado: filtros, recorte escondido,
+    comparativo, tendência, histórico, montar relatório, celular. A janela do PDF e a rota da IA
+    não foram testadas (precisam de navegador real e login).
 

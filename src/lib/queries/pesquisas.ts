@@ -114,7 +114,6 @@ export interface RespostaPesquisa {
   respondente_nome: string | null
   respondente_empresa: string | null
   itens: Respostas
-  segmento: Record<string, string>
 }
 
 // Múltipla com várias opções responde uma lista de textos.
@@ -362,7 +361,7 @@ export async function getRespostas(pesquisaId: string): Promise<{ data: Resposta
   const supabase = createClient()
   const { data, error } = await supabase
     .from('pesquisa_respostas')
-    .select('id, respondida_em, respondente_email, respondente_nome, respondente_empresa, itens, segmento')
+    .select('id, respondida_em, respondente_email, respondente_nome, respondente_empresa, itens')
     .eq('pesquisa_id', pesquisaId)
     .order('respondida_em', { ascending: false })
   if (error) return { data: [], error: error.message }
@@ -430,6 +429,87 @@ export async function responderPesquisaPublica(params: {
     p_respostas: params.respostas,
   })
   return { error: error?.message ?? null }
+}
+
+// ── Recortes (etapa 4, F48/F49/F53) ─────────────────────────────────────────
+// O segmento de cada resposta não sai do banco: os recortes vêm prontos das
+// funções da migration PENDENTE_20261023030000, que escondem grupos com
+// menos de 5 respostas (regra do Igor).
+
+export const MINIMO_RECORTE = 5
+
+export type CampoSegmento = 'setor' | 'cargo' | 'tempo_empresa' | 'estado' | 'cliente'
+export const ROTULO_SEGMENTO: Record<CampoSegmento, string> = {
+  setor: 'Área', cargo: 'Cargo', tempo_empresa: 'Tempo de empresa', estado: 'Estado', cliente: 'Cliente',
+}
+
+export interface FiltroResultados {
+  segmento: Partial<Record<CampoSegmento, string[]>>
+  respostas: Record<string, string[]> // pergunta de múltipla escolha → opções
+}
+
+export const FILTRO_RESULTADOS_VAZIO: FiltroResultados = { segmento: {}, respostas: {} }
+
+export function filtroResultadosVazio(f: FiltroResultados): boolean {
+  return !Object.values(f.segmento).some((v) => v?.length) && !Object.values(f.respostas).some((v) => v.length)
+}
+
+export async function getRespostasFiltradas(
+  pesquisaId: string,
+  filtro: FiltroResultados
+): Promise<{ respostas: RespostaPesquisa[]; oculto: boolean; error: string | null }> {
+  const supabase = createClient()
+  const { data, error } = await supabase.rpc('pesquisa_respostas_filtradas', { p_pesquisa_id: pesquisaId, p_filtro: filtro })
+  if (error) return { respostas: [], oculto: false, error: error.message }
+  const r = data as { oculto: boolean; respostas: RespostaPesquisa[] }
+  return { respostas: r.respostas ?? [], oculto: !!r.oculto, error: null }
+}
+
+export type OpcoesFiltro = Record<CampoSegmento, { valor: string; n: number }[]>
+
+export async function getOpcoesFiltro(pesquisaId: string): Promise<OpcoesFiltro | null> {
+  const supabase = createClient()
+  const { data, error } = await supabase.rpc('pesquisa_opcoes_filtro', { p_pesquisa_id: pesquisaId })
+  if (error) return null
+  return data as OpcoesFiltro
+}
+
+export interface MetricaSegmento {
+  valor: string | null // null = "Outros" (grupos pequenos juntos)
+  n: number
+  media: number
+  nps: number | null
+}
+
+export async function getMetricasPorSegmento(pesquisaId: string, perguntaId: string, campo: CampoSegmento): Promise<{ data: MetricaSegmento[]; error: string | null }> {
+  const supabase = createClient()
+  const { data, error } = await supabase.rpc('pesquisa_metricas_por_segmento', { p_pesquisa_id: pesquisaId, p_pergunta_id: perguntaId, p_campo: campo })
+  if (error) return { data: [], error: error.message }
+  return { data: (data ?? []) as MetricaSegmento[], error: null }
+}
+
+// F57: análise dos resultados (do recorte atual) pela IA.
+export interface AnaliseIa {
+  resumo: string
+  pontos_fortes: string[]
+  pontos_de_atencao: string[]
+  temas_abertas: string[]
+  recomendacoes: string[]
+}
+
+export async function analisarComIa(pesquisaId: string, filtro: FiltroResultados): Promise<{ data: AnaliseIa | null; error: string | null }> {
+  try {
+    const res = await fetch('/api/pesquisa-analise', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pesquisaId, filtro }),
+    })
+    const json = await res.json().catch(() => ({}))
+    if (!res.ok) return { data: null, error: json.error ?? 'Não foi possível gerar a análise agora.' }
+    return { data: json as AnaliseIa, error: null }
+  } catch {
+    return { data: null, error: 'Não foi possível gerar a análise agora.' }
+  }
 }
 
 // ── Convite da lista (link individual, sem login) ───────────────────────────

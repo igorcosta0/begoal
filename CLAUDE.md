@@ -149,7 +149,11 @@
   próprio admin, gráficos em `GraficoPergunta.tsx`, atualiza a cada 20 s); 3) M3, feita em 23/10
   (público `lista` com link individual sem login, `/responder/convite/<token>`; `pesquisas.filtro` por
   área/cargo/cliente; link aberto com identificação opcional e QR; recorrência com "Reaplicar";
-  a resposta guarda `segmento` sem nome); 4) filtros, comparativos e IA nos resultados;
+  a resposta guarda `segmento` sem nome); 4) feita em 23/10: filtros, relatório em PDF, aba
+  Comparativo (perguntas iguais, tendência por área, histórico) e análise com IA
+  (`/api/pesquisa-analise`). **`segmento` não é legível pela API**: recortes só pelas funções
+  `pesquisa_respostas_filtradas`/`pesquisa_metricas_por_segmento`/`pesquisa_opcoes_filtro`, que
+  escondem grupos < 5 e o complemento de 1 a 4;
   5) perfis (M1). A nota de 1 a 5 ficou só para as pesquisas antigas. **Recortes por segmento só
   com 5 respostas ou mais** (decisão do Igor). Convite e lembrete saem do e-mail do próprio admin
   (sem serviço de envio). Planilhas pelo SheetJS do CDN oficial (0.20.3), não o `xlsx` do npm.
