@@ -3,10 +3,12 @@ import { createClient } from '@/lib/supabase/client'
 // Módulo de Pesquisa (pedido 05/10/2026). Tabelas e regras em
 // supabase/migrations/PENDENTE_20261005000000_pesquisas.sql:
 // - interna = anônima (a resposta não guarda quem respondeu);
-// - externa = um link público por pesquisa, com e-mail/nome/empresa;
+// - externa = um link público por pesquisa (identificação opcional);
+// - lista = participantes importados de planilha, cada um com link próprio
+//   (etapa 3 do guia do Miro, PENDENTE_20261023020000_pesquisa_etapa3_envio.sql);
 // - só administrador cria, publica, encerra e vê resultados.
 
-export type PublicoPesquisa = 'interna' | 'externa'
+export type PublicoPesquisa = 'interna' | 'lista' | 'externa'
 // 'pausada' (F42): ninguém responde, mas volta a abrir de onde parou.
 export type StatusPesquisa = 'rascunho' | 'aberta' | 'pausada' | 'encerrada'
 // 'nota_1_5' é de antes do guia do Miro (23/10/2026): continua valendo nas
@@ -44,18 +46,61 @@ export interface PerguntaRascunho {
   obrigatoria: boolean
 }
 
-export interface Pesquisa {
+// Vazio = todos. F36–F39: empresa inteira, por área, por cargo, por cliente.
+export interface FiltroPublico {
+  setores?: string[]
+  cargos?: string[]
+  clientes?: string[]
+}
+
+// Como a pesquisa chega às pessoas (passo "Envio" do assistente).
+export interface ConfigEnvio {
+  publico: PublicoPesquisa
+  filtro: FiltroPublico
+  pede_identificacao: boolean
+  repetir_meses: number | null
+  convite_assunto: string | null
+  convite_mensagem: string | null
+}
+
+export interface Pesquisa extends ConfigEnvio {
   id: string
   client_id: string
   titulo: string
   descricao: string | null
-  publico: PublicoPesquisa
   modelo: ModeloPesquisa
   status: StatusPesquisa
   token: string
+  origem_id: string | null
   created_at: string
   publicada_em: string | null
   encerrada_em: string | null
+}
+
+export interface ParticipanteRascunho {
+  nome: string
+  email: string
+  setor: string | null
+  cargo: string | null
+  tempo_empresa: string | null
+  estado: string | null
+  cliente: string | null
+}
+
+export interface Participante extends ParticipanteRascunho {
+  id: string
+  token: string
+  convidado_em: string | null
+  respondeu_em: string | null
+}
+
+export function noFiltro(f: FiltroPublico, pessoa: { setor?: string | null; cargo?: string | null; cliente?: string | null }): boolean {
+  const ok = (lista: string[] | undefined, v: string | null | undefined) => !lista?.length || lista.includes(v ?? '')
+  return ok(f.setores, pessoa.setor) && ok(f.cargos, pessoa.cargo) && ok(f.clientes, pessoa.cliente)
+}
+
+export function filtroVazio(f: FiltroPublico): boolean {
+  return !f.setores?.length && !f.cargos?.length && !f.clientes?.length
 }
 
 export interface PesquisaComContagem extends Pesquisa {
@@ -69,16 +114,31 @@ export interface RespostaPesquisa {
   respondente_nome: string | null
   respondente_empresa: string | null
   itens: Respostas
+  segmento: Record<string, string>
 }
 
 // Múltipla com várias opções responde uma lista de textos.
 export type ValorResposta = number | string | string[]
 export type Respostas = Record<string, ValorResposta>
 
-const CAMPOS_PESQUISA = 'id, client_id, titulo, descricao, publico, modelo, status, token, created_at, publicada_em, encerrada_em'
+const CAMPOS_PESQUISA =
+  'id, client_id, titulo, descricao, publico, modelo, status, token, filtro, pede_identificacao, repetir_meses, ' +
+  'origem_id, convite_assunto, convite_mensagem, created_at, publicada_em, encerrada_em'
 
 export function linkPublicoPesquisa(token: string): string {
   return `${window.location.origin}/responder/${token}`
+}
+
+export function linkConvite(token: string): string {
+  return `${window.location.origin}/responder/convite/${token}`
+}
+
+// F40: data da próxima aplicação (a partir da 1ª publicação).
+export function proximaAplicacao(p: Pesquisa): Date | null {
+  if (!p.repetir_meses || !p.publicada_em) return null
+  const d = new Date(p.publicada_em)
+  d.setMonth(d.getMonth() + p.repetir_meses)
+  return d
 }
 
 // Admin: todas as pesquisas da empresa. Os demais: só as internas publicadas
@@ -113,21 +173,31 @@ export async function getPerguntas(pesquisaId: string): Promise<{ data: Pergunta
 }
 
 // Cria ou atualiza a pesquisa (rascunho) e regrava as perguntas inteiras.
+// Regrava também a lista de participantes (fica vazia fora de 'lista').
 export async function salvarPesquisa(params: {
   id: string | null
   clientId: string
   titulo: string
   descricao: string
-  publico: PublicoPesquisa
   modelo: ModeloPesquisa
+  envio: ConfigEnvio
+  origemId?: string | null
   perguntas: PerguntaRascunho[]
+  participantes: ParticipanteRascunho[]
 }): Promise<{ id: string | null; error: string | null }> {
   const supabase = createClient()
+  const { envio } = params
   const campos = {
     titulo: params.titulo.trim(),
     descricao: params.descricao.trim() || null,
-    publico: params.publico,
     modelo: params.modelo,
+    publico: envio.publico,
+    filtro: envio.filtro,
+    pede_identificacao: envio.pede_identificacao,
+    repetir_meses: envio.repetir_meses,
+    convite_assunto: envio.convite_assunto?.trim() || null,
+    convite_mensagem: envio.convite_mensagem?.trim() || null,
+    ...(params.origemId !== undefined ? { origem_id: params.origemId } : {}),
   }
 
   let id = params.id
@@ -162,21 +232,83 @@ export async function salvarPesquisa(params: {
     )
     if (error) return { id, error: error.message }
   }
+
+  const { error: erroApagarPart } = await supabase.from('pesquisa_participantes').delete().eq('pesquisa_id', id)
+  if (erroApagarPart) return { id, error: erroApagarPart.message }
+  if (envio.publico === 'lista' && params.participantes.length) {
+    // Em blocos, para listas grandes não estourarem o tamanho da requisição.
+    for (let i = 0; i < params.participantes.length; i += 500) {
+      const { error } = await supabase.from('pesquisa_participantes').insert(
+        params.participantes.slice(i, i + 500).map((pt) => ({ pesquisa_id: id, ...pt }))
+      )
+      if (error) return { id, error: error.message }
+    }
+  }
   return { id, error: null }
 }
 
-// F27: cópia em rascunho (mesmas perguntas, sem respostas) para reaplicar.
-export async function duplicarPesquisa(p: Pesquisa): Promise<{ error: string | null }> {
-  const { data: perguntas, error } = await getPerguntas(p.id)
-  if (error) return { error }
+export async function getParticipantes(pesquisaId: string): Promise<{ data: Participante[]; error: string | null }> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('pesquisa_participantes')
+    .select('id, nome, email, setor, cargo, tempo_empresa, estado, cliente, token, convidado_em, respondeu_em')
+    .eq('pesquisa_id', pesquisaId)
+    .order('nome')
+  if (error) return { data: [], error: error.message }
+  return { data: (data ?? []) as Participante[], error: null }
+}
+
+export async function marcarConvidados(ids: string[]): Promise<{ error: string | null }> {
+  if (!ids.length) return { error: null }
+  const supabase = createClient()
+  const { error } = await supabase.from('pesquisa_participantes').update({ convidado_em: new Date().toISOString() }).in('id', ids)
+  return { error: error?.message ?? null }
+}
+
+// Áreas e cargos do cadastro de funcionários (passo "Envio" das internas e
+// a lista de quem falta responder).
+export interface FuncionarioPublico {
+  user_id: string | null
+  nome: string
+  email: string | null
+  setor: string | null
+  cargo: string | null
+}
+
+export async function getFuncionariosPublico(clientId: string): Promise<FuncionarioPublico[]> {
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('funcionarios')
+    .select('user_id, full_name, email, cargo, status, setor:setores!setor_id(name)')
+    .eq('client_id', clientId)
+  type Linha = { user_id: string | null; full_name: string; email: string | null; cargo: string | null; status: string | null; setor: { name: string } | null }
+  return ((data ?? []) as unknown as Linha[])
+    .filter((f) => f.status !== 'Desligado')
+    .map((f) => ({ user_id: f.user_id, nome: f.full_name, email: f.email?.trim() || null, setor: f.setor?.name ?? null, cargo: f.cargo?.trim() || null }))
+    .sort((a, b) => a.nome.localeCompare(b.nome))
+}
+
+// F27: cópia em rascunho (mesmas perguntas e público, sem respostas).
+// `reaplicacao` (F40) mantém o título e liga a cópia à anterior (origem_id).
+export async function duplicarPesquisa(p: Pesquisa, reaplicacao = false): Promise<{ error: string | null }> {
+  const [{ data: perguntas, error }, part] = await Promise.all([
+    getPerguntas(p.id),
+    p.publico === 'lista' ? getParticipantes(p.id) : Promise.resolve({ data: [] as Participante[], error: null }),
+  ])
+  if (error || part.error) return { error: error ?? part.error }
   const { error: erroSalvar } = await salvarPesquisa({
     id: null,
     clientId: p.client_id,
-    titulo: `${p.titulo} (cópia)`,
+    titulo: reaplicacao ? p.titulo : `${p.titulo} (cópia)`,
     descricao: p.descricao ?? '',
-    publico: p.publico,
     modelo: p.modelo,
+    envio: {
+      publico: p.publico, filtro: p.filtro ?? {}, pede_identificacao: p.pede_identificacao, repetir_meses: p.repetir_meses,
+      convite_assunto: p.convite_assunto, convite_mensagem: p.convite_mensagem,
+    },
+    origemId: reaplicacao ? p.id : null,
     perguntas: perguntas.map(({ tipo, enunciado, opcoes, obrigatoria }) => ({ tipo, enunciado, opcoes, obrigatoria })),
+    participantes: part.data.map(({ nome, email, setor, cargo, tempo_empresa, estado, cliente }) => ({ nome, email, setor, cargo, tempo_empresa, estado, cliente })),
   })
   return { error: erroSalvar }
 }
@@ -230,7 +362,7 @@ export async function getRespostas(pesquisaId: string): Promise<{ data: Resposta
   const supabase = createClient()
   const { data, error } = await supabase
     .from('pesquisa_respostas')
-    .select('id, respondida_em, respondente_email, respondente_nome, respondente_empresa, itens')
+    .select('id, respondida_em, respondente_email, respondente_nome, respondente_empresa, itens, segmento')
     .eq('pesquisa_id', pesquisaId)
     .order('respondida_em', { ascending: false })
   if (error) return { data: [], error: error.message }
@@ -265,6 +397,7 @@ export interface PesquisaPublica {
   descricao: string | null
   status: StatusPesquisa
   empresa: string
+  pede_identificacao: boolean
   perguntas: Pergunta[]
 }
 
@@ -297,6 +430,52 @@ export async function responderPesquisaPublica(params: {
     p_respostas: params.respostas,
   })
   return { error: error?.message ?? null }
+}
+
+// ── Convite da lista (link individual, sem login) ───────────────────────────
+
+export interface ConvitePesquisa {
+  titulo: string
+  descricao: string | null
+  status: StatusPesquisa
+  empresa: string
+  nome: string
+  ja_respondeu: boolean
+  no_publico: boolean
+  perguntas: Pergunta[]
+}
+
+export async function getConvite(token: string): Promise<{ data: ConvitePesquisa | null; error: string | null }> {
+  const supabase = createClient()
+  const { data, error } = await supabase.rpc('pesquisa_convite_obter', { p_token: token })
+  if (error) return { data: null, error: error.message }
+  return { data: (data as ConvitePesquisa | null) ?? null, error: null }
+}
+
+export async function responderConvite(token: string, respostas: Respostas): Promise<{ error: string | null }> {
+  const supabase = createClient()
+  const { error } = await supabase.rpc('pesquisa_convite_responder', { p_token: token, p_respostas: respostas })
+  return { error: error?.message ?? null }
+}
+
+// F31: {nome}, {titulo} e {link} no convite.
+export const CONVITE_ASSUNTO_PADRAO = 'Sua opinião: {titulo}'
+export const CONVITE_MENSAGEM_PADRAO =
+  'Olá, {nome}!\n\nQueremos ouvir você na pesquisa "{titulo}". Leva poucos minutos e não precisa de login.\n\n' +
+  'Para responder, acesse: {link}\n\nObrigado!'
+
+export function montarConvite(
+  p: Pick<Pesquisa, 'titulo' | 'convite_assunto' | 'convite_mensagem'>,
+  pessoa: { nome: string; token: string }
+): { assunto: string; mensagem: string } {
+  const trocar = (t: string) => t
+    .split('{nome}').join(pessoa.nome.trim().split(' ')[0])
+    .split('{titulo}').join(p.titulo)
+    .split('{link}').join(linkConvite(pessoa.token))
+  return {
+    assunto: trocar(p.convite_assunto || CONVITE_ASSUNTO_PADRAO),
+    mensagem: trocar(p.convite_mensagem || CONVITE_MENSAGEM_PADRAO),
+  }
 }
 
 // Perguntas obrigatórias sem resposta (mesma regra que o banco confere).

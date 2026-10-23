@@ -146,8 +146,13 @@
   1) M2, feita em 23/10 (assistente em 4 passos, modelos e banco em `src/lib/pesquisaModelos.ts`,
   IA em `/api/pesquisa-sugerir-perguntas`, tipos `escala_0_10` e `multipla_varias`, duplicar);
   2) M4+M5 sem filtros, feita em 23/10 (status `pausada`, participação e lembrete por e-mail do
-  próprio admin, gráficos em `GraficoPergunta.tsx`, atualiza a cada 20 s); 3) M3 (lista, convite, QR); 4) filtros, comparativos e IA nos resultados;
-  5) perfis (M1). A nota de 1 a 5 ficou só para as pesquisas antigas.
+  próprio admin, gráficos em `GraficoPergunta.tsx`, atualiza a cada 20 s); 3) M3, feita em 23/10
+  (público `lista` com link individual sem login, `/responder/convite/<token>`; `pesquisas.filtro` por
+  área/cargo/cliente; link aberto com identificação opcional e QR; recorrência com "Reaplicar";
+  a resposta guarda `segmento` sem nome); 4) filtros, comparativos e IA nos resultados;
+  5) perfis (M1). A nota de 1 a 5 ficou só para as pesquisas antigas. **Recortes por segmento só
+  com 5 respostas ou mais** (decisão do Igor). Convite e lembrete saem do e-mail do próprio admin
+  (sem serviço de envio). Planilhas pelo SheetJS do CDN oficial (0.20.3), não o `xlsx` do npm.
 - **Foto de perfil e "Sobre mim"** ficam em `funcionarios_perfil_publico` (a escrita em
   `funcionarios` é só de administrador; o próprio nome usa a RPC `atualizar_meu_nome`).
 - **Cargos** (`cargos_perfil`, só CTZ): o cadastro de funcionário novo escolhe o cargo dessa lista.

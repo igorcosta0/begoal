@@ -2,21 +2,24 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import {
-  MessageSquareHeart, Plus, Link2, Check, Pencil, Send, Lock, RotateCcw, BarChart3, Trash2, Users, Globe, X, CheckCircle2, Copy, LayoutTemplate, Pause, Play,
+  MessageSquareHeart, Plus, Link2, Check, Pencil, Send, Lock, RotateCcw, BarChart3, Trash2, Users, Globe, X, CheckCircle2, Copy, LayoutTemplate, Pause, Play, QrCode, ListChecks, Mail, Repeat,
 } from 'lucide-react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
 import { cn, formatDate, isEmpresaCTZ } from '@/lib/utils'
 import {
-  duplicarPesquisa, excluirPesquisa, getParticipacoes, getPerguntas, getPesquisas, linkPublicoPesquisa, mudarStatusPesquisa,
+  duplicarPesquisa, excluirPesquisa, filtroVazio, getFuncionariosPublico, getParticipacoes, getParticipantes, getPerguntas, getPesquisas,
+  linkPublicoPesquisa, mudarStatusPesquisa, noFiltro, proximaAplicacao,
   perguntasFaltando, responderPesquisaInterna,
-  type Pergunta, type Pesquisa, type PesquisaComContagem, type Respostas, type StatusPesquisa,
+  type Participante, type Pergunta, type Pesquisa, type PesquisaComContagem, type Respostas, type StatusPesquisa,
 } from '@/lib/queries/pesquisas'
 import { NOME_MODELO } from '@/lib/pesquisaModelos'
 import ModalEditarPesquisa from '@/components/pesquisa/ModalEditarPesquisa'
 import ResultadosPesquisa from '@/components/pesquisa/ResultadosPesquisa'
 import FormularioPesquisa from '@/components/pesquisa/FormularioPesquisa'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
+import ModalQrCode from '@/components/pesquisa/ModalQrCode'
+import ListaConvites from '@/components/pesquisa/ListaConvites'
 
 // Módulo de Pesquisa (pedido 05/10/2026, só CTZ). Administrador monta,
 // publica e acompanha; qualquer funcionário responde as internas abertas.
@@ -60,6 +63,10 @@ export default function PesquisaPage() {
   const [souAdmin, setSouAdmin] = useState(false)
   const [pesquisas, setPesquisas] = useState<PesquisaComContagem[]>([])
   const [jaRespondi, setJaRespondi] = useState<Set<string>>(new Set())
+  // Área e cargo de quem está logado: decidem quais internas são para ele (F37/F38).
+  const [meuCadastro, setMeuCadastro] = useState<{ setor: string | null; cargo: string | null }>({ setor: null, cargo: null })
+  const [qrCode, setQrCode] = useState<Pesquisa | null>(null)
+  const [convites, setConvites] = useState<{ pesquisa: Pesquisa; participantes: Participante[] } | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [linkCopiado, setLinkCopiado] = useState<string | null>(null)
@@ -81,11 +88,14 @@ export default function PesquisaPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setLoading(false); return }
 
-    const [{ data: role }, lista] = await Promise.all([
+    const [{ data: role }, lista, funcionarios] = await Promise.all([
       supabase.from('user_company_roles').select('permission_level').eq('user_id', user.id).eq('client_id', empresa.id).maybeSingle(),
       getPesquisas(empresa.id),
+      getFuncionariosPublico(empresa.id),
     ])
     setSouAdmin(role?.permission_level === 'administrador')
+    const eu = funcionarios.find((f) => f.user_id === user.id)
+    setMeuCadastro({ setor: eu?.setor ?? null, cargo: eu?.cargo ?? null })
     setPesquisas(lista.data)
     setErro(lista.error)
 
@@ -117,19 +127,29 @@ export default function PesquisaPage() {
     if (error) { setAviso(error); return }
     if (status === 'aberta' && p.status === 'rascunho') {
       setAviso(p.publico === 'externa'
-        ? 'Pesquisa publicada. Copie o link no card e envie para os clientes.'
-        : 'Pesquisa publicada. Os funcionários já podem responder em Pessoas › Pesquisa.')
+        ? 'Pesquisa publicada. Copie o link ou baixe o QR Code no card.'
+        : p.publico === 'lista'
+          ? 'Pesquisa publicada. Clique em "Convidar" no card para mandar o link de cada pessoa.'
+          : 'Pesquisa publicada. Os funcionários já podem responder em Pessoas › Pesquisa.')
     }
     if (status === 'pausada') setAviso('Pesquisa pausada. Ninguém consegue responder até você clicar em "Retomar".')
     carregar()
   }
 
-  async function duplicar(p: Pesquisa) {
+  async function duplicar(p: Pesquisa, reaplicacao = false) {
     setAviso(null)
-    const { error } = await duplicarPesquisa(p)
+    const { error } = await duplicarPesquisa(p, reaplicacao)
     if (error) { setAviso(error); return }
-    setAviso(`Cópia de "${p.titulo}" criada como rascunho. Ajuste o que precisar e publique.`)
+    setAviso(reaplicacao
+      ? `Nova aplicação de "${p.titulo}" criada como rascunho, com as mesmas perguntas e o mesmo público. Confira e publique.`
+      : `Cópia de "${p.titulo}" criada como rascunho. Ajuste o que precisar e publique.`)
     carregar()
+  }
+
+  async function abrirConvites(p: Pesquisa) {
+    const { data, error } = await getParticipantes(p.id)
+    if (error) { setAviso(error); return }
+    setConvites({ pesquisa: p, participantes: data })
   }
 
   async function confirmarExclusao() {
@@ -181,7 +201,11 @@ export default function PesquisaPage() {
     )
   }
 
-  const paraResponder = pesquisas.filter((p) => p.publico === 'interna' && p.status === 'aberta' && !jaRespondi.has(p.id))
+  const paraResponder = pesquisas.filter((p) =>
+    p.publico === 'interna' && p.status === 'aberta' && !jaRespondi.has(p.id) && noFiltro(p.filtro ?? {}, meuCadastro))
+  // F40: reaplicação vencida e ainda sem uma nova aplicação criada a partir desta.
+  const reaplicada = new Set(pesquisas.map((p) => p.origem_id).filter(Boolean))
+  const hoje = new Date()
   const gerenciaveis = souAdmin ? pesquisas : []
 
   return (
@@ -254,6 +278,10 @@ export default function PesquisaPage() {
               {gerenciaveis.map((p) => {
                 const st = STATUS_STYLE[p.status]
                 const externa = p.publico === 'externa'
+                const proxima = p.status !== 'rascunho' ? proximaAplicacao(p) : null
+                const venceu = !!proxima && proxima <= hoje && !reaplicada.has(p.id)
+                const filtro = p.filtro ?? {}
+                const recorte = filtroVazio(filtro) ? null : [...(filtro.setores ?? []), ...(filtro.cargos ?? []), ...(filtro.clientes ?? [])].join(', ')
                 return (
                   <div key={p.id} className="rounded-2xl border border-border bg-card p-5 space-y-3">
                     <div className="flex items-start justify-between gap-3">
@@ -269,8 +297,9 @@ export default function PesquisaPage() {
                         <LayoutTemplate className="w-3.5 h-3.5" /> {NOME_MODELO[p.modelo] ?? 'Personalizada'}
                       </span>
                       <span className="flex items-center gap-1">
-                        {externa ? <Globe className="w-3.5 h-3.5" /> : <Users className="w-3.5 h-3.5" />}
-                        {externa ? 'Clientes (link)' : 'Funcionários (anônima)'}
+                        {externa ? <Globe className="w-3.5 h-3.5" /> : p.publico === 'lista' ? <ListChecks className="w-3.5 h-3.5" /> : <Users className="w-3.5 h-3.5" />}
+                        {externa ? (p.pede_identificacao ? 'Link aberto' : 'Link aberto, anônimo') : p.publico === 'lista' ? 'Lista de participantes' : 'Funcionários (anônima)'}
+                        {recorte && <span className="text-foreground/80" title={recorte}>· só {recorte.length > 40 ? `${recorte.slice(0, 39)}…` : recorte}</span>}
                       </span>
                       <span className="font-mono">{p.total_respostas} {p.total_respostas === 1 ? 'resposta' : 'respostas'}</span>
                       <span>
@@ -279,6 +308,23 @@ export default function PesquisaPage() {
                           : p.encerrada_em ? `Encerrada em ${formatDate(p.encerrada_em)}` : null}
                       </span>
                     </div>
+
+                    {p.repetir_meses && (
+                      venceu ? (
+                        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2">
+                          <span className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+                            <Repeat className="w-3.5 h-3.5 text-primary" /> Hora de reaplicar (a cada {p.repetir_meses} {p.repetir_meses === 1 ? 'mês' : 'meses'})
+                          </span>
+                          <button onClick={() => duplicar(p, true)} className="text-xs font-semibold text-primary hover:underline">Reaplicar agora</button>
+                        </div>
+                      ) : (
+                        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Repeat className="w-3.5 h-3.5" /> Repete a cada {p.repetir_meses} {p.repetir_meses === 1 ? 'mês' : 'meses'}
+                          {proxima && !reaplicada.has(p.id) && ` · próxima em ${formatDate(proxima.toISOString())}`}
+                          {reaplicada.has(p.id) && ' · já reaplicada'}
+                        </p>
+                      )
+                    )}
 
                     {externa && (p.status === 'aberta' || p.status === 'pausada') && (
                       <div className="flex items-center gap-2 rounded-xl bg-muted/40 border border-border/60 px-3 py-2">
@@ -299,6 +345,12 @@ export default function PesquisaPage() {
                       )}
                       {p.status !== 'rascunho' && (
                         <BotaoAcao onClick={() => setResultados(p)} icon={BarChart3} destaque>Resultados</BotaoAcao>
+                      )}
+                      {p.publico === 'lista' && (p.status === 'aberta' || p.status === 'pausada') && (
+                        <BotaoAcao onClick={() => abrirConvites(p)} icon={Mail}>Convidar</BotaoAcao>
+                      )}
+                      {externa && (p.status === 'aberta' || p.status === 'pausada') && (
+                        <BotaoAcao onClick={() => setQrCode(p)} icon={QrCode}>QR Code</BotaoAcao>
                       )}
                       {p.status === 'aberta' && <BotaoAcao onClick={() => mudarStatus(p, 'pausada')} icon={Pause}>Pausar</BotaoAcao>}
                       {p.status === 'pausada' && <BotaoAcao onClick={() => mudarStatus(p, 'aberta')} icon={Play}>Retomar</BotaoAcao>}
@@ -327,6 +379,34 @@ export default function PesquisaPage() {
       )}
 
       <ResultadosPesquisa pesquisa={resultados} onClose={() => setResultados(null)} />
+
+      {qrCode && <ModalQrCode titulo={qrCode.titulo} link={linkPublicoPesquisa(qrCode.token)} onClose={() => setQrCode(null)} />}
+
+      {convites && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setConvites(null)} />
+          <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-3 mb-1">
+              <h2 className="text-base font-semibold text-foreground">Convidar · {convites.pesquisa.titulo}</h2>
+              <button onClick={() => setConvites(null)} className="p-1 rounded-lg text-muted-foreground hover:bg-secondary" aria-label="Fechar">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              Cada pessoa tem um link próprio e responde sem login. &quot;Convidar&quot; abre o seu e-mail com a mensagem pronta;
+              para muita gente, baixe a planilha e use a mala direta do Gmail ou do Outlook.
+            </p>
+            <ListaConvites
+              pesquisa={convites.pesquisa}
+              participantes={convites.participantes}
+              onMudou={async () => {
+                const { data } = await getParticipantes(convites.pesquisa.id)
+                setConvites((c) => (c ? { ...c, participantes: data } : c))
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       <ModalConfirmarExclusao
         open={!!excluir.pesquisa}

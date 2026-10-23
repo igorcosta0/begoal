@@ -1704,4 +1704,24 @@
     em Cco, ou copia os e-mails e a mensagem. Não há envio pelo sistema.
   - Conferido numa prévia temporária (apagada) com dados fictícios, interceptando o `fetch` do
     Supabase: os 3 tipos de gráfico, a participação e o celular (500px). `type-check` e lint limpos.
+- **Pesquisa, etapa 3 (M3 Envio e Distribuição)**. Decisões do Igor: a resposta guarda setor/cargo
+  (recorte só com 5+ respostas, na etapa 4), convite pelo e-mail do próprio admin, instalar `qrcode`
+  e SheetJS (`xlsx` 0.20.3 do CDN oficial; o do npm parou na 0.18.5, que tem falhas conhecidas).
+  - Migration `PENDENTE_20261023020000_pesquisa_etapa3_envio.sql` (rodada pelo Chrome via `#x=` e
+    conferida): público `lista`, tabela `pesquisa_participantes` (RLS só admin; insert/update por
+    coluna, token e `respondeu_em` só pelo banco), `pesquisas.filtro`/`pede_identificacao`/
+    `repetir_meses`/`origem_id`/`convite_*`, `pesquisa_respostas.segmento`, funções
+    `pesquisa_no_filtro`, `pesquisa_faixa_tempo`, `pesquisa_convite_obter/responder`; a interna confere
+    o filtro e grava setor/cargo/faixa de tempo; o link aberto aceita sem identificação.
+  - Front: passo "Envio" no assistente (`EtapaEnvio.tsx`): funcionários (empresa inteira, por área,
+    por cargo), lista importada (`pesquisaImportacao.ts`: colunas pelo nome, faixas de tempo,
+    validação linha a linha, CSV UTF-8 ou 1252, modelo para baixar; filtro por área/cargo/cliente;
+    convite com `{nome}`/`{titulo}`/`{link}` e prévia) ou link aberto (identificação opcional);
+    repetição. Card: QR Code (`ModalQrCode`), "Convidar" (`ListaConvites`: e-mail por pessoa ou
+    planilha de mala direta, marca "convidado em"), "Repete a cada N meses" e "Reaplicar agora".
+    Página pública do convite em `src/app/responder/convite/[token]`. "Para você responder" respeita
+    o filtro. Participação da lista mostra a `ListaConvites` em "Faltam responder".
+  - Conferido numa prévia temporária (apagada): passo Envio nos 3 modos, importação com erros e
+    acentos, lista de convites, QR e página do convite, também em 500px. O card da página principal
+    não foi visto renderizado (precisa de login). `type-check` e lint limpos.
 

@@ -4,23 +4,32 @@ import { useEffect, useState } from 'react'
 import { ArrowDown, ArrowUp, Check, Library, Plus, Sparkles, Trash2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
-  getPerguntas, ROTULO_TIPO, salvarPesquisa, sugerirPerguntasIa, tipoComOpcoes, TIPOS_PERGUNTA,
-  type ModeloPesquisa, type Pergunta, type Pesquisa, type PerguntaRascunho, type PublicoPesquisa, type Respostas, type TipoPergunta,
+  getFuncionariosPublico, getParticipantes, getPerguntas, ROTULO_TIPO, salvarPesquisa, sugerirPerguntasIa, tipoComOpcoes, TIPOS_PERGUNTA,
+  type ConfigEnvio, type FuncionarioPublico, type ModeloPesquisa, type ParticipanteRascunho, type Pergunta, type Pesquisa,
+  type PerguntaRascunho, type Respostas, type TipoPergunta,
 } from '@/lib/queries/pesquisas'
 import { BANCO_PERGUNTAS, comEmpresa, MODELO_EM_BRANCO, MODELOS, NOME_MODELO } from '@/lib/pesquisaModelos'
 import FormularioPesquisa from '@/components/pesquisa/FormularioPesquisa'
+import EtapaEnvio, { contarPublico, OPCOES_REPETIR } from '@/components/pesquisa/EtapaEnvio'
 
 // Criação guiada, em etapas (guia do Miro, 23/10/2026: F13 e F15), pensada
 // para quem nunca montou uma pesquisa: 1) escolher um modelo (F08–F12) ou
 // começar do zero, 2) título e público, 3) perguntas (banco F16, próprias F17,
-// IA F18), 4) revisar como a pessoa vai ver.
+// IA F18), 4) envio: quem responde, a quem se aplica, convite e repetição
+// (etapa 3, M3), 5) revisar como a pessoa vai ver.
 //
 // Só edita pesquisa em rascunho: depois de publicada, as perguntas ficam
 // travadas (o banco também barra) pra não misturar respostas de versões diferentes.
 
 const inputCls = 'mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring'
 
-const ETAPAS = ['Modelo', 'Informações', 'Perguntas', 'Revisão'] as const
+const ETAPAS = ['Modelo', 'Informações', 'Perguntas', 'Envio', 'Revisão'] as const
+const ETAPA_ENVIO = 3
+const ETAPA_REVISAO = 4
+
+const ENVIO_PADRAO: ConfigEnvio = {
+  publico: 'interna', filtro: {}, pede_identificacao: true, repetir_meses: null, convite_assunto: null, convite_mensagem: null,
+}
 
 const PERGUNTA_NOVA: PerguntaRascunho = { tipo: 'escala_0_10', enunciado: '', opcoes: [], obrigatoria: true }
 
@@ -41,7 +50,9 @@ export default function ModalEditarPesquisa({ open, clientId, empresaNome, pesqu
   const [modeloAplicado, setModeloAplicado] = useState<ModeloPesquisa | null>(null)
   const [titulo, setTitulo] = useState('')
   const [descricao, setDescricao] = useState('')
-  const [publico, setPublico] = useState<PublicoPesquisa>('externa')
+  const [envio, setEnvio] = useState<ConfigEnvio>(ENVIO_PADRAO)
+  const [participantes, setParticipantes] = useState<ParticipanteRascunho[]>([])
+  const [funcionarios, setFuncionarios] = useState<FuncionarioPublico[]>([])
   const [perguntas, setPerguntas] = useState<PerguntaRascunho[]>([])
   const [carregando, setCarregando] = useState(false)
   const [salvando, setSalvando] = useState(false)
@@ -68,13 +79,15 @@ export default function ModalEditarPesquisa({ open, clientId, empresaNome, pesqu
     setErroIa(null)
     setObjetivo('')
     setRespostasTeste({})
+    getFuncionariosPublico(clientId).then(setFuncionarios)
     if (!pesquisa) {
       setEtapa(0)
       setModelo(null)
       setModeloAplicado(null)
       setTitulo('')
       setDescricao('')
-      setPublico('externa')
+      setEnvio(ENVIO_PADRAO)
+      setParticipantes([])
       setPerguntas([])
       return
     }
@@ -83,14 +96,22 @@ export default function ModalEditarPesquisa({ open, clientId, empresaNome, pesqu
     setModeloAplicado(pesquisa.modelo)
     setTitulo(pesquisa.titulo)
     setDescricao(pesquisa.descricao ?? '')
-    setPublico(pesquisa.publico)
-    setCarregando(true)
-    getPerguntas(pesquisa.id).then(({ data, error }) => {
-      setCarregando(false)
-      if (error) setErro(error)
-      setPerguntas(data.map(({ tipo, enunciado, opcoes, obrigatoria }) => ({ tipo, enunciado, opcoes, obrigatoria })))
+    setEnvio({
+      publico: pesquisa.publico, filtro: pesquisa.filtro ?? {}, pede_identificacao: pesquisa.pede_identificacao,
+      repetir_meses: pesquisa.repetir_meses, convite_assunto: pesquisa.convite_assunto, convite_mensagem: pesquisa.convite_mensagem,
     })
-  }, [open, pesquisa])
+    setParticipantes([])
+    setCarregando(true)
+    Promise.all([
+      getPerguntas(pesquisa.id),
+      pesquisa.publico === 'lista' ? getParticipantes(pesquisa.id) : Promise.resolve({ data: [], error: null }),
+    ]).then(([qs, part]) => {
+      setCarregando(false)
+      if (qs.error || part.error) setErro(qs.error ?? part.error)
+      setPerguntas(qs.data.map(({ tipo, enunciado, opcoes, obrigatoria }) => ({ tipo, enunciado, opcoes, obrigatoria })))
+      setParticipantes(part.data.map(({ nome, email, setor, cargo, tempo_empresa, estado, cliente }) => ({ nome, email, setor, cargo, tempo_empresa, estado, cliente })))
+    })
+  }, [open, pesquisa, clientId])
 
   if (!open) return null
 
@@ -110,7 +131,7 @@ export default function ModalEditarPesquisa({ open, clientId, empresaNome, pesqu
     }
     setTitulo(m.titulo)
     setDescricao(m.descricao.split('{empresa}').join(empresaNome))
-    setPublico(m.publico)
+    setEnvio((e) => ({ ...e, publico: m.publico, filtro: {}, repetir_meses: m.id === 'nps' ? 3 : null }))
     setPerguntas(m.perguntas.map(comNome))
   }
 
@@ -146,6 +167,10 @@ export default function ModalEditarPesquisa({ open, clientId, empresaNome, pesqu
     if (e === 0 && !modelo) return 'Escolha um modelo ou "Começar do zero".'
     if (e === 1 && !titulo.trim()) return 'Informe o título.'
     if (e === 2) return validarPerguntas()
+    if (e === ETAPA_ENVIO) {
+      if (envio.publico === 'lista' && !participantes.length) return 'Importe a planilha com os participantes.'
+      if (contarPublico(envio, funcionarios, participantes) === 0) return 'Com essa escolha, ninguém recebe a pesquisa.'
+    }
     return null
   }
 
@@ -162,7 +187,7 @@ export default function ModalEditarPesquisa({ open, clientId, empresaNome, pesqu
     setErroIa(null)
     setGerando(true)
     const { data, error } = await sugerirPerguntasIa({
-      objetivo, publico, empresa: empresaNome, existentes: perguntas.map((q) => q.enunciado),
+      objetivo, publico: envio.publico, empresa: empresaNome, existentes: perguntas.map((q) => q.enunciado),
     })
     setGerando(false)
     if (error) return setErroIa(error)
@@ -178,12 +203,13 @@ export default function ModalEditarPesquisa({ open, clientId, empresaNome, pesqu
   }
 
   async function salvar() {
-    const problema = validarEtapa(1) ?? validarPerguntas()
+    const problema = validarEtapa(1) ?? validarPerguntas() ?? validarEtapa(ETAPA_ENVIO)
     if (problema) return setErro(problema)
     setErro(null)
     setSalvando(true)
     const { error } = await salvarPesquisa({
-      id: pesquisa?.id ?? null, clientId, titulo, descricao, publico, modelo: modeloAplicado ?? 'personalizada', perguntas,
+      id: pesquisa?.id ?? null, clientId, titulo, descricao, modelo: modeloAplicado ?? 'personalizada',
+      envio, perguntas, participantes: envio.publico === 'lista' ? participantes : [],
     })
     setSalvando(false)
     if (error) return setErro(error)
@@ -191,6 +217,12 @@ export default function ModalEditarPesquisa({ open, clientId, empresaNome, pesqu
   }
 
   const primeiraEtapa = pesquisa ? 1 : 0
+  const qtdPublico = contarPublico(envio, funcionarios, participantes)
+  const quemResponde = envio.publico === 'interna'
+    ? `Funcionários · ${qtdPublico} ${qtdPublico === 1 ? 'pessoa' : 'pessoas'}`
+    : envio.publico === 'lista'
+      ? `Lista · ${qtdPublico} ${qtdPublico === 1 ? 'pessoa' : 'pessoas'}`
+      : envio.pede_identificacao ? 'Link aberto, com identificação' : 'Link aberto, anônimo'
   const previa: Pergunta[] = perguntas.map((q, i) => ({ ...q, id: `previa-${i}`, opcoes: q.opcoes.map((o) => o.trim()).filter(Boolean) }))
 
   return (
@@ -288,28 +320,6 @@ export default function ModalEditarPesquisa({ open, clientId, empresaNome, pesqu
               <div>
                 <label className="text-xs font-medium text-foreground">Mensagem de abertura</label>
                 <textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={3} placeholder="Explique em poucas palavras por que a pesquisa existe e quanto tempo leva." className={cn(inputCls, 'resize-y')} />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-foreground">Quem vai responder?</label>
-                <div className="mt-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {([
-                    ['interna', 'Funcionários', 'Respondem logados no Begoal. As respostas são anônimas.'],
-                    ['externa', 'Clientes', 'Recebem um link. Informam e-mail, nome e empresa antes de responder.'],
-                  ] as const).map(([v, label, desc]) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => setPublico(v)}
-                      className={cn(
-                        'flex flex-col text-left rounded-xl border p-3 transition-colors',
-                        publico === v ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:bg-secondary'
-                      )}
-                    >
-                      <p className="text-sm font-semibold text-foreground">{label}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
-                    </button>
-                  ))}
-                </div>
               </div>
             </div>
           )}
@@ -538,14 +548,31 @@ export default function ModalEditarPesquisa({ open, clientId, empresaNome, pesqu
             )
           )}
 
-          {/* 4. Revisão */}
-          {etapa === 3 && (
+          {/* 4. Envio */}
+          {etapa === ETAPA_ENVIO && (
+            carregando ? (
+              <p className="text-sm text-muted-foreground">Carregando...</p>
+            ) : (
+              <EtapaEnvio
+                envio={envio}
+                onEnvio={(m) => setEnvio((e) => ({ ...e, ...m }))}
+                participantes={participantes}
+                onParticipantes={setParticipantes}
+                funcionarios={funcionarios}
+                titulo={titulo}
+              />
+            )
+          )}
+
+          {/* 5. Revisão */}
+          {etapa === ETAPA_REVISAO && (
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-2">
                 {([
                   ['Modelo', NOME_MODELO[modeloAplicado ?? 'personalizada']],
-                  ['Quem responde', publico === 'interna' ? 'Funcionários (anônima)' : 'Clientes (link)'],
+                  ['Quem responde', quemResponde],
                   ['Perguntas', String(perguntas.length)],
+                  ['Repetição', OPCOES_REPETIR.find((o) => o.valor === envio.repetir_meses)?.label ?? 'Não repetir'],
                 ] as const).map(([rotulo, valor]) => (
                   <div key={rotulo} className="rounded-xl bg-muted/40 border border-border/60 px-3 py-2">
                     <p className="text-[11px] text-muted-foreground">{rotulo}</p>

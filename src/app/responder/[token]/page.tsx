@@ -37,7 +37,8 @@ export default function ResponderPesquisaPage({ params }: { params: { token: str
     getPesquisaPublica(token).then(({ data }) => {
       if (!data) return setEtapa('invalida')
       setPesquisa(data)
-      setEtapa(data.status === 'aberta' ? 'identificacao' : data.status === 'pausada' ? 'pausada' : 'encerrada')
+      // Link aberto sem identificação (etapa 3, F28): vai direto às perguntas.
+      setEtapa(data.status === 'aberta' ? (data.pede_identificacao ? 'identificacao' : 'formulario') : data.status === 'pausada' ? 'pausada' : 'encerrada')
     })
   }, [token])
 
@@ -106,7 +107,7 @@ export default function ResponderPesquisaPage({ params }: { params: { token: str
 
         {etapa === 'enviada' && (
           <Aviso icone={<CheckCircle2 className="w-6 h-6 text-emerald-600" />} titulo="Resposta enviada">
-            Obrigado, {nome.trim().split(' ')[0]}! Sua opinião ajuda a {pesquisa?.empresa} a melhorar.
+            Obrigado{nome.trim() ? `, ${nome.trim().split(' ')[0]}` : ''}! Sua opinião ajuda a {pesquisa?.empresa} a melhorar.
           </Aviso>
         )}
 
@@ -140,10 +141,10 @@ export default function ResponderPesquisaPage({ params }: { params: { token: str
               </form>
             ) : (
               <div className="mt-6">
-                <p className="text-xs text-muted-foreground mb-4">
+                {pesquisa.pede_identificacao && <p className="text-xs text-muted-foreground mb-4">
                   Respondendo como <span className="font-medium text-foreground">{nome.trim()}</span> · {empresa.trim()} ·{' '}
                   <button onClick={() => { setEtapa('identificacao'); setErro(null) }} className="text-primary hover:underline">alterar</button>
-                </p>
+                </p>}
                 <FormularioPesquisa perguntas={pesquisa.perguntas} respostas={respostas} onChange={setRespostas} faltando={faltando} />
                 {erro && <div className="mt-4 px-3 py-2 rounded-xl text-sm bg-red-50 text-red-700 border border-red-200">{erro}</div>}
                 <button onClick={enviar} disabled={enviando} className="mt-5 w-full py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-60">

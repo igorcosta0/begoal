@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Check, Copy, Download, Mail, RefreshCw, X } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { cn, formatDate } from '@/lib/utils'
 import {
-  getParticipacoes, getPerguntas, getRespostas,
-  type Pergunta, type Pesquisa, type RespostaPesquisa, type ValorResposta,
+  getFuncionariosPublico, getParticipacoes, getParticipantes, getPerguntas, getRespostas, noFiltro,
+  type Participante, type Pergunta, type Pesquisa, type RespostaPesquisa, type ValorResposta,
 } from '@/lib/queries/pesquisas'
+import ListaConvites from '@/components/pesquisa/ListaConvites'
 import GraficoPergunta, { COR_NPS, CORES_CATEGORIAS, SeletorForma, type Forma, type ItemGrafico } from '@/components/pesquisa/GraficoPergunta'
 
 // Resultados e acompanhamento (guia do Miro, etapa 2):
@@ -103,7 +103,7 @@ function ResultadoPergunta({ q, respostas, externa }: { q: Pergunta; respostas: 
         {valores.map(({ r, v }) => (
           <li key={r.id} className="rounded-xl bg-muted/40 border border-border/60 px-3 py-2">
             <p className="text-sm text-foreground whitespace-pre-line">{String(v)}</p>
-            {externa && <p className="text-[11px] text-muted-foreground mt-1">{r.respondente_nome} · {r.respondente_empresa}</p>}
+            {externa && r.respondente_nome && <p className="text-[11px] text-muted-foreground mt-1">{r.respondente_nome} · {r.respondente_empresa}</p>}
           </li>
         ))}
       </ul>
@@ -141,6 +141,7 @@ export default function ResultadosPesquisa({ pesquisa, onClose }: Props) {
   const [respostas, setRespostas] = useState<RespostaPesquisa[]>([])
   const [pendentes, setPendentes] = useState<Pessoa[]>([])
   const [responderam, setResponderam] = useState<string[]>([])
+  const [participantes, setParticipantes] = useState<Participante[]>([])
   const [aba, setAba] = useState<'resumo' | 'respondentes'>('resumo')
   const [carregando, setCarregando] = useState(true)
   const [atualizando, setAtualizando] = useState(false)
@@ -157,19 +158,22 @@ export default function ResultadosPesquisa({ pesquisa, onClose }: Props) {
     setRespostas(rs.data)
     if (rs.error) setErro(rs.error)
 
-    // Interna: quem já respondeu (sem ligar à resposta) e quem falta.
+    // Quem já respondeu (sem ligar à resposta) e quem falta, só no público
+    // da pesquisa (F36–F39).
     if (p.publico === 'interna') {
-      const supabase = createClient()
-      const [part, { data: funcs }] = await Promise.all([
-        getParticipacoes([p.id]),
-        supabase.from('funcionarios').select('user_id, full_name, email, status').eq('client_id', p.client_id).not('user_id', 'is', null),
-      ])
-      const ativos = ((funcs ?? []) as { user_id: string; full_name: string; email: string | null; status: string | null }[])
-        .filter((f) => f.status !== 'Desligado')
-        .sort((a, b) => a.full_name.localeCompare(b.full_name))
+      const [part, funcs] = await Promise.all([getParticipacoes([p.id]), getFuncionariosPublico(p.client_id)])
+      const publico = funcs.filter((f) => f.user_id && noFiltro(p.filtro ?? {}, f))
       const ja = new Set(part[p.id] ?? [])
-      setPendentes(ativos.filter((f) => !ja.has(f.user_id)).map((f) => ({ nome: f.full_name, email: f.email?.trim() || null })))
-      setResponderam(ativos.filter((f) => ja.has(f.user_id)).map((f) => f.full_name))
+      setPendentes(publico.filter((f) => !ja.has(f.user_id!)).map((f) => ({ nome: f.nome, email: f.email })))
+      setResponderam(publico.filter((f) => ja.has(f.user_id!)).map((f) => f.nome))
+    }
+    if (p.publico === 'lista') {
+      const part = await getParticipantes(p.id)
+      if (part.error) setErro(part.error)
+      const publico = part.data.filter((pt) => noFiltro(p.filtro ?? {}, pt))
+      setParticipantes(part.data)
+      setPendentes(publico.filter((pt) => !pt.respondeu_em).map((pt) => ({ nome: pt.nome, email: pt.email })))
+      setResponderam(publico.filter((pt) => pt.respondeu_em).map((pt) => pt.nome))
     }
     setAtualizadoAs(horaAgora())
   }, [])
@@ -199,6 +203,9 @@ export default function ResultadosPesquisa({ pesquisa, onClose }: Props) {
   }, [pesquisa, carregarRespostas])
 
   const externa = pesquisa?.publico === 'externa'
+  const lista = pesquisa?.publico === 'lista'
+  // Link aberto anônimo não tem "quem respondeu".
+  const abas = externa && !pesquisa?.pede_identificacao ? (['resumo'] as const) : (['resumo', 'respondentes'] as const)
   const totalPessoas = pendentes.length + responderam.length
 
   const csv = useMemo(() => {
@@ -255,7 +262,7 @@ export default function ResultadosPesquisa({ pesquisa, onClose }: Props) {
             <p className="text-xs text-muted-foreground mt-0.5">
               {externa
                 ? `${respostas.length} ${respostas.length === 1 ? 'resposta' : 'respostas'}`
-                : `${responderam.length} de ${totalPessoas} funcionários responderam · respostas anônimas`}
+                : `${responderam.length} de ${totalPessoas} ${lista ? 'participantes' : 'funcionários'} responderam · respostas anônimas`}
             </p>
             {atualizadoAs && (
               <p className="text-[11px] text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
@@ -282,7 +289,7 @@ export default function ResultadosPesquisa({ pesquisa, onClose }: Props) {
         </div>
 
         <div className="flex gap-1 mt-4 mb-4 bg-secondary rounded-full p-1 w-fit">
-          {(['resumo', 'respondentes'] as const).map((a) => (
+          {abas.map((a) => (
             <button
               key={a}
               onClick={() => setAba(a)}
@@ -353,7 +360,16 @@ export default function ResultadosPesquisa({ pesquisa, onClose }: Props) {
               </p>
             </div>
 
-            {pesquisa.status === 'aberta' && pendentes.length > 0 && (
+            {lista && (
+              <ListaConvites
+                pesquisa={pesquisa}
+                participantes={participantes}
+                abaInicial="faltam"
+                onMudou={() => carregarRespostas(pesquisa)}
+              />
+            )}
+
+            {!lista && pesquisa.status === 'aberta' && pendentes.length > 0 && (
               <div className="rounded-2xl border border-border bg-muted/30 p-4 space-y-3">
                 <div>
                   <p className="text-sm font-semibold text-foreground">Lembrar quem falta</p>
@@ -396,27 +412,29 @@ export default function ResultadosPesquisa({ pesquisa, onClose }: Props) {
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {([
-                ['Faltam responder', pendentes.map((p) => p.nome), 'Todos já responderam.'],
-                ['Já responderam', responderam, 'Ninguém respondeu ainda.'],
-              ] as const).map(([titulo, nomes, vazio]) => (
-                <div key={titulo}>
-                  <p className="text-xs font-semibold text-foreground mb-2">
-                    {titulo} <span className="text-muted-foreground font-normal">({nomes.length})</span>
-                  </p>
-                  {nomes.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">{vazio}</p>
-                  ) : (
-                    <div className="flex flex-wrap gap-1.5 max-h-64 overflow-y-auto">
-                      {nomes.map((n, i) => (
-                        <span key={`${n}-${i}`} className="px-2.5 py-1 rounded-full text-xs font-medium bg-secondary text-foreground">{n}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+            {!lista && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {([
+                  ['Faltam responder', pendentes.map((p) => p.nome), 'Todos já responderam.'],
+                  ['Já responderam', responderam, 'Ninguém respondeu ainda.'],
+                ] as const).map(([titulo, nomes, vazio]) => (
+                  <div key={titulo}>
+                    <p className="text-xs font-semibold text-foreground mb-2">
+                      {titulo} <span className="text-muted-foreground font-normal">({nomes.length})</span>
+                    </p>
+                    {nomes.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">{vazio}</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5 max-h-64 overflow-y-auto">
+                        {nomes.map((n, i) => (
+                          <span key={`${n}-${i}`} className="px-2.5 py-1 rounded-full text-xs font-medium bg-secondary text-foreground">{n}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
