@@ -165,6 +165,12 @@
 
 ## Pendências abertas
 
+- **Pesquisa (guia do Miro concluído em 23/10)**: testar em produção, com login, o que não deu para
+  ver na prévia: fluxo de convite da lista (importar → publicar → "Convidar" → responder pelo link
+  em janela anônima), "Pedir ajuda à IA" e "Analisar com IA", "Gerar PDF" do relatório (pode exigir
+  liberar pop-up) e o botão "Usuários" (dar Visualizador e conferir com o login da pessoa). Na
+  Paridade do Notion as 5 linhas "Pesquisa · Etapa N" estão em módulo "Geral" (não há opção
+  "Pesquisa"); o Igor pode pedir para criar a opção.
 - Do pente fino (`Adições futuras/Pente Fino - begoal - 2026-09-23.md`) e da verificação para venda
   (`Adições futuras/Verificacao para venda - begoal - 2026-09-25.md`): C2 (RLS de `clients` e
   superadmin), C3, C4 (conferir o plano da chave Gemini no AI Studio), C6 (e-mails/UUIDs fixos), os
