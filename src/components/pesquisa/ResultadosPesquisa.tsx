@@ -29,6 +29,7 @@ const INTERVALO_ATUALIZACAO_MS = 20000
 
 interface Props {
   pesquisa: Pesquisa | null
+  somenteLeitura?: boolean // Visualizador (etapa 5): vê tudo, sem convidar nem lembrar
   onClose: () => void
 }
 
@@ -155,7 +156,7 @@ function horaAgora() {
   return new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
-export default function ResultadosPesquisa({ pesquisa, onClose }: Props) {
+export default function ResultadosPesquisa({ pesquisa, somenteLeitura = false, onClose }: Props) {
   const [perguntas, setPerguntas] = useState<Pergunta[]>([])
   const [respostas, setRespostas] = useState<RespostaPesquisa[]>([])
   const [pendentes, setPendentes] = useState<Pessoa[]>([])
@@ -510,11 +511,12 @@ export default function ResultadosPesquisa({ pesquisa, onClose }: Props) {
                 pesquisa={pesquisa}
                 participantes={participantes}
                 abaInicial="faltam"
+                somenteLeitura={somenteLeitura}
                 onMudou={() => carregarRespostas(pesquisa, filtro)}
               />
             )}
 
-            {!lista && pesquisa.status === 'aberta' && pendentes.length > 0 && (
+            {!lista && !somenteLeitura && pesquisa.status === 'aberta' && pendentes.length > 0 && (
               <div className="rounded-2xl border border-border bg-muted/30 p-4 space-y-3">
                 <div>
                   <p className="text-sm font-semibold text-foreground">Lembrar quem falta</p>

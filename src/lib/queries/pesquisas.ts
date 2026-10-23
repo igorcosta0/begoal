@@ -431,6 +431,51 @@ export async function responderPesquisaPublica(params: {
   return { error: error?.message ?? null }
 }
 
+// ── Perfis do módulo (etapa 5, M1) ──────────────────────────────────────────
+// Valem só na Pesquisa. Administrador da empresa é Master automático.
+// Regras no banco: PENDENTE_20261023040000_pesquisa_etapa5_perfis.sql.
+
+export type PerfilPesquisa = 'master' | 'administrativo' | 'visualizador'
+
+export const ROTULO_PERFIL: Record<PerfilPesquisa, string> = {
+  master: 'Master', administrativo: 'Administrativo', visualizador: 'Visualizador',
+}
+
+export const AJUDA_PERFIL: Record<PerfilPesquisa, string> = {
+  master: 'Faz tudo, inclusive dar e tirar qualquer perfil.',
+  administrativo: 'Cria, edita, publica, convida e vê resultados. Não mexe em Master.',
+  visualizador: 'Só vê as pesquisas e os resultados.',
+}
+
+export const podeGerirPesquisa = (p: PerfilPesquisa | null) => p === 'master' || p === 'administrativo'
+
+export async function getMeuPerfilPesquisa(clientId: string): Promise<PerfilPesquisa | null> {
+  const supabase = createClient()
+  const { data } = await supabase.rpc('pesquisa_meu_perfil', { p_client_id: clientId })
+  return (data as PerfilPesquisa | null) ?? null
+}
+
+export interface UsuarioPesquisa {
+  user_id: string
+  nome: string
+  email: string | null
+  perfil: PerfilPesquisa | null
+  automatico: boolean // administrador da empresa = Master automático
+}
+
+export async function listarPerfisPesquisa(clientId: string): Promise<{ data: UsuarioPesquisa[]; error: string | null }> {
+  const supabase = createClient()
+  const { data, error } = await supabase.rpc('pesquisa_listar_perfis', { p_client_id: clientId })
+  if (error) return { data: [], error: error.message }
+  return { data: (data ?? []) as UsuarioPesquisa[], error: null }
+}
+
+export async function definirPerfilPesquisa(clientId: string, userId: string, perfil: PerfilPesquisa | null): Promise<{ error: string | null }> {
+  const supabase = createClient()
+  const { error } = await supabase.rpc('pesquisa_definir_perfil', { p_client_id: clientId, p_user_id: userId, p_perfil: perfil })
+  return { error: error?.message ?? null }
+}
+
 // ── Recortes (etapa 4, F48/F49/F53) ─────────────────────────────────────────
 // O segmento de cada resposta não sai do banco: os recortes vêm prontos das
 // funções da migration PENDENTE_20261023030000, que escondem grupos com

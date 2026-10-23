@@ -1740,4 +1740,15 @@
   - Conferido numa prévia (apagada) com o `fetch` interceptado: filtros, recorte escondido,
     comparativo, tendência, histórico, montar relatório, celular. A janela do PDF e a rota da IA
     não foram testadas (precisam de navegador real e login).
+- **Pesquisa, etapa 5 (M1 Usuários e Acesso)**: o Igor seguiu a sugestão de perfis só no módulo.
+  - Migration `PENDENTE_20261023040000_pesquisa_etapa5_perfis.sql`: tabela `pesquisa_perfis` (sem
+    acesso direto), `pesquisa_perfil` (admin da empresa = Master automático), `pesquisa_sou_admin`
+    passa a ser "Master ou Administrativo" (as regras de escrita antigas seguem iguais),
+    `pesquisa_pode_ver` (inclui Visualizador) nas 4 regras de leitura e em `pesquisa_exigir_admin`,
+    `pesquisa_meu_perfil`, `pesquisa_listar_perfis`, `pesquisa_definir_perfil` (Administrativo não
+    dá nem mexe em Master; admin da empresa não muda por aqui).
+  - Front: `ModalUsuariosPesquisa` (botão "Usuários"), selo "Seu perfil", Visualizador vê os cards só
+    com "Resultados" e os resultados em modo só leitura (sem convidar nem lembrar).
+  - Conferido o modal numa prévia (apagada). Cadastro de login novo continua por SQL (F04 aqui é
+    dar perfil a quem já é membro da empresa).
 

@@ -21,9 +21,10 @@ interface Props {
   participantes: Participante[]
   onMudou: () => void
   abaInicial?: Aba
+  somenteLeitura?: boolean // Visualizador: vê a lista e o status, sem enviar nada
 }
 
-export default function ListaConvites({ pesquisa, participantes, onMudou, abaInicial = 'nao_convidados' }: Props) {
+export default function ListaConvites({ pesquisa, participantes, onMudou, abaInicial = 'nao_convidados', somenteLeitura = false }: Props) {
   const [aba, setAba] = useState<Aba>(abaInicial)
   const [mostrarTodos, setMostrarTodos] = useState(false)
   const [copiado, setCopiado] = useState<string | null>(null)
@@ -98,14 +99,14 @@ export default function ListaConvites({ pesquisa, participantes, onMudou, abaIni
             </button>
           ))}
         </div>
-        <button
+        {!somenteLeitura && <button
           type="button"
           onClick={baixarMalaDireta}
           disabled={!lista.length}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-border text-foreground hover:bg-secondary disabled:opacity-40"
         >
           <Download className="w-3.5 h-3.5" /> Planilha para mala direta
-        </button>
+        </button>}
       </div>
 
       {baixados && baixados.length > 0 && (
@@ -138,7 +139,7 @@ export default function ListaConvites({ pesquisa, participantes, onMudou, abaIni
               >
                 {p.respondeu_em ? `Respondeu ${formatDate(p.respondeu_em)}` : p.convidado_em ? `Convidado ${formatDate(p.convidado_em)}` : 'Não convidado'}
               </span>
-              {!p.respondeu_em && (
+              {!p.respondeu_em && !somenteLeitura && (
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     type="button"

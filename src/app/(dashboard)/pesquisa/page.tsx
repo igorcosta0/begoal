@@ -2,16 +2,16 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import {
-  MessageSquareHeart, Plus, Link2, Check, Pencil, Send, Lock, RotateCcw, BarChart3, Trash2, Users, Globe, X, CheckCircle2, Copy, LayoutTemplate, Pause, Play, QrCode, ListChecks, Mail, Repeat,
+  MessageSquareHeart, Plus, Link2, Check, Pencil, Send, Lock, RotateCcw, BarChart3, Trash2, Users, Globe, X, CheckCircle2, Copy, LayoutTemplate, Pause, Play, QrCode, ListChecks, Mail, Repeat, UserCog,
 } from 'lucide-react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
 import { cn, formatDate, isEmpresaCTZ } from '@/lib/utils'
 import {
-  duplicarPesquisa, excluirPesquisa, filtroVazio, getFuncionariosPublico, getParticipacoes, getParticipantes, getPerguntas, getPesquisas,
+  duplicarPesquisa, excluirPesquisa, filtroVazio, getFuncionariosPublico, getMeuPerfilPesquisa, podeGerirPesquisa, ROTULO_PERFIL, getParticipacoes, getParticipantes, getPerguntas, getPesquisas,
   linkPublicoPesquisa, mudarStatusPesquisa, noFiltro, proximaAplicacao,
   perguntasFaltando, responderPesquisaInterna,
-  type Participante, type Pergunta, type Pesquisa, type PesquisaComContagem, type Respostas, type StatusPesquisa,
+  type Participante, type PerfilPesquisa, type Pergunta, type Pesquisa, type PesquisaComContagem, type Respostas, type StatusPesquisa,
 } from '@/lib/queries/pesquisas'
 import { NOME_MODELO } from '@/lib/pesquisaModelos'
 import ModalEditarPesquisa from '@/components/pesquisa/ModalEditarPesquisa'
@@ -20,6 +20,7 @@ import FormularioPesquisa from '@/components/pesquisa/FormularioPesquisa'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
 import ModalQrCode from '@/components/pesquisa/ModalQrCode'
 import ListaConvites from '@/components/pesquisa/ListaConvites'
+import ModalUsuariosPesquisa from '@/components/pesquisa/ModalUsuariosPesquisa'
 
 // Módulo de Pesquisa (pedido 05/10/2026, só CTZ). Administrador monta,
 // publica e acompanha; qualquer funcionário responde as internas abertas.
@@ -60,7 +61,9 @@ export default function PesquisaPage() {
   const ctz = isEmpresaCTZ(empresa?.company_name)
 
   const [loading, setLoading] = useState(true)
-  const [souAdmin, setSouAdmin] = useState(false)
+  // Etapa 5 (M1): perfil na Pesquisa. Master/Administrativo gerem; Visualizador só vê.
+  const [perfil, setPerfil] = useState<PerfilPesquisa | null>(null)
+  const [usuariosAberto, setUsuariosAberto] = useState(false)
   const [pesquisas, setPesquisas] = useState<PesquisaComContagem[]>([])
   const [jaRespondi, setJaRespondi] = useState<Set<string>>(new Set())
   // Área e cargo de quem está logado: decidem quais internas são para ele (F37/F38).
@@ -88,12 +91,12 @@ export default function PesquisaPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setLoading(false); return }
 
-    const [{ data: role }, lista, funcionarios] = await Promise.all([
-      supabase.from('user_company_roles').select('permission_level').eq('user_id', user.id).eq('client_id', empresa.id).maybeSingle(),
+    const [meuPerfil, lista, funcionarios] = await Promise.all([
+      getMeuPerfilPesquisa(empresa.id),
       getPesquisas(empresa.id),
       getFuncionariosPublico(empresa.id),
     ])
-    setSouAdmin(role?.permission_level === 'administrador')
+    setPerfil(meuPerfil)
     const eu = funcionarios.find((f) => f.user_id === user.id)
     setMeuCadastro({ setor: eu?.setor ?? null, cargo: eu?.cargo ?? null })
     setPesquisas(lista.data)
@@ -206,7 +209,9 @@ export default function PesquisaPage() {
   // F40: reaplicação vencida e ainda sem uma nova aplicação criada a partir desta.
   const reaplicada = new Set(pesquisas.map((p) => p.origem_id).filter(Boolean))
   const hoje = new Date()
-  const gerenciaveis = souAdmin ? pesquisas : []
+  const podeGerir = podeGerirPesquisa(perfil)
+  const podeVer = !!perfil
+  const gerenciaveis = podeVer ? pesquisas : []
 
   return (
     <div className="max-w-6xl space-y-6">
@@ -222,13 +227,26 @@ export default function PesquisaPage() {
             </p>
           </div>
         </div>
-        {souAdmin && (
-          <button
-            onClick={() => setModalEditar({ open: true, pesquisa: null })}
-            className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
-          >
-            <Plus className="w-4 h-4" /> Nova pesquisa
-          </button>
+        {podeVer && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">Seu perfil: <span className="font-semibold text-foreground">{ROTULO_PERFIL[perfil!]}</span></span>
+            {podeGerir && (
+              <button
+                onClick={() => setUsuariosAberto(true)}
+                className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-secondary"
+              >
+                <UserCog className="w-4 h-4" /> Usuários
+              </button>
+            )}
+            {podeGerir && (
+              <button
+                onClick={() => setModalEditar({ open: true, pesquisa: null })}
+                className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
+              >
+                <Plus className="w-4 h-4" /> Nova pesquisa
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -258,7 +276,7 @@ export default function PesquisaPage() {
         </section>
       )}
 
-      {!souAdmin && paraResponder.length === 0 && (
+      {!podeVer && paraResponder.length === 0 && (
         <div className="rounded-2xl border border-dashed border-border bg-card/50 p-16 text-center">
           <CheckCircle2 className="w-6 h-6 text-muted-foreground mx-auto mb-2" />
           <p className="text-muted-foreground text-sm">Nenhuma pesquisa esperando sua resposta.</p>
@@ -266,7 +284,7 @@ export default function PesquisaPage() {
       )}
 
       {/* Gestão (administrador) */}
-      {souAdmin && (
+      {podeVer && (
         gerenciaveis.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/50 p-16 text-center">
             <p className="text-muted-foreground text-sm">Nenhuma pesquisa criada ainda.</p>
@@ -315,7 +333,7 @@ export default function PesquisaPage() {
                           <span className="flex items-center gap-1.5 text-xs font-medium text-foreground">
                             <Repeat className="w-3.5 h-3.5 text-primary" /> Hora de reaplicar (a cada {p.repetir_meses} {p.repetir_meses === 1 ? 'mês' : 'meses'})
                           </span>
-                          <button onClick={() => duplicar(p, true)} className="text-xs font-semibold text-primary hover:underline">Reaplicar agora</button>
+                          {podeGerir && <button onClick={() => duplicar(p, true)} className="text-xs font-semibold text-primary hover:underline">Reaplicar agora</button>}
                         </div>
                       ) : (
                         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -337,6 +355,10 @@ export default function PesquisaPage() {
                     )}
 
                     <div className="flex flex-wrap gap-2 pt-1">
+                      {p.status !== 'rascunho' && !podeGerir && (
+                        <BotaoAcao onClick={() => setResultados(p)} icon={BarChart3} destaque>Resultados</BotaoAcao>
+                      )}
+                      {podeGerir && <>
                       {p.status === 'rascunho' && (
                         <>
                           <BotaoAcao onClick={() => mudarStatus(p, 'aberta')} icon={Send} destaque>Publicar</BotaoAcao>
@@ -358,6 +380,7 @@ export default function PesquisaPage() {
                       {p.status === 'encerrada' && <BotaoAcao onClick={() => mudarStatus(p, 'aberta')} icon={RotateCcw}>Reabrir</BotaoAcao>}
                       <BotaoAcao onClick={() => duplicar(p)} icon={Copy}>Duplicar</BotaoAcao>
                       <BotaoAcao onClick={() => setExcluir({ pesquisa: p, loading: false, erro: null })} icon={Trash2} perigo>Excluir</BotaoAcao>
+                      </>}
                     </div>
                   </div>
                 )
@@ -378,7 +401,11 @@ export default function PesquisaPage() {
         />
       )}
 
-      <ResultadosPesquisa pesquisa={resultados} onClose={() => setResultados(null)} />
+      <ResultadosPesquisa pesquisa={resultados} somenteLeitura={!podeGerir} onClose={() => setResultados(null)} />
+
+      {usuariosAberto && empresa && perfil && (
+        <ModalUsuariosPesquisa clientId={empresa.id} meuPerfil={perfil} onClose={() => setUsuariosAberto(false)} />
+      )}
 
       {qrCode && <ModalQrCode titulo={qrCode.titulo} link={linkPublicoPesquisa(qrCode.token)} onClose={() => setQrCode(null)} />}
 

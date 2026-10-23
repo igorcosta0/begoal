@@ -141,7 +141,7 @@
 ### Outros
 - **Grupo de empresas (BMG)**: cada negócio é uma empresa própria em `clients`, ligadas por
   `grupo`/`negocio`/`negocio_ordem`; a `Topbar` troca de negócio. Não há visão consolidada do grupo.
-- **Pesquisa** (só CTZ, só admin cria): interna anônima e externa por link `/responder/<token>`.
+- **Pesquisa** (só CTZ; cria quem tem perfil Master ou Administrativo): interna anônima e externa por link `/responder/<token>`.
   **Segue o guia do Miro** (M1–M5, F01–F59; link na memória `pesquisa-guia-miro.md`), em etapas:
   1) M2, feita em 23/10 (assistente em 4 passos, modelos e banco em `src/lib/pesquisaModelos.ts`,
   IA em `/api/pesquisa-sugerir-perguntas`, tipos `escala_0_10` e `multipla_varias`, duplicar);
@@ -154,7 +154,9 @@
   (`/api/pesquisa-analise`). **`segmento` não é legível pela API**: recortes só pelas funções
   `pesquisa_respostas_filtradas`/`pesquisa_metricas_por_segmento`/`pesquisa_opcoes_filtro`, que
   escondem grupos < 5 e o complemento de 1 a 4;
-  5) perfis (M1). A nota de 1 a 5 ficou só para as pesquisas antigas. **Recortes por segmento só
+  5) perfis (M1), feita em 23/10: Master/Administrativo/Visualizador **só na Pesquisa**
+  (`pesquisa_perfis`; admin da empresa = Master automático; `pesquisa_sou_admin` = pode gerir,
+  `pesquisa_pode_ver` = inclui Visualizador; botão "Usuários"). O guia do Miro está completo. A nota de 1 a 5 ficou só para as pesquisas antigas. **Recortes por segmento só
   com 5 respostas ou mais** (decisão do Igor). Convite e lembrete saem do e-mail do próprio admin
   (sem serviço de envio). Planilhas pelo SheetJS do CDN oficial (0.20.3), não o `xlsx` do npm.
 - **Foto de perfil e "Sobre mim"** ficam em `funcionarios_perfil_publico` (a escrita em
