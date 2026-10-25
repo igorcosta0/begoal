@@ -166,7 +166,7 @@
   `funcionarios` é só de administrador; o próprio nome usa a RPC `atualizar_meu_nome`).
 - **Cargos** (`cargos_perfil`, só CTZ): o cadastro de funcionário novo escolhe o cargo dessa lista.
 - **Feedback e One on One** (`/feedback`, 24/10/2026): por enquanto só um **protótipo com dados
-  fictícios** (nada no banco), visível só para Igor e Priscila (`souVisualizadorFeedback` em
+  fictícios** (nada no banco), visível só para Igor, Priscila e Sandra (`souVisualizadorFeedback` em
   `utils.ts`). Dados em `src/lib/feedbackPrototipo.ts`, telas em `src/components/feedback/`.
 
 ## Pendências abertas

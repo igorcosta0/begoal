@@ -108,7 +108,7 @@ export default function FeedbackPrototipo() {
     <div className="max-w-6xl space-y-6">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 rounded-xl text-[13px] border border-dashed border-violet-300 bg-violet-50 text-violet-800">
         <FlaskConical className="w-4 h-4 shrink-0" />
-        <span><b className="font-semibold">Protótipo para discussão.</b> Pessoas e textos fictícios, nada é salvo. Só você e a Priscila veem esta página.</span>
+        <span><b className="font-semibold">Protótipo para discussão.</b> Pessoas e textos fictícios, nada é salvo. Só Igor, Priscila e Sandra veem esta página.</span>
         <span className="flex-1" />
         <label className="flex items-center gap-2">
           Ver como

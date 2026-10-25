@@ -1777,3 +1777,6 @@
   `PENDENTE_20261025000000_taticas_campos_opcionais.sql` tira essa regra (as políticas de
   `taticas` já aceitam tática sem KR, pela política de `Client_Id`). Descrição vazia grava `null`
   e aparece como "Sem descrição" no quadro e no painel de táticas do KR.
+- **Feedback e One on One: Sandra Melo também vê o protótipo** (sandra.melo@behive.net.br em
+  `EMAILS_PROTOTIPO_FEEDBACK`, `utils.ts`). O aviso roxo da página agora diz "Só Igor, Priscila e
+  Sandra veem esta página".

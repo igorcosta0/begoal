@@ -7,7 +7,7 @@ import FeedbackPrototipo from '@/components/feedback/FeedbackPrototipo'
 
 // Feedback e One on One (pedido 24/10/2026). Por enquanto é só um protótipo
 // para apresentar a ideia: dados fictícios, nada é gravado no banco, e só
-// Igor e Priscila veem (souVisualizadorFeedback, também usado no menu).
+// Igor, Priscila e Sandra veem (souVisualizadorFeedback, também usado no menu).
 // O módulo de verdade depende das respostas às perguntas de "O que falta decidir".
 
 export default function FeedbackPage() {

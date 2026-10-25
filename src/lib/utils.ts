@@ -159,8 +159,8 @@ export function souPilotoAutoconhecimento(email?: string | null): boolean {
 }
 
 // Feedback e One on One (24/10/2026): por enquanto é um protótipo com dados
-// fictícios para apresentar a ideia, e só Igor e Priscila veem (menu e página).
-const EMAILS_PROTOTIPO_FEEDBACK = ['igorecosta1@gmail.com', 'priscila.santos@behive.net.br']
+// fictícios para apresentar a ideia, e só Igor, Priscila e Sandra veem (menu e página).
+const EMAILS_PROTOTIPO_FEEDBACK = ['igorecosta1@gmail.com', 'priscila.santos@behive.net.br', 'sandra.melo@behive.net.br']
 export function souVisualizadorFeedback(email?: string | null): boolean {
   return !!email && EMAILS_PROTOTIPO_FEEDBACK.includes(email.toLowerCase())
 }
