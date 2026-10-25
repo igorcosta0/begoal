@@ -6,13 +6,13 @@ import { usePathname, useRouter } from 'next/navigation'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { createClient } from '@/lib/supabase/client'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
-import { cn, isEmpresaCTZ, souPilotoAutoconhecimento } from '@/lib/utils'
+import { cn, isEmpresaCTZ, souPilotoAutoconhecimento, souVisualizadorFeedback } from '@/lib/utils'
 import { podeVerAutoconhecimento } from '@/lib/autoconhecimentoAcesso'
 import Avatar from '@/components/Avatar'
 import {
   Target, Heart, Zap, Activity, Users, Settings,
   User, LogOut, Building2, Home, ArrowLeftRight, Upload, Map, ClipboardList,
-  Library, Compass, Sparkles, Briefcase, ChevronDown, MessageSquareHeart, Layers, Check,
+  Library, Compass, Sparkles, Briefcase, ChevronDown, MessageSquareHeart, Layers, Check, MessagesSquare,
 } from 'lucide-react'
 
 interface NavLink {
@@ -143,6 +143,7 @@ export default function Topbar({ papeisPorEmpresa, userEmail, fotoUrl }: TopbarP
         { href: '/avaliacao', label: 'Avaliação', icon: ClipboardList, hidden: !ctz },
         { href: '/autoconhecimento', label: 'Autoconhecimento', icon: Sparkles, hidden: !podeVerAuto },
         { href: '/pesquisa', label: 'Pesquisa', icon: MessageSquareHeart, hidden: !ctz },
+        { href: '/feedback', label: 'Feedback e 1:1', icon: MessagesSquare, hidden: !souVisualizadorFeedback(userEmail) },
       ],
     },
     {

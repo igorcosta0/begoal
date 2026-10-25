@@ -162,9 +162,15 @@
 - **Foto de perfil e "Sobre mim"** ficam em `funcionarios_perfil_publico` (a escrita em
   `funcionarios` é só de administrador; o próprio nome usa a RPC `atualizar_meu_nome`).
 - **Cargos** (`cargos_perfil`, só CTZ): o cadastro de funcionário novo escolhe o cargo dessa lista.
+- **Feedback e One on One** (`/feedback`, 24/10/2026): por enquanto só um **protótipo com dados
+  fictícios** (nada no banco), visível só para Igor e Priscila (`souVisualizadorFeedback` em
+  `utils.ts`). Dados em `src/lib/feedbackPrototipo.ts`, telas em `src/components/feedback/`.
 
 ## Pendências abertas
 
+- **Feedback e One on One**: levar o protótipo à reunião e trazer as respostas de "O que falta
+  decidir" (quem dá feedback para quem, quem lê o privado, mural, frequência do 1:1, ligação com a
+  Avaliação, lembretes, anônimo). Só então desenhar banco e RLS e registrar na Paridade da v2.
 - **Pesquisa (guia do Miro concluído em 23/10)**: testar em produção, com login, o que não deu para
   ver na prévia: fluxo de convite da lista (importar → publicar → "Convidar" → responder pelo link
   em janela anônima), "Pedir ajuda à IA" e "Analisar com IA", "Gerar PDF" do relatório (pode exigir

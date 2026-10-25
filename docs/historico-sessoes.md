@@ -1752,3 +1752,19 @@
   - Conferido o modal numa prévia (apagada). Cadastro de login novo continua por SQL (F04 aqui é
     dar perfil a quem já é membro da empresa).
 
+
+### 2026-10-24
+
+- **Feedback e One on One (protótipo)**. Pediram um módulo novo para a plataforma toda (uso inicial
+  na CTZ), sem regras definidas; o Igor precisava de algo para mostrar numa reunião na segunda.
+  - Primeiro, um protótipo HTML solto (artifact privado do Igor, cópia em
+    `Adições futuras/Prototipo Feedback e 1on1.html`).
+  - Depois, o mesmo protótipo dentro da v1, em `/feedback` (menu Pessoas → "Feedback e 1:1"). O Igor
+    olhou a lista de administradores (14 contas; 10 na CTZ) e decidiu que **só ele e a Priscila**
+    veem: `souVisualizadorFeedback` (`utils.ts`) no menu e na página.
+  - Dados fictícios em `src/lib/feedbackPrototipo.ts`, estado só em memória (nada no banco, sem
+    migration). Componentes em `src/components/feedback/`. "Ver como" troca entre líder, liderado e
+    RH; "O que falta decidir" lista as perguntas para a reunião.
+  - As classes de cor ficam em `components/feedback/comum.tsx`: o `content` do Tailwind não lê
+    `src/lib`, e as classes de lá não eram geradas.
+  - Conferido numa prévia local (apagada): Visão geral, One on One e "Concluir este 1:1".
