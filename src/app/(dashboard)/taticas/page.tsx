@@ -8,7 +8,7 @@ import { getFotosPerfilPorEmpresa } from '@/lib/queries/perfilPublico'
 import Avatar from '@/components/Avatar'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
 import { User, Building2, Calendar, CheckCircle2, Circle, MessageSquare, Send, Trash2, ChevronDown, ChevronUp, Zap, Plus, X, GripVertical, Pencil, AlertTriangle } from 'lucide-react'
-import { cn, formatDate, mensagemErroExclusao, mensagemErroGravacao, taticaAtrasada } from '@/lib/utils'
+import { cn, formatDate, isEmpresaBeHive, mensagemErroExclusao, mensagemErroGravacao, taticaAtrasada } from '@/lib/utils'
 
 const STATUS_OPTIONS = ['Não Iniciado', 'Em Andamento', 'Concluído']
 
@@ -160,12 +160,14 @@ function ComentariosTatica({ taticaId, comentarios, userId, nomeUsuario, fotosPo
 }
 
 function ModalTatica({
-  open, titulo, form, setForm, setores, funcionarios, krs, objetivos, onSubmit, onCancel, erro, salvando,
+  open, titulo, form, setForm, setores, funcionarios, krs, objetivos, onSubmit, onCancel, erro, salvando, camposOpcionais,
 }: {
   open: boolean; titulo: string; form: FormTatica; setForm: (f: FormTatica) => void
   setores: any[]; funcionarios: any[]; krs: any[]; objetivos: any[]
   onSubmit: (e: React.FormEvent) => void; onCancel: () => void
   erro?: string | null; salvando?: boolean
+  /** BeHive: nenhum campo é obrigatório (descrição e KR podem ficar vazios). */
+  camposOpcionais?: boolean
 }) {
   if (!open) return null
   return (
@@ -179,7 +181,7 @@ function ModalTatica({
             <textarea
               value={form.descricao}
               onChange={(e) => setForm({ ...form, descricao: e.target.value })}
-              required rows={3} placeholder="Descreva a tática..."
+              required={!camposOpcionais} rows={3} placeholder="Descreva a tática..."
               className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
             />
           </div>
@@ -192,10 +194,10 @@ function ModalTatica({
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-foreground">KR vinculado *</label>
-            <select value={form.kr_id} onChange={(e) => setForm({ ...form, kr_id: e.target.value })} required
+            <label className="text-xs font-medium text-foreground">KR vinculado{camposOpcionais ? '' : ' *'}</label>
+            <select value={form.kr_id} onChange={(e) => setForm({ ...form, kr_id: e.target.value })} required={!camposOpcionais}
               className="mt-1 w-full px-3 py-2 text-sm rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
-              <option value="">Selecione um KR</option>
+              <option value="">{camposOpcionais ? 'Nenhum' : 'Selecione um KR'}</option>
               {krs.filter((k) => !form.objetivo_id || k.objetivo_id === form.objetivo_id).map((k) => (
                 <option key={k.id} value={k.id}>{k.titulo}</option>
               ))}
@@ -254,6 +256,7 @@ function ModalTatica({
 
 export default function TaticasPage() {
   const { empresa } = useEmpresaStore()
+  const camposOpcionais = isEmpresaBeHive(empresa?.company_name)
 
   const [taticas, setTaticas] = useState<any[]>([])
   const [objetivos, setObjetivos] = useState<any[]>([])
@@ -341,11 +344,11 @@ export default function TaticasPage() {
 
   function camposDoForm() {
     return {
-      descricao: form.descricao,
+      descricao: form.descricao.trim() || null,
       responsavel_id: form.responsavel_id || null,
       setor_id: form.setor_id || null,
       objetivo_id: form.objetivo_id || null,
-      kr_id: form.kr_id,
+      kr_id: form.kr_id || null,
       prazo: form.prazo || null,
       Status: form.Status,
       concluida: form.Status === 'Concluído',
@@ -360,7 +363,7 @@ export default function TaticasPage() {
 
   async function handleCriar(e: React.FormEvent) {
     e.preventDefault()
-    if (!empresa || !form.kr_id) return
+    if (!empresa || (!camposOpcionais && !form.kr_id)) return
     setSalvandoForm(true)
     setErroForm(null)
     const supabase = createClient()
@@ -389,7 +392,7 @@ export default function TaticasPage() {
 
   async function handleEditar(e: React.FormEvent) {
     e.preventDefault()
-    if (!taticaEditando || !form.kr_id) return
+    if (!taticaEditando || (!camposOpcionais && !form.kr_id)) return
     setSalvandoForm(true)
     setErroForm(null)
     const supabase = createClient()
@@ -630,7 +633,7 @@ export default function TaticasPage() {
                           }
                         </button>
                         <p className={`flex-1 text-xs font-medium text-foreground leading-snug ${tatica.concluida ? 'line-through text-muted-foreground' : ''}`}>
-                          {tatica.descricao}
+                          {tatica.descricao || <span className="italic text-muted-foreground">Sem descrição</span>}
                         </p>
                         <GripVertical className="w-3.5 h-3.5 text-muted-foreground/30 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
@@ -718,6 +721,7 @@ export default function TaticasPage() {
         onCancel={fecharModalForm}
         erro={erroForm}
         salvando={salvandoForm}
+        camposOpcionais={camposOpcionais}
       />
 
       <ModalTatica
@@ -733,6 +737,7 @@ export default function TaticasPage() {
         onCancel={fecharModalForm}
         erro={erroForm}
         salvando={salvandoForm}
+        camposOpcionais={camposOpcionais}
       />
 
       <ModalConfirmarExclusao

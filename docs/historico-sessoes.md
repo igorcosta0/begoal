@@ -1768,3 +1768,12 @@
   - As classes de cor ficam em `components/feedback/comum.tsx`: o `content` do Tailwind não lê
     `src/lib`, e as classes de lá não eram geradas.
   - Conferido numa prévia local (apagada): Visão geral, One on One e "Concluir este 1:1".
+
+### 2026-10-25
+
+- **Táticas sem campos obrigatórios na BeHive**. O formulário exigia descrição e KR; na BeHive
+  (`isEmpresaBeHive`, nome exato "BeHive") os dois ficam opcionais e o KR mostra "Nenhum". Nas
+  outras empresas nada muda. O banco tinha `kr_id` e `descricao` como NOT NULL: migration
+  `PENDENTE_20261025000000_taticas_campos_opcionais.sql` tira essa regra (as políticas de
+  `taticas` já aceitam tática sem KR, pela política de `Client_Id`). Descrição vazia grava `null`
+  e aparece como "Sem descrição" no quadro e no painel de táticas do KR.

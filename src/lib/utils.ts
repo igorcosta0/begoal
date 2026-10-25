@@ -140,6 +140,11 @@ export function isEmpresaCTZ(companyName?: string | null): boolean {
   return !!companyName && companyName.toLowerCase().includes('ctz')
 }
 
+// Na BeHive a tática pode ser salva sem preencher nenhum campo (pedido 25/10/2026).
+export function isEmpresaBeHive(companyName?: string | null): boolean {
+  return !!companyName && companyName.trim().toLowerCase() === 'behive'
+}
+
 // Módulo de Autoconhecimento (Eneagrama): o protótipo em teste (pedido 31/08)
 // graduou em 10/09/2026 — os 3 mapas (Autoliderança, Liderando o time,
 // Relacionando com o time) abriram pra toda a CTZ. Esta lista continua viva,

@@ -137,6 +137,9 @@
   objetivo e a KR (`kr_id`) e pode estar em "Removidos" (`removido_em`, aguardando validação).
 - Qualquer membro da empresa cria/edita KR, objetivo e lançamentos.
 - Táticas: a coluna "Atrasados" é calculada (`taticaAtrasada` em `utils.ts`), não é status gravado.
+- Táticas na **BeHive**: nenhum campo é obrigatório (`isEmpresaBeHive`, 25/10/2026); nas outras
+  empresas descrição e KR continuam obrigatórios. O banco aceita os dois vazios (migration
+  `PENDENTE_20261025000000_taticas_campos_opcionais.sql`).
 
 ### Outros
 - **Grupo de empresas (BMG)**: cada negócio é uma empresa própria em `clients`, ligadas por

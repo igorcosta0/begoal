@@ -118,7 +118,7 @@ export default function ModalTaticasKr({ open, kr, onClose }: ModalTaticasKrProp
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-xs font-medium text-foreground leading-snug ${tatica.concluida ? 'line-through' : ''}`}>
-                      {tatica.descricao}
+                      {tatica.descricao || <span className="italic">Sem descrição</span>}
                     </p>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1.5 text-[10px] text-muted-foreground">
                       {tatica.funcionarios && (
