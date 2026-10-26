@@ -253,6 +253,8 @@ PISTAS DO CLIENTE — as frases ou comportamentos dele que mostravam o tipo.
 O MOMENTO QUE MUDOU A CONVERSA — quando avançou ou travou, e por quê.
 UMA SUGESTÃO — o que fazer diferente, com uma frase pronta para usar.
 EU × OUTRO — a pergunta do automático de quem negocia (ver QUEM NEGOCIA) e como ela apareceu, ou não, neste treino.
+Comece direto pela seção 1, sem título geral (a tela já mostra "Retorno do treino").
+Avalie a conversa inteira, não só o final: um erro no começo conta mesmo que ele tenha se corrigido depois. "Garanto", "vai dar tudo certo" e qualquer certeza sem sustentação contam como promessa que a CTZ não pode cumprir.
 Se a transcrição for curta demais para avaliar algum item, diga "não deu para observar" naquele item. Não invente o que não está na transcrição. Feche com uma frase curta de incentivo, sem exagero.
 
 ${FORMATO}`
