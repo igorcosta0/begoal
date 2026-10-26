@@ -129,6 +129,10 @@
 - **O tipo de outra pessoa nunca vai para o navegador**: só as rotas de API leem, por funções
   SECURITY DEFINER. A lista "Perfis da equipe" (tipo de todos) foi removida (commit `38172fc`).
 - Perfis em `funcionarios_eneagrama` (tabela própria, RLS "só a própria linha").
+- **Assistente de negociação** (26/10/2026, pedido da Priscila; só o piloto): seção "Negociação",
+  com "Preparar uma negociação" e "Treinar com um caso" (a IA faz o cliente de um dos 8 casos e dá o
+  retorno pelo checklist do observador). Material "Eneagrama e Comercial" da BeHive, resumido em
+  `src/lib/negociacao/`; rota `/api/assistente-negociacao`.
 
 ### OKRs e Sinais Vitais (todas as empresas)
 - Cálculo de progresso único em `src/lib/okrProgresso.ts`. KR tem `direcao` (maior/menor) e
@@ -171,6 +175,9 @@
 
 ## Pendências abertas
 
+- **Assistente de negociação**: conferir em produção, com login do piloto, as duas abas e o retorno
+  do treino (a IA não pôde ser testada localmente). Depois, decidir com a Priscila quando abrir para
+  o time comercial e registrar na Paridade da v2.
 - **Feedback e One on One**: levar o protótipo à reunião e trazer as respostas de "O que falta
   decidir" (quem dá feedback para quem, quem lê o privado, mural, frequência do 1:1, ligação com a
   Avaliação, lembretes, anônimo). Só então desenhar banco e RLS e registrar na Paridade da v2.

@@ -21,6 +21,7 @@ import { getTodosCargosPerfil, getMinhaDicaCargo, type FuncionarioCargoPerfil } 
 import { TIPOS_ENEAGRAMA } from '@/lib/eneagrama/tipos'
 import { Sparkles, Loader2, ChevronDown, Wand2, MessageCircle } from 'lucide-react'
 import Conversa from '@/components/autoconhecimento/Conversa'
+import AssistenteNegociacao from '@/components/autoconhecimento/AssistenteNegociacao'
 import {
   CabecalhoMapa,
   PerfilMapaDeSi,
@@ -427,6 +428,12 @@ export default function AutoconhecimentoPage() {
         {mostraMapaDoTime && (
           <a href="#mapa-do-time" className="shrink-0 px-3 py-1.5 rounded-full bg-card border border-border text-foreground hover:border-amber-500/50 transition-colors">2 · Mapa do time</a>
         )}
+        {souAdminPiloto && (
+          <a
+            href="#negociacao"
+            onClick={() => window.dispatchEvent(new CustomEvent(EVENTO_ABRIR_BLOCO, { detail: 'negociacao-assistente' }))}
+            className="shrink-0 px-3 py-1.5 rounded-full bg-card border border-border text-foreground hover:border-violet-500/50 transition-colors">{mostraMapaDoTime ? 3 : 2} · Negociação</a>
+        )}
       </nav>
 
       {erroPerfil && !simulando && (
@@ -538,6 +545,27 @@ export default function AutoconhecimentoPage() {
               </p>
             </div>
           )}
+        </section>
+      )}
+
+      {/* Assistente de negociação (pedido da Priscila, 26/10/2026): só o
+          piloto por enquanto. Material "Eneagrama e Comercial" da BeHive. */}
+      {souAdminPiloto && (
+        <section id="negociacao" className="space-y-5 scroll-mt-32">
+          <CabecalhoMapa
+            numero={mostraMapaDoTime ? 3 : 2}
+            tom="violet"
+            sobretitulo="Eneagrama e Comercial"
+            titulo="Negociação"
+            descricao="Do espelho para a mesa: entender o que orienta a decisão de quem está do outro lado."
+          />
+          <BlocoAssistente
+            id="negociacao-assistente"
+            titulo="Assistente de negociação"
+            descricao="Prepare uma negociação real (com quem é, o que o cliente disse e onde travou) ou treine com um dos 8 casos do laboratório: o assistente faz o cliente e, no fim, dá o retorno com o checklist do observador."
+          >
+            <AssistenteNegociacao simularFuncionarioId={felipe?.funcionario_id} />
+          </BlocoAssistente>
         </section>
       )}
     </div>

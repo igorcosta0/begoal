@@ -1780,3 +1780,23 @@
 - **Feedback e One on One: Sandra Melo também vê o protótipo** (sandra.melo@behive.net.br em
   `EMAILS_PROTOTIPO_FEEDBACK`, `utils.ts`). O aviso roxo da página agora diz "Só Igor, Priscila e
   Sandra veem esta página".
+
+### 2026-10-26
+
+- **Assistente de negociação no Autoconhecimento** (pedido da Priscila). Material da BeHive
+  ("Eneagrama e Comercial", Letícia Leite) em `Adições futuras/Assistente de negociação/`: slides do
+  encontro, e-book, Raio-X dos 9 tipos, roteiro, 8 casos do role play e checklist do observador. O
+  relatório da WGSN (pago, direitos de terceiros) ficou de fora. A "carta do cliente (confidencial)"
+  do role play não estava na pasta: o comportamento do cliente saiu dos próprios casos.
+  - Nova seção "Negociação" na página, **só para o piloto** (`souPilotoAutoconhecimento`, na tela e
+    na rota). Duas abas: "Preparar uma negociação" (escolhe o ICP e conta o caso real; a IA pergunta
+    uma rodada e depois dá hipóteses de critério, a primeira pergunta, o roteiro de 7 passos e o que
+    evitar) e "Treinar com um caso" (a IA faz o cliente de um dos 8 casos; "Encerrar e pedir
+    retorno" avalia a conversa pelo checklist do observador).
+  - O "Eu × Outro" usa o tipo de quem está logado (ou o do Felipe Marques na simulação de
+    Igor/Priscila/Sandra). Quem não tem tipo recebe as perguntas gerais.
+  - Rota `/api/assistente-negociacao` (modos `preparar`, `treinar` e `retorno`). Conteúdo em
+    `src/lib/negociacao/` (`casos.ts` vai para o navegador; `conhecimento.ts` só entra nos prompts).
+    `Conversa.tsx` ganhou `introducao`, `mensagensIniciais` e `encerrar`.
+  - Sem chave do Gemini no `.env.local` e com as capturas do Chrome falhando, nem a IA nem a tela
+    foram vistas antes do push: conferir em produção.

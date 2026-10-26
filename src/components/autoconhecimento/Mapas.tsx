@@ -53,25 +53,33 @@ export function CabecalhoMapa({
   titulo,
   descricao,
   tom,
+  sobretitulo,
 }: {
   numero: number
   titulo: string
   descricao: string
-  tom: 'primary' | 'amber'
+  tom: 'primary' | 'amber' | 'violet'
+  // Linha acima do título (padrão: "Mapa N").
+  sobretitulo?: string
 }) {
+  const cores = {
+    primary: { selo: 'bg-primary text-primary-foreground', texto: 'text-primary' },
+    amber: { selo: 'bg-amber-500 text-white', texto: 'text-amber-600' },
+    violet: { selo: 'bg-violet-600 text-white', texto: 'text-violet-600' },
+  }[tom]
   return (
     <header className="flex items-start gap-4">
       <span
         className={cn(
           'w-12 h-12 rounded-2xl grid place-items-center font-display text-xl font-bold shrink-0 shadow-sm',
-          tom === 'primary' ? 'bg-primary text-primary-foreground' : 'bg-amber-500 text-white'
+          cores.selo
         )}
       >
         {numero}
       </span>
       <div>
-        <p className={cn('text-[10px] font-bold uppercase tracking-widest', tom === 'primary' ? 'text-primary' : 'text-amber-600')}>
-          Mapa {numero}
+        <p className={cn('text-[10px] font-bold uppercase tracking-widest', cores.texto)}>
+          {sobretitulo ?? `Mapa ${numero}`}
         </p>
         <h2 className="font-display text-2xl font-bold text-foreground tracking-tight">{titulo}</h2>
         <p className="text-sm text-muted-foreground mt-0.5">{descricao}</p>
