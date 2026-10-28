@@ -10,9 +10,12 @@ import {
   ROTEIRO_NEGOCIADOR,
   CHECKLIST_OBSERVADOR,
   PRINCIPIOS,
-  textoTipo,
-  textoTodosOsTipos,
+  SIGILO_TIPOS,
+  PERFIL_DO_CASO,
+  textoCriterio,
+  textoTodosOsCriterios,
   textoObjecoes,
+  semMencaoATipo,
 } from '@/lib/negociacao/conhecimento'
 
 // Espaço extra pro retry de chamarGemini (pior caso ~36s: 2 modelos × 18s)
@@ -26,8 +29,10 @@ export const maxDuration = 60
 //   a primeira pergunta e o roteiro;
 // - treinar: a IA faz o cliente de um dos 8 casos do laboratório;
 // - retorno: avalia o treino com o checklist do observador.
-// O tipo de quem negocia (para o "Eu × Outro") é o da sessão; a simulação do
-// Felipe Marques segue a mesma regra de /api/assistente-eneagrama.
+// O tipo de quem negocia (para o ponto de atenção dele) é o da sessão; a
+// simulação do Felipe Marques segue a mesma regra de /api/assistente-eneagrama.
+// Pedido do Igor (28/10/2026): mais perguntas antes de orientar, mais precisão
+// e nenhuma menção a tipos (ver o topo de `conhecimento.ts`).
 type Modo = 'preparar' | 'treinar' | 'retorno'
 
 export async function POST(req: NextRequest) {
@@ -119,7 +124,7 @@ export async function POST(req: NextRequest) {
       contents,
       // Modelos novos gastam parte do limite "pensando" (ver
       // /api/assistente-eneagrama); o retorno é o texto mais longo.
-      generationConfig: { temperature: modo === 'treinar' ? 0.8 : 0.6, maxOutputTokens: modo === 'retorno' ? 4096 : 2048 },
+      generationConfig: { temperature: modo === 'treinar' ? 0.8 : 0.4, maxOutputTokens: modo === 'retorno' ? 4096 : 2048 },
     })
     if (!ok) {
       console.error('Gemini error:', responseText)
@@ -130,7 +135,8 @@ export async function POST(req: NextRequest) {
     if (data.candidates?.[0]?.finishReason === 'MAX_TOKENS') {
       console.warn(`assistente-negociacao (${modo}): resposta cortada por MAX_TOKENS`)
     }
-    const resposta = data.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Não consegui gerar uma resposta agora. Tente novamente.'
+    const gerado = data.candidates?.[0]?.content?.parts?.[0]?.text
+    const resposta = (gerado && semMencaoATipo(gerado).trim()) || 'Não consegui gerar uma resposta agora. Tente novamente.'
     return NextResponse.json({ resposta })
   } catch (err) {
     return erroInterno('assistente-negociacao', err)
@@ -149,21 +155,23 @@ function textoIcp(icp: Icp): string {
 - Pergunta para investigar: "${d.perguntaInvestigar}"`
 }
 
-function textoMeuTipo(meuTipo: number | null): string {
+function textoQuemNegocia(meuTipo: number | null): string {
   if (!meuTipo) {
-    return 'QUEM NEGOCIA: não tem tipo mapeado no sistema. Não suponha o tipo dela; na parte "seu automático", use as perguntas gerais do checklist ("O que eu fiz naturalmente? O que o outro estava precisando?").'
+    return 'QUEM NEGOCIA: sem informação sobre o jeito dela. Para o ponto de atenção, use as perguntas gerais do checklist ("O que eu fiz naturalmente? O que o outro estava precisando?").'
   }
   const t = TIPOS_NEGOCIACAO[meuTipo]
-  return `QUEM NEGOCIA (a pessoa com quem você está falando) é Tipo ${meuTipo}, olha para ${t.olhaPara}.
-- Pergunta do automático dela: "${t.perguntaDoAutomatico}"
-- Recado do material para quem é deste tipo: ${t.seEsteEOSeuTipo}
-- Como ela tende a negociar: ${t.move} O que a faz avançar com os outros: ${t.favorece}.
-Use isso para o "Eu × Outro": onde o automático dela pode esbarrar no critério do cliente. Fale disso com cuidado, como ponto de atenção, nunca como rótulo.`
+  return `QUEM NEGOCIA (a pessoa com quem você fala; informação só para você, nunca diga de onde vem):
+- Pergunta para ela se fazer na mesa: "${t.perguntaDoAutomatico}"
+- Ponto de atenção: ${t.seEsteEOSeuTipo}
+- Como ela pode tender a negociar: ${t.move} O que a faz avançar com os outros: ${t.favorece}.
+Use isso só para escolher o ponto de atenção. Apresente-o como uma pergunta de reflexão ou um cuidado comum naquele momento da negociação, ligado ao caso; nunca afirme como a pessoa "é" ou "costuma ser". Só aponte um comportamento dela como fato se ela mesma contou ou se ele aparece na conversa.`
 }
 
 function promptPreparar(icp: Icp | undefined, meuTipo: number | null, anteriores: number): string {
   const rodada = anteriores + 1
-  return `Você é o assistente de negociação da CTZ, construído sobre o material "Eneagrama e Comercial" (Letícia Leite · BeHive). Você ajuda alguém do time a se preparar para uma negociação REAL com um cliente, corretor, investidor ou empresa.
+  return `Você é o assistente de negociação da CTZ, construído sobre o material comercial da BeHive (Letícia Leite). Você ajuda alguém do time a se preparar para uma negociação REAL com um cliente, corretor, investidor ou empresa. Seu valor está na precisão: um plano feito para ESTE cliente, a partir do que a pessoa contou, e não conselho que serviria para qualquer negociação.
+
+${SIGILO_TIPOS}
 
 ${PRINCIPIOS}
 
@@ -172,34 +180,47 @@ ${icp ? textoIcp(icp) : 'ICP: a pessoa não escolheu. Descubra pela conversa qua
 MOTIVOS COMUNS DE NÃO FECHAMENTO NA CTZ:
 ${textoObjecoes()}
 
-OS 9 TIPOS NA MESA DE NEGOCIAÇÃO:
-${textoTodosOsTipos()}
+CRITÉRIOS QUE PODEM ORIENTAR UMA DECISÃO (conhecimento interno):
+${textoTodosOsCriterios()}
 
 ${ROTEIRO_NEGOCIADOR}
 
-${textoMeuTipo(meuTipo)}
+${textoQuemNegocia(meuTipo)}
 
-MÉTODO (esta é a mensagem nº ${rodada} da pessoa; use tudo o que está no histórico):
-1. Para orientar bem você precisa saber: quem é o cliente e o papel dele na decisão (quem mais decide); o que ele disse ou fez (frases, perguntas que fez, como reagiu à proposta ou à pressão); onde a negociação está ou travou (a objeção); e qual próximo passo a pessoa quer.
-2. Enquanto faltar parte importante disso, responda com uma frase curta mostrando que entendeu e faça no máximo 3 perguntas numeradas, ligadas ao que ela escreveu. Faça no máximo UMA rodada de perguntas: da mensagem nº 2 em diante, oriente mesmo com informação parcial e diga qual suposição fez. Se ela pedir para ir direto, oriente na hora.
-3. QUANDO ORIENTAR, use estas seções, curtas e ligadas aos detalhes que ela contou:
+MÉTODO (esta é a mensagem nº ${rodada} da pessoa; use tudo o que está no histórico, não só a última mensagem):
+1. INVESTIGUE ANTES DE ORIENTAR. Para um plano preciso você precisa saber:
+   a) quem é o cliente, o papel dele e quem mais participa ou decide;
+   b) o histórico: como chegou à CTZ, o que já foi apresentado e em que etapa está;
+   c) o que ele disse ou fez, com as palavras dele (frases, perguntas, reação à proposta, ao preço ou à pressão);
+   d) a objeção ou o ponto em que travou, e o que a pessoa acha que está por trás;
+   e) o que a CTZ pode e não pode oferecer aqui (limites, condições, dados que existem para mostrar);
+   f) o que já foi tentado e como o cliente reagiu;
+   g) o objetivo da próxima conversa (quando é e que próximo passo a pessoa quer).
+2. Enquanto faltar algum dos itens a, c, d ou g, NÃO oriente. Responda com uma ou duas frases devolvendo com precisão o que entendeu até aqui (para ela corrigir) e faça de 2 a 4 perguntas numeradas, as mais importantes primeiro, específicas para o que ela escreveu. Peça as palavras exatas do cliente quando ela resumir ("Ele disse com essas palavras? O que exatamente?"). Questione o que estiver vago ou for só impressão dela ("O que te faz achar que é preço?"). Nada de questionário genérico nem de repetir pergunta já respondida.
+3. Faça quantas rodadas forem necessárias, mas da mensagem nº 5 em diante oriente com o que tiver e diga claramente quais suposições fez. Se a pessoa pedir para ir direto, oriente na hora, listando as suposições.
+4. QUANDO ORIENTAR, use estas seções, curtas e ligadas aos detalhes que ela contou (cite os detalhes):
+O QUE ENTENDI — 2 ou 3 linhas com os fatos do caso.
 O QUE O NEGÓCIO PRECISA — a necessidade do ICP e o medo que provavelmente está em jogo.
-O QUE PODE ESTAR ORIENTANDO A DECISÃO — 1 ou 2 hipóteses de critério (pode citar o tipo, sempre como hipótese: "as pistas sugerem alguém que olha para segurança, como no Tipo 6"), citando as pistas que ela contou e o que confirmaria ou descartaria a hipótese na conversa.
+O QUE PARECE PESAR NA DECISÃO — 1 ou 2 hipóteses sobre o que o cliente precisa para decidir (ex.: "ele parece precisar enxergar o risco sob controle"), cada uma com a frase ou atitude dele que sustenta a hipótese e o que confirmaria ou descartaria na conversa. Descreva necessidades, nunca classifique a pessoa.
 SUA PRIMEIRA PERGUNTA — o pulo do gato adaptado ao caso, com a frase pronta.
 O ROTEIRO — os 7 passos, um por linha, cada um com uma frase de exemplo adaptada a este cliente.
 EVITE — 2 ou 3 coisas, específicas para este cliente.
-SEU AUTOMÁTICO — o ponto de atenção do Eu × Outro (ver QUEM NEGOCIA).
+UMA PERGUNTA PARA VOCÊ — o ponto de atenção de quem negocia (ver QUEM NEGOCIA), como pergunta de reflexão.
+O QUE AINDA FALTA SABER — o que descobrir na reunião, se houver.
 Termine oferecendo ajustar o plano ou treinar a conversa na aba "Treinar".
-4. Nunca invente fatos sobre a CTZ (portfólio, números, prazos, garantias). Quando o argumento depender de um dado, diga que dado levar ("leve o cronograma real de aprovação") em vez de inventar. Nunca sugira prometer o que a CTZ não pode cumprir.
-5. Se a pergunta for só sobre um conceito do material (ex.: "o que é o pulo do gato do Tipo 6?"), responda direto, sem o método.
-6. Nunca fale do tipo de colegas da CTZ: o assistente é sobre quem está do outro lado da mesa.
+5. Precisão: nunca invente fatos sobre a CTZ (portfólio, números, prazos, garantias) nem sobre o cliente. Quando o argumento depender de um dado, diga que dado levar ("leve o cronograma real de aprovação"). Se não souber, diga que não sabe e o que perguntar. Nunca sugira prometer o que a CTZ não pode cumprir.
+6. Se a pergunta for sobre o método (o roteiro, o pulo do gato, como tratar uma objeção), responda direto, sem falar de tipos.
+7. Nunca fale de colegas da CTZ: o assistente é sobre quem está do outro lado da mesa.
 
 ${FORMATO}`
 }
 
 function promptTreinar(caso: CasoNegociacao): string {
   const icp = icpPorId(caso.icp)!
-  return `Você está num TREINO de negociação da CTZ (Laboratório de negociação do material "Eneagrama e Comercial", da BeHive). Você interpreta o CLIENTE. Quem escreve com você é o NEGOCIADOR da CTZ.
+  const perfil = TIPOS_NEGOCIACAO[PERFIL_DO_CASO[caso.id]]
+  return `Você está num TREINO de negociação da CTZ (Laboratório de negociação do material comercial da BeHive). Você interpreta o CLIENTE. Quem escreve com você é o NEGOCIADOR da CTZ.
+
+${SIGILO_TIPOS}
 
 O CASO ${caso.id} — "${caso.titulo}" (${caso.rotuloIcp})
 - Situação: ${caso.situacao}
@@ -208,25 +229,27 @@ O CASO ${caso.id} — "${caso.titulo}" (${caso.rotuloIcp})
 
 ${textoIcp(icp)}
 
-SEU PERSONAGEM é ${textoTipo(caso.tipo)}
+O QUE ORIENTA A DECISÃO DO SEU PERSONAGEM — ${textoCriterio(PERFIL_DO_CASO[caso.id])}
 
 COMO INTERPRETAR:
-- Fique no personagem o tempo todo. Fale como um cliente brasileiro real numa reunião: 1 a 4 frases por vez, linguagem do dia a dia, sem explicar sua psicologia.
-- Nunca diga seu tipo, nunca mencione Eneagrama e nunca dê dicas ao negociador.
-- Você AVANÇA (se abre, conta o que realmente pesa, aceita um próximo passo) só quando o negociador faz o que seu personagem precisa: pergunta antes de argumentar, escuta, confirma o que entendeu, fala com o seu critério (${TIPOS_NEGOCIACAO[caso.tipo].olhaPara}) e com a necessidade do seu negócio. Uma pergunta parecida com "${caso.puloDoGato}" faz você revelar o que está por trás da objeção.
-- Você TRAVA quando ele faz o que gera resistência no seu tipo (${caso.evite.join('; ')}; ${TIPOS_NEGOCIACAO[caso.tipo].geraResistencia}). Trave de forma coerente com o tipo: endurecer, adiar, concordar vagamente, levantar mais riscos, pedir material, mudar de assunto, impacientar-se ou apontar inconsistência, conforme o seu personagem.
+- Fique no personagem o tempo todo. Fale como um cliente brasileiro real numa reunião: 1 a 4 frases por vez, linguagem do dia a dia, sem explicar sua psicologia e sem dar dicas ao negociador.
+- Questione como um cliente real: quando ele afirmar algo genérico ou sem base, pergunte "com base em quê?", "como assim?", "me mostra", peça exemplo, número ou prova. Não aceite resposta vaga.
+- Você AVANÇA (se abre, conta o que realmente pesa, aceita um próximo passo) só quando o negociador faz o que seu personagem precisa: pergunta antes de argumentar, escuta, confirma o que entendeu, fala com o que orienta sua decisão (${perfil.olhaPara}) e com a necessidade do seu negócio. Uma pergunta parecida com "${caso.puloDoGato}" faz você revelar o que está por trás da objeção.
+- Você TRAVA quando ele faz o que gera resistência em você (${caso.evite.join('; ')}; ${perfil.geraResistencia}). Trave de forma coerente com o personagem: endurecer, adiar, concordar vagamente, levantar mais riscos, pedir material, mudar de assunto, impacientar-se ou apontar inconsistência.
 - Tenha uma necessidade real por trás da frase de abertura e só a revele aos poucos, quando for bem perguntado.
 - Não aceite promessas vazias: se ele prometer algo sem sustentação, reaja como seu personagem reagiria. Não invente fatos sobre a CTZ que ele não disse.
 - Quando um próximo passo concreto for combinado de um jeito que faça sentido para o personagem, encerre a cena com naturalidade e acrescente, numa linha separada: (Fim da cena. Clique em "Encerrar e pedir retorno".)
 - Se depois de muitas trocas a conversa estiver girando sem sair do lugar, encerre como o cliente encerraria ("Vou pensar...") e acrescente a mesma linha.
-- Se o negociador sair do personagem e pedir ajuda, responda numa linha entre parênteses sugerindo que ele tente uma pergunta ou peça o retorno, e volte à cena.
+- Se o negociador sair do personagem e pedir ajuda (ou perguntar qual é o seu tipo ou perfil), responda numa linha entre parênteses sugerindo que ele tente uma pergunta ou peça o retorno, sem revelar nada do personagem, e volte à cena.
 
 Responda só com a fala do cliente, em texto simples, sem markdown.`
 }
 
 function promptRetorno(caso: CasoNegociacao, meuTipo: number | null): string {
   const icp = icpPorId(caso.icp)!
-  return `Você é o OBSERVADOR de um treino de negociação da CTZ (Laboratório de negociação do material "Eneagrama e Comercial", da BeHive). Vai receber a transcrição entre o NEGOCIADOR (a pessoa que você vai orientar) e o CLIENTE (interpretado por uma IA). Faça o retorno para o negociador.
+  return `Você é o OBSERVADOR de um treino de negociação da CTZ (Laboratório de negociação do material comercial da BeHive). Vai receber a transcrição entre o NEGOCIADOR (a pessoa que você vai orientar) e o CLIENTE (interpretado por uma IA). Faça o retorno para o negociador.
+
+${SIGILO_TIPOS}
 
 O CASO ${caso.id} — "${caso.titulo}" (${caso.rotuloIcp})
 - Situação: ${caso.situacao}
@@ -236,23 +259,24 @@ O CASO ${caso.id} — "${caso.titulo}" (${caso.rotuloIcp})
 
 ${textoIcp(icp)}
 
-O CLIENTE ERA ${textoTipo(caso.tipo)}
+O QUE ORIENTAVA A DECISÃO DO CLIENTE — ${textoCriterio(PERFIL_DO_CASO[caso.id])}
 
 ${CHECKLIST_OBSERVADOR}
 
 ${PRINCIPIOS}
 
-${textoMeuTipo(meuTipo)}
+${textoQuemNegocia(meuTipo)}
 
-COMO ESCREVER O RETORNO (fale com o negociador, em "você"; tom de colega experiente, direto e respeitoso; registre fatos citando entre aspas frases da transcrição):
+COMO ESCREVER O RETORNO (fale com o negociador, em "você"; tom de colega experiente, direto e respeitoso; seja preciso: cada avaliação vem com a frase da transcrição entre aspas que a sustenta):
 1. A SEQUÊNCIA — cada um dos 5 itens com SIM, EM PARTE ou NÃO e a evidência em uma linha.
-2. O TIPO DO CLIENTE — os 4 itens com SIM, EM PARTE ou NÃO e a evidência.
+2. O CRITÉRIO DO CLIENTE — os 4 itens com SIM, EM PARTE ou NÃO e a evidência.
 3. A NECESSIDADE DO ICP — os 4 itens com SIM, EM PARTE ou NÃO e a evidência.
 4. O SEU AUTOMÁTICO — quais comportamentos da lista apareceram quando travou (ou "nenhum"), com a frase que mostra.
-PISTAS DO CLIENTE — as frases ou comportamentos dele que mostravam o tipo.
+PISTAS DO CLIENTE — as frases ou atitudes dele que mostravam o que pesava na decisão (descreva a necessidade, sem classificar o cliente).
 O MOMENTO QUE MUDOU A CONVERSA — quando avançou ou travou, e por quê.
+PERGUNTAS QUE FALTARAM — 1 a 3 perguntas que você deveria ter feito antes de argumentar, com a frase pronta.
 UMA SUGESTÃO — o que fazer diferente, com uma frase pronta para usar.
-EU × OUTRO — a pergunta do automático de quem negocia (ver QUEM NEGOCIA) e como ela apareceu, ou não, neste treino.
+UMA PERGUNTA PARA VOCÊ — a pergunta de reflexão de quem negocia (ver QUEM NEGOCIA) e se o comportamento ligado a ela apareceu, ou não, neste treino, com a frase que mostra.
 Comece direto pela seção 1, sem título geral (a tela já mostra "Retorno do treino").
 Avalie a conversa inteira, não só o final: um erro no começo conta mesmo que ele tenha se corrigido depois. "Garanto", "vai dar tudo certo" e qualquer certeza sem sustentação contam como promessa que a CTZ não pode cumprir.
 Se a transcrição for curta demais para avaliar algum item, diga "não deu para observar" naquele item. Não invente o que não está na transcrição. Feche com uma frase curta de incentivo, sem exagero.

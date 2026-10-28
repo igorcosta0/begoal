@@ -2,6 +2,10 @@
 // /api/assistente-negociacao). Resumo do e-book, do Raio-X dos 9 tipos, do
 // roteiro e do checklist do observador do material "Eneagrama e Comercial"
 // (Letícia Leite · BeHive). Os ICPs e os casos ficam em `casos.ts`.
+// Pedido do Igor (28/10/2026): o assistente nunca revela, insinua ou comenta
+// tipos. Por isso os prompts não levam número de tipo, centro nem a palavra
+// "Eneagrama": cada perfil entra só pelo critério ("olha para segurança"), e
+// `semMencaoATipo` limpa a resposta se mesmo assim escapar.
 
 import type { IcpId } from './casos'
 
@@ -128,7 +132,7 @@ export const TIPOS_NEGOCIACAO: Record<number, TipoNegociacao> = {
     geraResistencia: 'Improviso, informação inconsistente, promessas sem sustentação, erros evitáveis, falta de clareza, argumentos frágeis',
     comoAbordar: 'Abordagem cautelosa e planejada; seja objetivo; apresente critérios; mostre que existe lógica na proposta; seja coerente.',
     evite: 'Improvisar; minimizar erros; combinar o que não pode cumprir; entrar em disputa sobre quem está certo; atrasos.',
-    fiqueAtento: 'Tipo difícil de negociar: insiste nos próprios pontos de vista. Se o negociador passar no teste, constrói uma relação de fidelidade e outros negócios vêm.',
+    fiqueAtento: 'Difícil de negociar: insiste nos próprios pontos de vista. Se o negociador passar no teste, constrói uma relação de fidelidade e outros negócios vêm.',
     chaveDeOuro: 'Mostre que a proposta não é apenas boa: mostre por que ela é consistente, confiável e faz sentido.',
     puloDoGato: 'O que esse cliente considera "certo" ou "adequado" para tomar uma decisão?',
     comoAdaptarNoIcp: 'Apresente critérios técnicos e a lógica da proposta; não improvise prazos.',
@@ -257,36 +261,44 @@ export const TIPOS_NEGOCIACAO: Record<number, TipoNegociacao> = {
   },
 }
 
-export const ROTEIRO_NEGOCIADOR = `ROTEIRO DO NEGOCIADOR (sete passos; antes de entrar, anote o tipo provável, o que ele olha, a necessidade do ICP, a primeira pergunta e o que vai evitar):
-1. Abra: crie o ambiente que esse tipo precisa; antes de apresentar, mostre que quer entender. "Antes de falar da proposta, quero entender o que é importante para você nessa decisão."
+export const ROTEIRO_NEGOCIADOR = `ROTEIRO DO NEGOCIADOR (sete passos; antes de entrar, anote o critério provável do cliente, a necessidade do ICP, a primeira pergunta e o que vai evitar):
+1. Abra: crie o ambiente que essa pessoa precisa; antes de apresentar, mostre que quer entender. "Antes de falar da proposta, quero entender o que é importante para você nessa decisão."
 2. Observe: linguagem, prioridades, o que a pessoa enfatiza ou evita e como reage à pressão. "Que pistas confirmam (ou não) o que eu esperava?"
-3. Pergunte: use o pulo do gato do tipo; pergunte antes de argumentar. "O que precisa estar claro para essa decisão fazer sentido para você?"
+3. Pergunte: use o pulo do gato do critério; pergunte antes de argumentar. "O que precisa estar claro para essa decisão fazer sentido para você?"
 4. Escute: não rebata; a objeção é informação sobre o que a pessoa precisa para decidir. "Me conta mais sobre isso."
 5. Confirme: devolva o que entendeu antes de propor. "Se eu entendi bem, o que mais pesa para você é... É isso?"
-6. Adapte: conecte a proposta ao critério do tipo e à necessidade do ICP; evite o que gera resistência e não prometa o que a CTZ não pode cumprir. "Pensando no que você me disse, o que faz mais sentido é..."
+6. Adapte: conecte a proposta ao critério da pessoa e à necessidade do ICP; evite o que gera resistência e não prometa o que a CTZ não pode cumprir. "Pensando no que você me disse, o que faz mais sentido é..."
 7. Feche: transforme a conversa em um próximo passo concreto e combinado. "Qual seria o próximo passo que faz sentido para você?"
 Se a conversa travar: "Estou respondendo ao que o outro realmente precisa, ou ao que eu acredito que ele precisa?"`
 
 export const CHECKLIST_OBSERVADOR = `CHECKLIST DO OBSERVADOR (registre fatos: frases e comportamentos, não opiniões; cada item é SIM, EM PARTE ou NÃO):
 1. A sequência (observe, pergunte, escute, confirme, adapte): observou as pistas antes de apresentar a proposta; perguntou antes de argumentar; escutou sem interromper ou rebater; confirmou o que entendeu ("Se eu entendi bem..."); mudou a abordagem a partir do que ouviu.
-2. O tipo do cliente (a conversa falou com o critério que orienta a decisão desse tipo?): usou argumentos ligados ao critério do tipo; evitou o que gera resistência nesse tipo; fez a pergunta do pulo do gato, ou uma parecida; o cliente deu sinais de abertura ao longo da conversa.
+2. O critério do cliente (a conversa falou com o que orienta a decisão dele?): usou argumentos ligados a esse critério; evitou o que gera resistência nele; fez a pergunta do pulo do gato, ou uma parecida; o cliente deu sinais de abertura ao longo da conversa.
 3. A necessidade do ICP: identificou a necessidade de negócio do ICP; tratou a objeção como informação, não como ataque; não prometeu o que a CTZ não pode cumprir; fechou com um próximo passo concreto.
 4. O automático do negociador (quando a conversa travou, o que ele fez?): insistiu, acelerou, explicou demais, cedeu rápido, recuou, confrontou, mudou de assunto, prometeu para agradar.
-Registros: pistas do cliente (frases ou comportamentos que mostraram o tipo); o momento que mudou a conversa (quando avançou ou travou, e por quê); uma sugestão para o negociador.`
+Registros: pistas do cliente (frases ou comportamentos que mostraram o que pesava para ele); o momento que mudou a conversa (quando avançou ou travou, e por quê); uma sugestão para o negociador.`
 
 export const PRINCIPIOS = `PRINCÍPIOS DO MATERIAL (valem sempre):
-- Pistas são hipóteses, não rótulos: uma pista isolada não define um tipo; observe o padrão e confirme perguntando.
-- Não tente descobrir o tipo; tente compreender o que pode estar orientando a decisão.
+- Pistas são hipóteses, não rótulos: uma pista isolada não diz nada; observe o padrão e confirme perguntando.
+- Não tente classificar a pessoa; tente compreender o que pode estar orientando a decisão dela.
 - Adaptar não é manipular: é compreender qual critério dá sentido à decisão daquela pessoa e conversar com esse critério.
 - O jeito de quem negocia continua dele; o ponto é perceber quando o automático assume o volante e recuperar a escolha.
-- O ICP diz qual é a necessidade do negócio; o Eneagrama ajuda a ler como cada pessoa decide dentro dele. Três perguntas: qual é a necessidade do ICP? qual critério a pessoa mostra? como conecto os dois?
+- O ICP diz qual é a necessidade do negócio; o critério diz como cada pessoa decide dentro dele. Três perguntas: qual é a necessidade do ICP? qual critério a pessoa mostra? como conecto os dois?
 - Por trás de cada objeção existe uma necessidade e um critério: antes de rebater, investigue.
 - Compreender não significa concordar.`
 
-export function textoTipo(n: number): string {
+// Regra que entra em todos os prompts do assistente.
+export const SIGILO_TIPOS = `REGRA ABSOLUTA — SEM TIPOS:
+- Nunca revele, cite, insinue ou comente tipos de personalidade: nada de "tipo", "perfil", "eneatipo", números de tipo, "centro instintivo/emocional/mental", "asa", nem a palavra Eneagrama. Isso vale para o cliente, para quem negocia e para qualquer outra pessoa.
+- Não classifique ninguém nem use frases como "pessoas como ele", "esse perfil costuma", "o seu jeito de ser". Fale só do que a pessoa disse ou fez e do que isso sugere que ela precisa para decidir.
+- O conhecimento abaixo é só para você pensar; nunca mostre a origem dele.
+- Se perguntarem qual é o tipo de alguém (do cliente, de um colega ou o próprio), o que é um tipo, ou pedirem para "adivinhar o perfil", responda numa frase que este assistente não trabalha com tipos e volte para o que o cliente disse, fez e precisa.`
+
+// Sem número nem centro: o perfil entra pelo critério (ver o topo do arquivo).
+export function textoCriterio(n: number): string {
   const t = TIPOS_NEGOCIACAO[n]
   if (!t) return ''
-  return `TIPO ${n} (centro ${t.centro}) — olha para ${t.olhaPara}. Pergunta de critério: "${t.perguntaCriterio}"
+  return `CRITÉRIO: ${t.olhaPara.toUpperCase()}. Pergunta de critério: "${t.perguntaCriterio}"
 - Alerta: ${t.alerta}
 - O que move: ${t.move} Busca por: ${t.buscaPor}. Pergunta interna: "${t.perguntaInterna}"
 - Pistas na conversa: ${t.pistas.join('; ')}
@@ -300,8 +312,30 @@ export function textoTipo(n: number): string {
 - Como adaptar dentro do ICP: ${t.comoAdaptarNoIcp}`
 }
 
-export function textoTodosOsTipos(): string {
-  return [8, 9, 1, 2, 3, 4, 5, 6, 7].map(textoTipo).join('\n\n')
+export function textoTodosOsCriterios(): string {
+  return [8, 9, 1, 2, 3, 4, 5, 6, 7].map(textoCriterio).join('\n\n')
+}
+
+// Perfil de cada caso do laboratório (fica fora de `casos.ts`, que vai para o
+// navegador).
+export const PERFIL_DO_CASO: Record<number, number> = { 1: 6, 2: 8, 3: 2, 4: 7, 5: 9, 6: 5, 7: 3, 8: 1 }
+
+// Rede de segurança: tira da resposta as frases que mencionam tipo/Eneagrama.
+const MENCAO_A_TIPO = [
+  /eneagrama|eneatipo/i,
+  /\btipos?\s*(?:n[º°o.]\s*)?(?:[1-9]\b|um\b|dois\b|tr[eê]s\b|quatro\b|cinco\b|seis\b|sete\b|oito\b|nove\b)/i,
+  /\bcentros?\s+(?:instintivo|emocional|mental)/i,
+  /\basa\s*[1-9]\b/i,
+]
+
+export function semMencaoATipo(texto: string): string {
+  const menciona = (trecho: string) => MENCAO_A_TIPO.some((r) => r.test(trecho))
+  if (!menciona(texto)) return texto
+  return texto
+    .split('\n')
+    .map((linha) => (menciona(linha) ? linha.split(/(?<=[.!?])\s+/).filter((f) => !menciona(f)).join(' ') : linha))
+    .filter((linha, i, linhas) => linha.trim() || (i > 0 && linhas[i - 1].trim()))
+    .join('\n')
 }
 
 export function textoObjecoes(): string {

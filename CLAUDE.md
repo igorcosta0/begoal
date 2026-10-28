@@ -132,7 +132,11 @@
 - **Assistente de negociação** (26/10/2026, pedido da Priscila; só o piloto): seção "Negociação",
   com "Preparar uma negociação" e "Treinar com um caso" (a IA faz o cliente de um dos 8 casos e dá o
   retorno pelo checklist do observador). Material "Eneagrama e Comercial" da BeHive, resumido em
-  `src/lib/negociacao/`; rota `/api/assistente-negociacao`.
+  `src/lib/negociacao/`; rota `/api/assistente-negociacao`. **Nunca fala de tipos** (28/10, pedido
+  do Igor): nem a tela nem a IA mostram, insinuam ou comentam tipo; os prompts levam só o critério
+  ("olha para segurança"), sem número nem "Eneagrama", e `semMencaoATipo` limpa a resposta. O tipo
+  de cada caso fica em `PERFIL_DO_CASO` (`conhecimento.ts`, só no servidor). No "Preparar", a IA
+  investiga em várias rodadas antes de orientar (até a mensagem nº 5).
 
 ### OKRs e Sinais Vitais (todas as empresas)
 - Cálculo de progresso único em `src/lib/okrProgresso.ts`. KR tem `direcao` (maior/menor) e

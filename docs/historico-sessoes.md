@@ -1800,3 +1800,21 @@
     `Conversa.tsx` ganhou `introducao`, `mensagensIniciais` e `encerrar`.
   - Sem chave do Gemini no `.env.local` e com as capturas do Chrome falhando, nem a IA nem a tela
     foram vistas antes do push: conferir em produção.
+
+### 2026-10-28
+
+- **Assistente de negociação: mais perguntas, mais precisão e nenhuma menção a tipos** (pedido do
+  Igor).
+  - "Preparar": a IA só orienta depois de saber quem decide, o que o cliente disse (com as palavras
+    dele), onde travou e o objetivo da próxima conversa; faz de 2 a 4 perguntas por rodada,
+    questiona o que estiver vago, e só da mensagem nº 5 em diante orienta com suposições (antes era
+    uma rodada só). A orientação começa por "O que entendi" e termina com "O que ainda falta saber".
+    Temperatura 0,6 → 0,4 no preparar e no retorno.
+  - Tipos: regra `SIGILO_TIPOS` em todos os prompts; os prompts não levam mais número de tipo,
+    centro nem a palavra "Eneagrama" (cada perfil entra pelo critério, `textoCriterio`); o "Eu ×
+    Outro" virou "Uma pergunta para você", sem afirmar como a pessoa é; `semMencaoATipo` tira da
+    resposta as frases que ainda citem tipo. Na tela, saiu o "Tipo N" dos casos ("O que pesa para o
+    cliente: ..."), e o campo `tipo` saiu de `casos.ts` (ia para o navegador) para `PERFIL_DO_CASO`.
+  - Treino: o cliente questiona mais ("com base em quê?", pede prova). Retorno ganhou "Perguntas
+    que faltaram".
+  - Não testado com a IA localmente (sem chave do Gemini): conferir em produção.

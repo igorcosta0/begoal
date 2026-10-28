@@ -18,7 +18,8 @@ const SITUACOES_PREPARAR = [
 // enquanto). Preparar = negociação real; Treinar = a IA faz o cliente de um
 // dos 8 casos do laboratório e, no fim, dá o retorno com o checklist do
 // observador. `simularFuncionarioId`: simulação do Felipe Marques (Igor/
-// Priscila/Sandra), para o "Eu × Outro" usar o tipo dele.
+// Priscila/Sandra), para o ponto de atenção de quem negocia usar o perfil dele
+// (só no prompt; o assistente nunca fala de tipos).
 export default function AssistenteNegociacao({ simularFuncionarioId }: { simularFuncionarioId?: string }) {
   const [aba, setAba] = useState<'preparar' | 'treinar'>('preparar')
   const [icpId, setIcpId] = useState<IcpId | ''>('')
@@ -77,7 +78,7 @@ export default function AssistenteNegociacao({ simularFuncionarioId }: { simular
           placeholder="Conte quem é o cliente, o que ele disse e onde a negociação está..."
           introducao={{
             titulo: 'Conte a negociação que você tem pela frente: quem é o cliente, o que ele disse ou fez e onde a conversa travou.',
-            detalhe: 'Se faltar algo, faço até 3 perguntas. Depois monto a primeira pergunta, o roteiro e o que evitar com esse cliente.',
+            detalhe: 'Antes de orientar, vou fazer algumas perguntas para entender bem o caso. Depois monto a primeira pergunta, o roteiro e o que evitar com esse cliente.',
           }}
         />
       </div>
@@ -123,7 +124,7 @@ export default function AssistenteNegociacao({ simularFuncionarioId }: { simular
                   className="text-left rounded-2xl border border-border bg-card p-4 hover:border-primary/40 hover:bg-accent/40 transition-colors space-y-1.5"
                 >
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Caso {c.id} · {c.rotuloIcp} · Tipo {c.tipo}
+                    Caso {c.id} · {c.rotuloIcp}
                   </p>
                   <p className="text-sm font-bold text-foreground">{c.titulo}</p>
                   <p className="text-xs text-muted-foreground leading-relaxed">{c.situacao}</p>
@@ -153,7 +154,7 @@ function PreparacaoCaso({ caso }: { caso: CasoNegociacao }) {
           <p className="text-muted-foreground">{caso.desafio}</p>
         </div>
         <div>
-          <p className="font-semibold text-foreground">Tipo {caso.tipo} · olha para {caso.olhaPara}</p>
+          <p className="font-semibold text-foreground">O que pesa para o cliente: {caso.olhaPara}</p>
           <p className="text-muted-foreground">O ICP precisa de: {necessidade}</p>
         </div>
         <div>

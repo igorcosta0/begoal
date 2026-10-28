@@ -41,7 +41,8 @@ export const ICPS: Icp[] = [
 ]
 
 // Os 8 casos do Laboratório de negociação (role play), como na folha
-// "Casos do negociador": o negociador sabe o tipo do cliente.
+// "Casos do negociador", sem o tipo do cliente (nunca vai para a tela; fica
+// em `PERFIL_DO_CASO`, em `conhecimento.ts`). O negociador vê o critério.
 export interface CasoNegociacao {
   id: number
   titulo: string
@@ -50,7 +51,6 @@ export interface CasoNegociacao {
   situacao: string
   desafio: string
   frase: string
-  tipo: number
   olhaPara: string
   comoAbordar: string[]
   evite: string[]
@@ -66,7 +66,6 @@ export const CASOS_NEGOCIACAO: CasoNegociacao[] = [
     situacao: 'Três irmãos herdaram uma fazenda e querem lotear. Gostaram da proposta, mas a decisão está parada.',
     desafio: 'Gerar confiança sem portfólio em andamento.',
     frase: 'Onde eu consigo ver um loteamento de vocês funcionando hoje?',
-    tipo: 6,
     olhaPara: 'segurança',
     comoAbordar: ['Seja transparente', 'Antecipe dúvidas', 'Apresente evidências'],
     evite: ['Pressão', 'Promessas de certeza absoluta', 'Minimizar riscos reais'],
@@ -80,7 +79,6 @@ export const CASOS_NEGOCIACAO: CasoNegociacao[] = [
     situacao: 'Um corretor trouxe a área. O proprietário topa a parceria, mas quer dinheiro na entrada.',
     desafio: 'Negociar sem permuta 100% e sem virar disputa.',
     frase: 'Ou tem dinheiro na mesa no início, ou não tem negócio.',
-    tipo: 8,
     olhaPara: 'autonomia e controle',
     comoAbordar: ['Seja direto', 'Sustente sua posição', 'Seja claro sobre limites'],
     evite: ['Disputar poder', 'Usar pressão para obter adesão', 'Responder intensidade com intensidade'],
@@ -94,7 +92,6 @@ export const CASOS_NEGOCIACAO: CasoNegociacao[] = [
     situacao: 'Um corretor parceiro tem um novo proprietário interessado, mas ficou sem resposta quando perguntaram pelo portfólio.',
     desafio: 'Dar segurança ao corretor sem prometer para agradar.',
     frase: 'Como eu defendo a CTZ para o dono se não tem nada pronto?',
-    tipo: 2,
     olhaPara: 'conexão, necessidades e vínculos',
     comoAbordar: ['Demonstre interesse genuíno', 'Escute antes de oferecer', 'Construa parceria'],
     evite: ['Criar intimidade artificial', 'Prometer para agradar', 'Fazer concessões para manter o vínculo'],
@@ -108,7 +105,6 @@ export const CASOS_NEGOCIACAO: CasoNegociacao[] = [
     situacao: 'Um corretor traz uma área ótima e diz que outra loteadora oferece entrada ao dono.',
     desafio: 'Transformar entusiasmo em próximo passo, sem esconder a questão do aporte.',
     frase: 'A área tem fila! O que vocês têm de diferente?',
-    tipo: 7,
     olhaPara: 'possibilidades',
     comoAbordar: ['Abra possibilidades', 'Mostre oportunidades', 'Apresente alternativas relevantes'],
     evite: ['Apresentar opções demais', 'Fazer promessas sem verificar a viabilidade', 'Usar entusiasmo para esconder limitações'],
@@ -122,7 +118,6 @@ export const CASOS_NEGOCIACAO: CasoNegociacao[] = [
     situacao: 'Um investidor gosta da CTZ, mas em ano de eleição adia a decisão.',
     desafio: 'Descobrir o que segura a decisão, sem pressionar.',
     frase: 'Vamos esperar passar a eleição, né?',
-    tipo: 9,
     olhaPara: 'harmonia',
     comoAbordar: ['Crie um ambiente respeitoso', 'Dê espaço para o cliente se posicionar', 'Explore os diferentes interesses envolvidos'],
     evite: ['Interpretar silêncio como concordância', 'Pressionar por uma decisão imediata', 'Fazer concessões desnecessárias para preservar a relação'],
@@ -136,7 +131,6 @@ export const CASOS_NEGOCIACAO: CasoNegociacao[] = [
     situacao: 'A primeira apresentação foi entusiasmada demais. O investidor saiu inseguro e pediu tempo.',
     desafio: 'Recomeçar dando os dados que ele precisa para decidir.',
     frase: 'Me manda o material que eu estudo com calma.',
-    tipo: 5,
     olhaPara: 'conhecimento e compreensão',
     comoAbordar: ['Seja objetivo', 'Apresente informações relevantes', 'Demonstre domínio'],
     evite: ['Pressionar por uma decisão', 'Usar informação apenas para impressionar', 'Sobrecarregar o cliente com dados irrelevantes'],
@@ -150,7 +144,6 @@ export const CASOS_NEGOCIACAO: CasoNegociacao[] = [
     situacao: 'O diretor de uma loteadora recebeu um orçamento bem mais baixo de um concorrente.',
     desafio: 'Mostrar valor sem entrar na guerra de preço.',
     frase: 'Me dá um motivo para pagar mais.',
-    tipo: 3,
     olhaPara: 'resultado',
     comoAbordar: ['Vá ao ponto', 'Mostre resultados e benefícios', 'Use indicadores quando forem relevantes'],
     evite: ['Falar sem propósito', 'Apresentar solução sem mostrar benefício', 'Excesso de teoria'],
@@ -164,7 +157,6 @@ export const CASOS_NEGOCIACAO: CasoNegociacao[] = [
     situacao: 'Uma empresa de outra cidade compara a Concretize com um escritório local que conhece a prefeitura.',
     desafio: 'Responder com método e critério, sem prometer o que não pode cumprir.',
     frase: 'Como vocês vão garantir a aprovação aqui?',
-    tipo: 1,
     olhaPara: 'critério e funcionalidade',
     comoAbordar: ['Abordagem cautelosa e planejada', 'Seja objetivo', 'Apresente critérios'],
     evite: ['Improvisar', 'Minimizar erros', 'Combinar o que não pode cumprir'],
