@@ -134,7 +134,8 @@ export default function CargosPage() {
       .eq('client_id', empresa.id)
       .maybeSingle()
 
-    const liberado = role?.permission_level === 'administrador' || souPilotoAutoconhecimento(user.email)
+    // Líder (gestor) também entra desde 30/10/2026.
+    const liberado = role?.permission_level === 'administrador' || role?.permission_level === 'gestor' || souPilotoAutoconhecimento(user.email)
     setAcessoLiberado(liberado)
     if (!liberado) {
       setLoading(false)

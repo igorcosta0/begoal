@@ -9,7 +9,7 @@ import { getTodosCargosPerfil, getCargosPerfil, type FuncionarioCargoPerfil, typ
 import { getPerfisPublicosPorEmpresa, type PerfilPublico } from '@/lib/queries/perfilPublico'
 import Avatar from '@/components/Avatar'
 import ModalConfirmarExclusao from '@/components/okr/ModalConfirmarExclusao'
-import { useAcessoAdministrador } from '@/lib/hooks/useAcessoAdministrador'
+import { useNivelPermissao } from '@/lib/hooks/useAcessoAdministrador'
 import { User, Building2, Briefcase, MoreHorizontal, Users, Plus, ChevronDown, UserCircle2 } from 'lucide-react'
 import { mensagemErroExclusao, mensagemErroGravacao, isEmpresaCTZ } from '@/lib/utils'
 
@@ -262,7 +262,11 @@ export default function FuncionariosPage() {
   const { empresa } = useEmpresaStore()
   // Pedido 02/10/2026: só administrador vê o menu de Editar/Excluir. A RLS
   // de escrita de funcionarios já barrava os outros; aqui só some da tela.
-  const souAdmin = useAcessoAdministrador() === 'ok'
+  // Desde 30/10/2026 o líder (gestor) da CTZ também cadastra e edita;
+  // excluir continua só do administrador (mesma regra da RLS).
+  const nivelPermissao = useNivelPermissao()
+  const souAdmin = nivelPermissao === 'administrador'
+  const podeEditar = souAdmin || (isEmpresaCTZ(empresa?.company_name) && nivelPermissao === 'gestor')
 
   const [funcionarios, setFuncionarios] = useState<any[]>([])
   const [setores, setSetores] = useState<any[]>([])
@@ -443,7 +447,7 @@ export default function FuncionariosPage() {
             </p>
           </div>
         </div>
-        {souAdmin && (
+        {podeEditar && (
           <button
             onClick={() => { setForm(FORM_INICIAL); setModalCriar(true) }}
             className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
@@ -495,7 +499,7 @@ export default function FuncionariosPage() {
             <Users className="w-6 h-6 text-muted-foreground/40" />
           </div>
           <p className="text-muted-foreground text-sm mb-3">Nenhum funcionário encontrado.</p>
-          {souAdmin && (
+          {podeEditar && (
             <button
               onClick={() => { setForm(FORM_INICIAL); setModalCriar(true) }}
               className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
@@ -553,7 +557,7 @@ export default function FuncionariosPage() {
                     Perfil
                     <ChevronDown className={`w-3 h-3 transition-transform ${perfilExpandidoId === f.id ? 'rotate-180' : ''}`} />
                   </button>
-                  {souAdmin && (
+                  {podeEditar && (
                   <div className="relative">
                     <button
                       onClick={() => setMenuOpen(menuOpen === f.id ? null : f.id)}
@@ -570,12 +574,14 @@ export default function FuncionariosPage() {
                         >
                           Editar
                         </button>
+                        {souAdmin && (
                         <button
                           onClick={() => { setModalExcluir({ open: true, funcionario: f, loading: false, erro: null }); setMenuOpen(null) }}
                           className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors text-destructive"
                         >
                           Excluir
                         </button>
+                        )}
                       </div>
                     )}
                   </div>

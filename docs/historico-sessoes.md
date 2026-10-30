@@ -1835,3 +1835,13 @@
     simulação do Felipe (`getOrganogramaEmpresa`). O Felipe tinha 3 liderados desligados.
   - Migration `PENDENTE_20261030000000_celio_acesso_de_lider_e_mapa_sem_desligados.sql`: a gravação
     pelo Chrome foi barrada pelo auto mode; o Igor roda antes do push.
+
+- **Líderes usam Cargos e editam Funcionários; Jean Patrick com acesso de líder** (pedido do Igor,
+  continuação do retorno da Priscila).
+  - Cargos: menu, página e RLS de `cargos_perfil` aceitam `gestor` (ler, criar, editar, excluir).
+    `funcionarios_cargo_perfil` (análise do Eneagrama) não mudou.
+  - Funcionários: `gestor` da CTZ cadastra e edita (policies `funcionarios_insert_lider_ctz` e
+    `funcionarios_update_lider_ctz`; botão "Excluir" e RLS de exclusão continuam só de
+    administrador). Hook novo `useNivelPermissao` (`useAcessoAdministrador.ts`).
+  - Jean Patrick (`marketing@ctz.eng.br`): `gestor` + `is_calibrador` + calibragem restrita.
+  - Migration `PENDENTE_20261030010000_lideres_cargos_funcionarios_e_jean.sql`.

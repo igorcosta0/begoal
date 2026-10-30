@@ -9,12 +9,20 @@ import { useEmpresaStore } from '@/store/useEmpresaStore'
 // mesma regra do menu dentro da própria página: administrador da empresa
 // selecionada. A proteção de verdade continua sendo a RLS de cada tabela.
 export function useAcessoAdministrador(): 'carregando' | 'ok' | 'negado' {
+  const nivel = useNivelPermissao()
+  if (nivel === undefined) return 'carregando'
+  return nivel === 'administrador' ? 'ok' : 'negado'
+}
+
+// permission_level na empresa selecionada: undefined enquanto carrega, null
+// sem papel. Usado onde o líder (gestor) também entra (Funcionários, 30/10/2026).
+export function useNivelPermissao(): string | null | undefined {
   const { empresa } = useEmpresaStore()
-  const [acesso, setAcesso] = useState<'carregando' | 'ok' | 'negado'>('carregando')
+  const [nivel, setNivel] = useState<string | null | undefined>(undefined)
 
   useEffect(() => {
     if (!empresa) {
-      setAcesso('negado')
+      setNivel(null)
       return
     }
     const empresaId = empresa.id
@@ -22,7 +30,7 @@ export function useAcessoAdministrador(): 'carregando' | 'ok' | 'negado' {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        setAcesso('negado')
+        setNivel(null)
         return
       }
       const { data } = await supabase
@@ -31,10 +39,10 @@ export function useAcessoAdministrador(): 'carregando' | 'ok' | 'negado' {
         .eq('user_id', user.id)
         .eq('client_id', empresaId)
         .maybeSingle()
-      setAcesso(data?.permission_level === 'administrador' ? 'ok' : 'negado')
+      setNivel(data?.permission_level ?? null)
     }
     verificar()
   }, [empresa])
 
-  return acesso
+  return nivel
 }

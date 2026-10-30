@@ -412,7 +412,7 @@ export default function AvaliacaoPage() {
       setSouGestorDaCalibragem(souGestorDaCalibragemAtual)
       setSouCalibradorRestrito(
         empresa!.id === 'ac4ad62b-9b88-44da-ae69-0f26ced07d06' &&
-          ['graciela.hoepers@ctz.eng.br', 'felipe.marques@projetosconcretize.com.br', 'felipe.ross@projetosconcretize.com.br', 'felipe.finato@ctz.eng.br', 'celio.bitencourt@projetosconcretize.com.br'].includes(emailAtual)
+          ['graciela.hoepers@ctz.eng.br', 'felipe.marques@projetosconcretize.com.br', 'felipe.ross@projetosconcretize.com.br', 'felipe.finato@ctz.eng.br', 'celio.bitencourt@projetosconcretize.com.br', 'marketing@ctz.eng.br'].includes(emailAtual)
       )
       setSouVejoNineBox(
         empresa!.id === 'ac4ad62b-9b88-44da-ae69-0f26ced07d06'

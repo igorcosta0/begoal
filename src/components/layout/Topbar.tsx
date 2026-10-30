@@ -58,7 +58,8 @@ export default function Topbar({ papeisPorEmpresa, userEmail, fotoUrl }: TopbarP
   // empresa atual (antes um admin de outra empresa via o botão por acaso).
   const temVariasEmpresas = Object.keys(papeisPorEmpresa).length > 1
   const ctz = isEmpresaCTZ(empresa?.company_name)
-  const podeVerCargos = ctz && (isAdmin || souPilotoAutoconhecimento(userEmail))
+  // Líder (gestor) também vê Cargos desde 30/10/2026.
+  const podeVerCargos = ctz && (isAdmin || permissionLevel === 'gestor' || souPilotoAutoconhecimento(userEmail))
 
   // Autoconhecimento: só líderes e piloto (01/10/2026). Escondido até confirmar.
   const [podeVerAuto, setPodeVerAuto] = useState(false)

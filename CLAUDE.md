@@ -99,8 +99,8 @@
   acima). Em outra empresa, qualquer administrador. "Iniciar Calibragem" move todo mundo de uma vez,
   sem esperar auto+gestor; por isso, status `calibragem` não quer dizer que a nota foi preenchida.
 - **Calibragem restrita** (só os próprios liderados, pelo `funcionarios.gestor_id`): Graciela,
-  Felipe Marques, Felipe Bet Ross, Filipe Finato e Célio Bitencourt. Esses líderes têm
-  `permission_level = 'gestor'` + `is_calibrador` na CTZ. Flag `souCalibradorRestrito` (escopado por
+  Felipe Marques, Felipe Bet Ross, Filipe Finato, Célio Bitencourt e Jean Patrick. Esses líderes
+  têm `permission_level = 'gestor'` + `is_calibrador` na CTZ. Flag `souCalibradorRestrito` (escopado por
   avaliação: não vale na própria) + função `e_calibrador_restrito(funcionario_id)`. Não entra no
   Painel de Calibragem nem nas ações em lote.
 - O "Salvar" do `ModalAvaliacao` é tudo-ou-nada (contorno vermelho nos campos que faltam). Só exige
@@ -177,6 +177,10 @@
 - **Foto de perfil e "Sobre mim"** ficam em `funcionarios_perfil_publico` (a escrita em
   `funcionarios` é só de administrador; o próprio nome usa a RPC `atualizar_meu_nome`).
 - **Cargos** (`cargos_perfil`, só CTZ): o cadastro de funcionário novo escolhe o cargo dessa lista.
+  Usam a tela: administrador, piloto e, desde 30/10/2026, líder (`gestor`). O vínculo com a análise
+  do Eneagrama (`funcionarios_cargo_perfil`) segue só do piloto.
+- **Funcionários**: administrador e, na CTZ, líder (`gestor`, desde 30/10/2026) cadastram e editam
+  (inclusive o `gestor_id`, que manda na Avaliação); excluir é só de administrador.
 - **Feedback e One on One** (`/feedback`, 24/10/2026): por enquanto só um **protótipo com dados
   fictícios** (nada no banco), visível só para Igor, Priscila e Sandra (`souVisualizadorFeedback` em
   `utils.ts`). Dados em `src/lib/feedbackPrototipo.ts`, telas em `src/components/feedback/`.
