@@ -1818,3 +1818,20 @@
   - Treino: o cliente questiona mais ("com base em quê?", pede prova). Retorno ganhou "Perguntas
     que faltaram".
   - Não testado com a IA localmente (sem chave do Gemini): conferir em produção.
+
+### 2026-10-30
+
+- **Célio com acesso de líder, Negociação para os líderes e desligados fora do Mapa do time**
+  (retorno da Priscila, estando com o Célio).
+  - Célio estava como `visualizador`, sem `is_calibrador`. Passa a `gestor` + `is_calibrador` na CTZ
+    e entra na calibragem restrita (`e_calibrador_restrito` e `souCalibradorRestrito`), igual a
+    Felipe Marques, Graciela, Felipe Bet Ross e Finato. Cargos e a edição de Funcionários continuam
+    só de administrador (nenhum líder tem); Jean Patrick (Líder de Marketing e IA) também segue como
+    `visualizador`.
+  - Assistente de negociação aberto a todos que veem o Autoconhecimento (tela e rota usam
+    `podeVerAutoconhecimento`).
+  - `status = 'Desligado'` sai do Mapa do time: `sou_lider_de_alguem`,
+    `listar_meus_liderados_com_perfil_mapeado`, `resumo_time_liderado`, `obter_tipo_liderado` e a
+    simulação do Felipe (`getOrganogramaEmpresa`). O Felipe tinha 3 liderados desligados.
+  - Migration `PENDENTE_20261030000000_celio_acesso_de_lider_e_mapa_sem_desligados.sql`: a gravação
+    pelo Chrome foi barrada pelo auto mode; o Igor roda antes do push.

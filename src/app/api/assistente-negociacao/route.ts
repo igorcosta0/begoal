@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { chamarGemini } from '@/lib/gemini'
-import { souPilotoAutoconhecimento } from '@/lib/utils'
+import { podeVerAutoconhecimento } from '@/lib/autoconhecimentoAcesso'
 import { limparHistorico, validarTexto, erroInterno, mensagensAnterioresDaPessoa, type MensagemHistorico } from '@/lib/apiIa'
 import { casoPorId, icpPorId, type CasoNegociacao, type Icp } from '@/lib/negociacao/casos'
 import {
@@ -48,7 +48,8 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
-    if (!souPilotoAutoconhecimento(user.email)) {
+    // Desde 30/10/2026: todos que veem o Autoconhecimento (líderes e piloto).
+    if (!(await podeVerAutoconhecimento(supabase, user))) {
       return NextResponse.json({ error: 'Módulo ainda não disponível' }, { status: 403 })
     }
 

@@ -146,6 +146,8 @@ export async function getOrganogramaEmpresa(clientId: string): Promise<{ organog
     .from('funcionarios')
     .select('id, gestor_id')
     .eq('client_id', clientId)
+    // Desligado não entra no time (30/10/2026), igual às funções do Mapa 2.
+    .or('status.is.null,status.neq.Desligado')
 
   if (error) return { organograma: [], error: error.message }
   return {

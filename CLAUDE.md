@@ -99,7 +99,8 @@
   acima). Em outra empresa, qualquer administrador. "Iniciar Calibragem" move todo mundo de uma vez,
   sem esperar auto+gestor; por isso, status `calibragem` não quer dizer que a nota foi preenchida.
 - **Calibragem restrita** (só os próprios liderados, pelo `funcionarios.gestor_id`): Graciela,
-  Felipe Marques, Felipe Bet Ross e Filipe Finato. Flag `souCalibradorRestrito` (escopado por
+  Felipe Marques, Felipe Bet Ross, Filipe Finato e Célio Bitencourt. Esses líderes têm
+  `permission_level = 'gestor'` + `is_calibrador` na CTZ. Flag `souCalibradorRestrito` (escopado por
   avaliação: não vale na própria) + função `e_calibrador_restrito(funcionario_id)`. Não entra no
   Painel de Calibragem nem nas ações em lote.
 - O "Salvar" do `ModalAvaliacao` é tudo-ou-nada (contorno vermelho nos campos que faltam). Só exige
@@ -126,10 +127,13 @@
 - **Time espelhado** (`funcionarios.ve_time_de`, 22/10/2026): o Mapa do time mostra os liderados
   diretos do cadastro apontado ali, além dos próprios (função `meus_cadastros_de_lider()`). Hoje só o
   Célio Bitencourt → Felipe Marques. Não muda organograma nem Avaliação.
+- **Desligado** (`funcionarios.status = 'Desligado'`) não entra no Mapa do time (30/10/2026): as
+  funções do Mapa 2 e a simulação do Felipe filtram.
 - **O tipo de outra pessoa nunca vai para o navegador**: só as rotas de API leem, por funções
   SECURITY DEFINER. A lista "Perfis da equipe" (tipo de todos) foi removida (commit `38172fc`).
 - Perfis em `funcionarios_eneagrama` (tabela própria, RLS "só a própria linha").
-- **Assistente de negociação** (26/10/2026, pedido da Priscila; só o piloto): seção "Negociação",
+- **Assistente de negociação** (26/10/2026, pedido da Priscila; desde 30/10, todos que veem o
+  módulo): seção "Negociação",
   com "Preparar uma negociação" e "Treinar com um caso" (a IA faz o cliente de um dos 8 casos e dá o
   retorno pelo checklist do observador). Material "Eneagrama e Comercial" da BeHive, resumido em
   `src/lib/negociacao/`; rota `/api/assistente-negociacao`. **Nunca fala de tipos** (28/10, pedido
@@ -179,9 +183,8 @@
 
 ## Pendências abertas
 
-- **Assistente de negociação**: conferir em produção, com login do piloto, as duas abas e o retorno
-  do treino (a IA não pôde ser testada localmente). Depois, decidir com a Priscila quando abrir para
-  o time comercial e registrar na Paridade da v2.
+- **Assistente de negociação** (aberto aos líderes em 30/10): conferir em produção as duas abas e o
+  retorno do treino (a IA não pôde ser testada localmente) e registrar na Paridade da v2.
 - **Feedback e One on One**: levar o protótipo à reunião e trazer as respostas de "O que falta
   decidir" (quem dá feedback para quem, quem lê o privado, mural, frequência do 1:1, ligação com a
   Avaliação, lembretes, anônimo). Só então desenhar banco e RLS e registrar na Paridade da v2.
