@@ -156,7 +156,7 @@
 ### Outros
 - **Grupo de empresas (BMG)**: cada negócio é uma empresa própria em `clients`, ligadas por
   `grupo`/`negocio`/`negocio_ordem`; a `Topbar` troca de negócio. Não há visão consolidada do grupo.
-- **Pesquisa** (só CTZ; cria quem tem perfil Master ou Administrativo): interna anônima e externa por link `/responder/<token>`.
+- **Pesquisa** (CTZ e, desde 05/11/2026, BeHive: `empresaTemPesquisa` em `utils.ts`; cria quem tem perfil Master ou Administrativo): interna anônima e externa por link `/responder/<token>`.
   **Segue o guia do Miro** (M1–M5, F01–F59; link na memória `pesquisa-guia-miro.md`), em etapas:
   1) M2, feita em 23/10 (assistente em 4 passos, modelos e banco em `src/lib/pesquisaModelos.ts`,
   IA em `/api/pesquisa-sugerir-perguntas`, tipos `escala_0_10` e `multipla_varias`, duplicar);

@@ -145,6 +145,11 @@ export function isEmpresaBeHive(companyName?: string | null): boolean {
   return !!companyName && companyName.trim().toLowerCase() === 'behive'
 }
 
+// Módulo de Pesquisa: CTZ e, desde 05/11/2026, BeHive.
+export function empresaTemPesquisa(companyName?: string | null): boolean {
+  return isEmpresaCTZ(companyName) || isEmpresaBeHive(companyName)
+}
+
 // Módulo de Autoconhecimento (Eneagrama): o protótipo em teste (pedido 31/08)
 // graduou em 10/09/2026 — os 3 mapas (Autoliderança, Liderando o time,
 // Relacionando com o time) abriram pra toda a CTZ. Esta lista continua viva,

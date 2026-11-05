@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
 import { createClient } from '@/lib/supabase/client'
-import { cn, formatDate, isEmpresaCTZ } from '@/lib/utils'
+import { cn, empresaTemPesquisa, formatDate } from '@/lib/utils'
 import {
   duplicarPesquisa, excluirPesquisa, filtroVazio, getFuncionariosPublico, getMeuPerfilPesquisa, podeGerirPesquisa, ROTULO_PERFIL, getParticipacoes, getParticipantes, getPerguntas, getPesquisas,
   linkPublicoPesquisa, mudarStatusPesquisa, noFiltro, proximaAplicacao,
@@ -22,7 +22,7 @@ import ModalQrCode from '@/components/pesquisa/ModalQrCode'
 import ListaConvites from '@/components/pesquisa/ListaConvites'
 import ModalUsuariosPesquisa from '@/components/pesquisa/ModalUsuariosPesquisa'
 
-// Módulo de Pesquisa (pedido 05/10/2026, só CTZ). Administrador monta,
+// Módulo de Pesquisa (pedido 05/10/2026; CTZ e BeHive). Administrador monta,
 // publica e acompanha; qualquer funcionário responde as internas abertas.
 // Regras de acesso de verdade: RLS e funções da migration
 // PENDENTE_20261005000000_pesquisas.sql.
@@ -58,7 +58,7 @@ function BotaoAcao({ onClick, icon: Icon, children, destaque, perigo }: {
 
 export default function PesquisaPage() {
   const { empresa } = useEmpresaStore()
-  const ctz = isEmpresaCTZ(empresa?.company_name)
+  const temPesquisa = empresaTemPesquisa(empresa?.company_name)
 
   const [loading, setLoading] = useState(true)
   // Etapa 5 (M1): perfil na Pesquisa. Master/Administrativo gerem; Visualizador só vê.
@@ -86,7 +86,7 @@ export default function PesquisaPage() {
   const [erroResposta, setErroResposta] = useState<string | null>(null)
 
   const carregar = useCallback(async () => {
-    if (!ctz || !empresa) { setLoading(false); return }
+    if (!temPesquisa || !empresa) { setLoading(false); return }
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setLoading(false); return }
@@ -106,7 +106,7 @@ export default function PesquisaPage() {
     const part = await getParticipacoes(internas)
     setJaRespondi(new Set(Object.entries(part).filter(([, ids]) => ids.includes(user.id)).map(([id]) => id)))
     setLoading(false)
-  }, [ctz, empresa])
+  }, [temPesquisa, empresa])
 
   useEffect(() => { carregar() }, [carregar])
 
@@ -196,7 +196,7 @@ export default function PesquisaPage() {
     return <div className="h-40 rounded-2xl bg-card/50 border border-border animate-pulse" />
   }
 
-  if (!ctz) {
+  if (!temPesquisa) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-card/50 p-16 text-center">
         <p className="text-muted-foreground text-sm">Este módulo ainda não está disponível para esta empresa.</p>

@@ -1845,3 +1845,8 @@
     administrador). Hook novo `useNivelPermissao` (`useAcessoAdministrador.ts`).
   - Jean Patrick (`marketing@ctz.eng.br`): `gestor` + `is_calibrador` + calibragem restrita.
   - Migration `PENDENTE_20261030010000_lideres_cargos_funcionarios_e_jean.sql`.
+
+- **Pesquisa também na BeHive** (05/11/2026, pedido do Igor, "do mesmo jeito" da CTZ). A trava era
+  só na tela: menu (`Topbar`) e página (`pesquisa/page.tsx`) passam a usar `empresaTemPesquisa`
+  (`utils.ts`). Sem migration: banco e rotas de IA não têm regra da CTZ. Conferido em `clients`
+  (05/11): 17 empresas, nenhuma RISE.

@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { createClient } from '@/lib/supabase/client'
 import { useEmpresaStore } from '@/store/useEmpresaStore'
-import { cn, isEmpresaCTZ, souPilotoAutoconhecimento, souVisualizadorFeedback } from '@/lib/utils'
+import { cn, empresaTemPesquisa, isEmpresaCTZ, souPilotoAutoconhecimento, souVisualizadorFeedback } from '@/lib/utils'
 import { podeVerAutoconhecimento } from '@/lib/autoconhecimentoAcesso'
 import Avatar from '@/components/Avatar'
 import {
@@ -143,7 +143,7 @@ export default function Topbar({ papeisPorEmpresa, userEmail, fotoUrl }: TopbarP
         { href: '/cargos', label: 'Cargos', icon: Briefcase, hidden: !podeVerCargos },
         { href: '/avaliacao', label: 'Avaliação', icon: ClipboardList, hidden: !ctz },
         { href: '/autoconhecimento', label: 'Autoconhecimento', icon: Sparkles, hidden: !podeVerAuto },
-        { href: '/pesquisa', label: 'Pesquisa', icon: MessageSquareHeart, hidden: !ctz },
+        { href: '/pesquisa', label: 'Pesquisa', icon: MessageSquareHeart, hidden: !empresaTemPesquisa(empresa?.company_name) },
         { href: '/feedback', label: 'Feedback e 1:1', icon: MessagesSquare, hidden: !souVisualizadorFeedback(userEmail) },
       ],
     },
